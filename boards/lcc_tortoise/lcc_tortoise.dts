@@ -8,6 +8,8 @@
 #include <st/g0/stm32g0b1Xb.dtsi>
 #include <st/g0/stm32g0b1c(b-c-e)tx-pinctrl.dtsi>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/pinctrl/stm32-pinctrl.h>
+#include <zephyr/dt-bindings/pinctrl/stm32-pinctrl-common.h>
 
 / {
 	model = "Snowball Creek LCC Tortoise";
@@ -25,25 +27,37 @@
 
 	leds: leds {
 		compatible = "gpio-leds";
-		green_led_1: led_4 {
+		green_led: led_6 {
 			gpios = <&gpioc 6 GPIO_ACTIVE_HIGH>;
 			label = "Green LED";
 		};
-	};
-
-/*
-	gpio_keys {
-		compatible = "gpio-keys";
-		user_button: button {
-			label = "User";
-			gpios = <&gpioc 13 GPIO_ACTIVE_LOW>;
-			zephyr,code = <INPUT_KEY_0>;
+		blue_led: led_10 {
+			gpios = <&gpioa 10 GPIO_ACTIVE_HIGH>;
+			label = "Blue LED";
+		};
+		gold_led: led_11 {
+			gpios = <&gpioa 11 GPIO_ACTIVE_HIGH>;
+			label = "Gold LED";
 		};
 	};
-*/
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		blue_switch: button_blue {
+			label = "blue_switch";
+			gpios = <&gpiod 2 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		};
+		gold_switch: button_gold {
+			label = "gold_switch";
+			gpios = <&gpiod 3 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		};
+	};
 
 	aliases {
-		led0 = &green_led_1;
+		greenled = &green_led;
+		blueled = &blue_led;
+		goldled = &gold_led;
+		blueswitch = &blue_switch;
 		//sw0 = &user_button;
 		//watchdog0 = &iwdg;
 		//die-temp0 = &die_temp;
@@ -256,3 +270,4 @@ stm32_lp_tick_source: &lptim1 {
 	status = "okay";
 };
 */
+
