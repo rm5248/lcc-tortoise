@@ -44,14 +44,15 @@
 
 	aliases {
 		led0 = &green_led_1;
-		sw0 = &user_button;
-		watchdog0 = &iwdg;
-		die-temp0 = &die_temp;
-		volt-sensor0 = &vref;
-		volt-sensor1 = &vbat;
+		//sw0 = &user_button;
+		//watchdog0 = &iwdg;
+		//die-temp0 = &die_temp;
+		//volt-sensor0 = &vref;
+		//volt-sensor1 = &vbat;
 	};
 };
 
+/*
 &clk_lsi {
 	status = "okay";
 };
@@ -64,29 +65,40 @@
 	status = "okay";
 	crs-usb-sof;
 };
+*/
+
+&clk_hse {
+	status = "okay";
+	hse-bypass;
+	clock-frequency = <DT_FREQ_M(8)>;
+};
 
 &pll {
 	div-m = <1>;
-	mul-n = <8>;
+	mul-n = <12>;
 	div-p = <2>;
-	div-q = <2>;
-	div-r = <2>;
-	clocks = <&clk_hsi>;
+	div-q = <3>;
+	div-r = <4>;
+	clocks = <&clk_hse>;
 	status = "okay";
 };
 
+
 &rcc {
 	clocks = <&pll>;
-	clock-frequency = <DT_FREQ_M(64)>;
+	clock-frequency = <DT_FREQ_M(24)>;
 	ahb-prescaler = <1>;
 	apb1-prescaler = <1>;
 };
 
+
+/*
 zephyr_udc0: &usb {
 	pinctrl-0 = <&usb_dm_pa11 &usb_dp_pa12>;
 	pinctrl-names = "default";
 	status = "okay";
 };
+*/
 
 /*
 &usart1 {
@@ -104,6 +116,7 @@ zephyr_udc0: &usb {
 	status = "okay";
 };
 
+/*
 &rtc {
 	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00000400>,
 		 <&rcc STM32_SRC_LSI RTC_SEL(2)>;
@@ -195,6 +208,7 @@ zephyr_udc0: &usb {
 	pinctrl-names = "default";
 	status = "okay";
 };
+*/
 
 &flash0 {
 	partitions {
@@ -223,12 +237,15 @@ zephyr_udc0: &usb {
 	};
 };
 
+/*
 stm32_lp_tick_source: &lptim1 {
 	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x80000000>,
 		 <&rcc STM32_SRC_LSI LPTIM1_SEL(1)>;
 	status = "okay";
 };
+*/
 
+/*
 &vref {
 	status = "okay";
 };
@@ -236,3 +253,4 @@ stm32_lp_tick_source: &lptim1 {
 &vbat {
 	status = "okay";
 };
+*/
