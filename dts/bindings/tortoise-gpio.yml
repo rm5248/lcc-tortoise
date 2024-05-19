@@ -1,0 +1,10 @@
+description: GPIO pin pair to control a tortoise output
+
+compatible: "tortoise-output"
+
+properties:
+  gpios:
+    type: phandle-array
+    required: true
+    description: |
+      The GPIOs used to control the tortoise

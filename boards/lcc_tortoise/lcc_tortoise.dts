@@ -271,3 +271,12 @@ stm32_lp_tick_source: &lptim1 {
 };
 */
 
+/ {
+	tortoise0: tort0 {
+		compatible = "tortoise-output";
+		gpios = <&gpiob 0 GPIO_ACTIVE_HIGH>,
+		        <&gpiob 1 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+};
+

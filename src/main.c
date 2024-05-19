@@ -8,7 +8,7 @@
 #include <zephyr/drivers/can.h>
 
 /* 1000 msec = 1 sec */
-#define SLEEP_TIME_MS   5000
+#define SLEEP_TIME_MS   1000
 
 
 static const struct gpio_dt_spec green_led = GPIO_DT_SPEC_GET(DT_ALIAS(greenled), gpios);
@@ -18,10 +18,41 @@ static const struct gpio_dt_spec blue_button = GPIO_DT_SPEC_GET(DT_NODELABEL(blu
 static const struct gpio_dt_spec gold_button = GPIO_DT_SPEC_GET(DT_NODELABEL(gold_switch), gpios);
 //static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET(DT_ALIAS(blueswitch), gpios);
 
+//#if !DT_NODE_HAS_STATUS(DT_NODELABEL(tortoise0))
+//#error "bad status"
+//#endif
+
+static const struct gpio_dt_spec tortoise0[] ={
+		GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise0), gpios, 0),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise0), gpios, 1)
+};
+
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
 
 static struct gpio_callback blue_button_cb_data;
 static struct gpio_callback gold_button_cb_data;
+
+static int init_tortoise(const struct gpio_dt_spec* tortoise){
+	int ret;
+
+	if (!gpio_is_ready_dt(&tortoise[0])) {
+		return 0;
+	}
+	if (!gpio_is_ready_dt(&tortoise[1])) {
+		return 0;
+	}
+
+	ret = gpio_pin_configure_dt(&tortoise[0], GPIO_OUTPUT_INACTIVE);
+	if (ret < 0) {
+		return 0;
+	}
+	ret = gpio_pin_configure_dt(&tortoise[1], GPIO_OUTPUT_INACTIVE);
+	if (ret < 0) {
+		return 0;
+	}
+
+	return 1;
+}
 
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
@@ -99,6 +130,10 @@ int main(void)
 	gpio_init_callback(&gold_button_cb_data, button_pressed, BIT(gold_button.pin));
 	gpio_add_callback(gold_button.port, &gold_button_cb_data);
 
+	if(init_tortoise(tortoise0) == 0){
+		return 0;
+	}
+
 	if (!device_is_ready(can_dev)) {
 		printf("CAN: Device %s not ready.\n", can_dev->name);
 		return 0;
@@ -106,6 +141,8 @@ int main(void)
 
 	ret = can_start(can_dev);
 
+	int x = 0;
+	int pos = 0;
 	while (1) {
 		ret = gpio_pin_toggle_dt(&green_led);
 		if (ret < 0) {
@@ -116,6 +153,21 @@ int main(void)
 		printf("LED state: %s\n", led_state ? "ON" : "OFF");
 		printf("3\n");
 		k_msleep(SLEEP_TIME_MS);
+
+		if((x++ % 5) == 0){
+			// swap the tortoise posistion
+			gpio_pin_set_dt(&tortoise0[0], 0);
+			gpio_pin_set_dt(&tortoise0[1], 0);
+
+			pos = !pos;
+			if(pos){
+				gpio_pin_set_dt(&tortoise0[0], 0);
+				gpio_pin_set_dt(&tortoise0[1], 1);
+			}else{
+				gpio_pin_set_dt(&tortoise0[0], 1);
+				gpio_pin_set_dt(&tortoise0[1], 0);
+			}
+		}
 	}
 	return 0;
 }
