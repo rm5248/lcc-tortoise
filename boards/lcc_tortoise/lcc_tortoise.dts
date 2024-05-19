@@ -278,5 +278,47 @@ stm32_lp_tick_source: &lptim1 {
 		        <&gpiob 1 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
+	tortoise1: tort1 {
+		compatible = "tortoise-output";
+		gpios = <&gpiob 2 GPIO_ACTIVE_HIGH>,
+		        <&gpiob 3 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise2: tort2 {
+		compatible = "tortoise-output";
+		gpios = <&gpiob 4 GPIO_ACTIVE_HIGH>,
+		        <&gpiob 5 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise3: tort3 {
+		compatible = "tortoise-output";
+		gpios = <&gpiob 6 GPIO_ACTIVE_HIGH>,
+		        <&gpiob 7 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise4: tort4 {
+		compatible = "tortoise-output";
+		gpios = <&gpiob 8 GPIO_ACTIVE_HIGH>,
+		        <&gpiob 9 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise5: tort5 {
+		compatible = "tortoise-output";
+		gpios = <&gpiob 10 GPIO_ACTIVE_HIGH>,
+		        <&gpiob 11 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise6: tort6 {
+		compatible = "tortoise-output";
+		gpios = <&gpiob 12 GPIO_ACTIVE_HIGH>,
+		        <&gpiob 13 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise7: tort7 {
+		compatible = "tortoise-output";
+		gpios = <&gpiob 14 GPIO_ACTIVE_HIGH>,
+		        <&gpiob 15 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
 };
 
