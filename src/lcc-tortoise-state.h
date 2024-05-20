@@ -13,6 +13,8 @@
 
 #include "tortoise.h"
 
+struct lcc_context;
+
 /**
  * The global state struct for our application
  */
@@ -23,6 +25,8 @@ struct lcc_tortoise_state{
 	const struct gpio_dt_spec blue_button;
 	const struct gpio_dt_spec gold_button;
 	struct tortoise tortoises[8];
+
+	struct lcc_context* lcc_context;
 };
 
 extern struct lcc_tortoise_state lcc_tortoise_state;

@@ -16,6 +16,7 @@ enum tortoise_position{
 struct tortoise {
 	const struct gpio_dt_spec gpios[2];
 	enum tortoise_position position;
+	int accessoryNumber;
 };
 
 /**

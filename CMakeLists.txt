@@ -4,8 +4,34 @@ cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(LCC-Tortoise)
 
+# Bring in the LCC library
+include(FetchContent)
+#ExternalProject_Add(LibLCC
+	#GIT_REPOSITORY https://github.com/rm5248/TrainUtils.git
+	#SOURCE_SUBDIR LCC
+#)
+#ExternalProject_Add(LibLCC
+#	SOURCE_DIR /home/robert/TrainUtils/LCC
+#	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lcc-install
+#)
+
+#FetchContent_Declare(
+	#lcc
+	#SOURCE_DIR /home/robert/TrainUtils/LCC
+	#CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lcc-install
+	#OVERRIDE_FIND_PACKAGE
+#)
+#FetchContent_MakeAvailable(lcc)
+
 target_sources(app PRIVATE 
 	src/main.c 
 	src/tortoise.c 
 	src/lcc-tortoise-state.c
 )
+
+# TODO why the fuck doesn't FetchContent_MakeAvailable work?
+add_subdirectory(src/lcc)
+
+target_include_directories(app PRIVATE src/lcc)
+target_link_libraries(app PRIVATE lcc)
+add_definitions(-DARDUINO)
