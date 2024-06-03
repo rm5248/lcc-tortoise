@@ -6,22 +6,15 @@ project(LCC-Tortoise)
 
 # Bring in the LCC library
 include(FetchContent)
-#ExternalProject_Add(LibLCC
-	#GIT_REPOSITORY https://github.com/rm5248/TrainUtils.git
-	#SOURCE_SUBDIR LCC
-#)
-#ExternalProject_Add(LibLCC
-#	SOURCE_DIR /home/robert/TrainUtils/LCC
-#	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lcc-install
-#)
 
-#FetchContent_Declare(
-	#lcc
-	#SOURCE_DIR /home/robert/TrainUtils/LCC
-	#CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lcc-install
-	#OVERRIDE_FIND_PACKAGE
-#)
-#FetchContent_MakeAvailable(lcc)
+FetchContent_Declare(
+	lcc
+	SOURCE_DIR /home/robert/TrainUtils/LCC
+	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lcc-install
+	OVERRIDE_FIND_PACKAGE
+)
+FetchContent_MakeAvailable(lcc)
+find_package(liblcc REQUIRED)
 
 target_sources(app PRIVATE 
 	src/main.c 
@@ -29,9 +22,5 @@ target_sources(app PRIVATE
 	src/lcc-tortoise-state.c
 )
 
-# TODO why the fuck doesn't FetchContent_MakeAvailable work?
-add_subdirectory(src/lcc)
-
-target_include_directories(app PRIVATE src/lcc)
 target_link_libraries(app PRIVATE lcc)
 add_definitions(-DARDUINO)
