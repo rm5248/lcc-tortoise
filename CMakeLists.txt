@@ -7,10 +7,10 @@ project(LCC-Tortoise)
 # Bring in the LCC library
 include(FetchContent)
 
+set(LIBLCC_ENABLE_STATIC_CONTEXT ON)
 FetchContent_Declare(
 	lcc
 	SOURCE_DIR /home/robert/TrainUtils/LCC
-	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lcc-install
 	OVERRIDE_FIND_PACKAGE
 )
 FetchContent_MakeAvailable(lcc)
@@ -23,4 +23,3 @@ target_sources(app PRIVATE
 )
 
 target_link_libraries(app PRIVATE lcc)
-add_definitions(-DARDUINO)
