@@ -6,6 +6,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/can.h>
+#include <zephyr/drivers/eeprom.h>
 #include <zephyr/device.h>
 
 #include "lcc-tortoise-state.h"
@@ -164,6 +165,28 @@ static void init_rx_queue(){
 	printf("Filter ID: %d\n", filter_id);
 }
 
+static void check_eeprom(){
+	uint32_t values[2];
+
+	int rc = eeprom_read(lcc_tortoise_state.fram, 1024, &values, sizeof(values));
+	if(rc < 0){
+		printf("Can't read eeprom: %d\n", rc);
+		return;
+	}
+
+	printf("values:\n");
+	printf("  0x%08x\n", values[0]);
+	printf("  0x%08x\n", values[1]);
+
+	values[0] = values[0] + 1;
+	values[1] = values[1] * 2;
+	rc = eeprom_write(lcc_tortoise_state.fram, 1024, &values, sizeof(values));
+	if(rc < 0){
+		printf("Can't write eeprom: %d\n", rc);
+		return;
+	}
+}
+
 int main(void)
 {
 	int ret;
@@ -211,6 +234,8 @@ int main(void)
 	can_set_state_change_callback(can_dev, state_change_callback, &state_change_work);
 
 	init_rx_queue();
+
+	check_eeprom();
 
 	lcc_tortoise_state.lcc_context = lcc_context_new();
 	if(lcc_tortoise_state.lcc_context == NULL){

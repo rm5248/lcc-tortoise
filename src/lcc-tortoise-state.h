@@ -24,6 +24,7 @@ struct lcc_tortoise_state{
 	const struct gpio_dt_spec gold_led;
 	const struct gpio_dt_spec blue_button;
 	const struct gpio_dt_spec gold_button;
+	const struct device* fram;
 	struct tortoise tortoises[8];
 
 	struct lcc_context* lcc_context;
