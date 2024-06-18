@@ -23,6 +23,7 @@ target_sources(app PRIVATE
 	src/main.c 
 	src/tortoise.c 
 	src/lcc-tortoise-state.c
+	src/dcc-decode.c
 	${lcc-sources}
 )
 target_include_directories(app PRIVATE

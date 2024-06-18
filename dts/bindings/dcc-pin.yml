@@ -1,0 +1,10 @@
+description: GPIO pin to use as DCC input signal
+
+compatible: "dcc-pin"
+
+properties:
+  gpios:
+    type: phandle-array
+    required: true
+    description: |
+      The GPIO used to decode the DCC signal

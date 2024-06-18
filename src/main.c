@@ -11,6 +11,7 @@
 
 #include "lcc-tortoise-state.h"
 #include "tortoise.h"
+#include "dcc-decode.h"
 
 #include "lcc.h"
 #include "lcc-common.h"
@@ -35,8 +36,10 @@ struct can_bus_err_cnt current_err_cnt;
 #define STATE_POLL_THREAD_PRIORITY 2
 
 K_THREAD_STACK_DEFINE(poll_state_stack, STATE_POLL_THREAD_STACK_SIZE);
+K_THREAD_STACK_DEFINE(dcc_signal_stack, 128);
 
 struct k_thread poll_state_thread_data;
+struct k_thread dcc_thread_data;
 CAN_MSGQ_DEFINE(rx_msgq, 2);
 
 char *state_to_str(enum can_state state)
@@ -192,12 +195,16 @@ int main(void)
 	int ret;
 	bool led_state = true;
 	k_tid_t rx_tid, get_state_tid;
+	k_tid_t dcc_thread;
 
 	if(lcc_tortoise_state_init() < 0){
 		// This uses only static data to initialize, so this should never happen.
 		printf("error: unable to initialize!\n");
 		return 0;
 	}
+
+	dcc_decode.gpio_pin = &lcc_tortoise_state.dcc_signal;
+	dcc_decode.led_pin = &lcc_tortoise_state.blue_led;
 
 	// TODO: what state should the tortoise be in on boot? Need to query from non-volatile memory
 	// For now, let's just set them all to normal
@@ -229,6 +236,16 @@ int main(void)
 					K_NO_WAIT);
 	if (!get_state_tid) {
 		printf("ERROR spawning poll_state_thread\n");
+	}
+
+	dcc_thread = k_thread_create(&dcc_thread_data,
+			dcc_signal_stack,
+			K_THREAD_STACK_SIZEOF(dcc_signal_stack),
+			dcc_decoder_thread, NULL, NULL, NULL,
+			STATE_POLL_THREAD_PRIORITY, 0,
+			K_NO_WAIT);
+	if (!dcc_thread) {
+		printf("ERROR spawning dcc thread\n");
 	}
 
 	can_set_state_change_callback(can_dev, state_change_callback, &state_change_work);

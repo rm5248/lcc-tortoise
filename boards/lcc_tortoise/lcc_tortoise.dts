@@ -336,5 +336,11 @@ stm32_lp_tick_source: &lptim1 {
 		        <&gpiob 15 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
+
+	dcc_pin: dcc_pin {
+		compatible = "dcc-pin";
+		gpios = <&gpioc 13 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
 };
 

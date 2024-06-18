@@ -17,6 +17,7 @@ struct lcc_tortoise_state lcc_tortoise_state = {
 		.gold_led = GPIO_DT_SPEC_GET(DT_ALIAS(goldled), gpios),
 		.blue_button = GPIO_DT_SPEC_GET(DT_NODELABEL(blue_switch), gpios),
 		.gold_button = GPIO_DT_SPEC_GET(DT_NODELABEL(gold_switch), gpios),
+		.dcc_signal = GPIO_DT_SPEC_GET(DT_NODELABEL(dcc_pin), gpios),
 		.fram = DEVICE_DT_GET(DT_ALIAS(fram)),
 		.tortoises = {
 				{
@@ -118,6 +119,9 @@ int lcc_tortoise_state_init(){
 		return -1;
 	}
 	if(init_button(&lcc_tortoise_state.gold_button) < 0){
+		return -1;
+	}
+	if(init_button(&lcc_tortoise_state.dcc_signal) < 0){
 		return -1;
 	}
 
