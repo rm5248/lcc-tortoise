@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include <assert.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/can.h>
@@ -190,6 +191,36 @@ static void check_eeprom(){
 	}
 }
 
+static void load_tortoise_settings(){
+	// Tortoise config data is 32 bytes long
+	struct tortoise_config current_config;
+	uint32_t offset = 0;
+
+	_Static_assert(sizeof(current_config) <= 32);
+
+	for(int x = 0; x < 8; x++){
+		int rc = eeprom_read(lcc_tortoise_state.fram, offset, &current_config, sizeof(current_config));
+		if(rc < 0){
+			printf("Can't read eeprom: %d\n", rc);
+			return;
+		}
+
+		lcc_tortoise_state.tortoises[x].thrown_event_id = current_config.event_id_thrown;
+		lcc_tortoise_state.tortoises[x].closed_event_id = current_config.event_id_closed;
+		lcc_tortoise_state.tortoises[x].accessoryNumber = current_config.dcc_switch_number;
+		lcc_tortoise_state.tortoises[x].control_method = current_config.control_type;
+		lcc_tortoise_state.tortoises[x].startup_control = current_config.startup_control;
+
+		if( lcc_tortoise_state.tortoises[x].startup_control == STARTUP_THROWN ){
+			lcc_tortoise_state.tortoises[x].position = REVERSED;
+		}else if( lcc_tortoise_state.tortoises[x].startup_control == STARTUP_CLOSED ){
+			lcc_tortoise_state.tortoises[x].position = NORMAL;
+		}else{
+			lcc_tortoise_state.tortoises[x].position = current_config.last_known_pos;
+		}
+	}
+}
+
 int main(void)
 {
 	int ret;
@@ -206,10 +237,10 @@ int main(void)
 	dcc_decode.gpio_pin = &lcc_tortoise_state.dcc_signal;
 	dcc_decode.led_pin = &lcc_tortoise_state.blue_led;
 
-	// TODO: what state should the tortoise be in on boot? Need to query from non-volatile memory
-	// For now, let's just set them all to normal
+	// Load the tortoise settings, and set the outputs to the correct valu depending on their startup settings
+	load_tortoise_settings();
 	for(int x = 0; x < 8; x++){
-		tortoise_set_position(&lcc_tortoise_state.tortoises[x], NORMAL);
+		tortoise_set_position(&lcc_tortoise_state.tortoises[x], lcc_tortoise_state.tortoises[x].position);
 
 		// accy numbers 1-8 for now
 		lcc_tortoise_state.tortoises[x].accessoryNumber = x + 1;
