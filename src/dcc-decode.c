@@ -22,7 +22,7 @@ void dcc_decoder_thread(void*, void*, void*){
 			num_times++;
 		}
 
-		if( num_times % 100 == 0 ){
+		if( num_times % 1000 == 0 ){
 			gpio_pin_toggle_dt(dcc_decode.led_pin);
 		}
 	}
