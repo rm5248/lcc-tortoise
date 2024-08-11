@@ -27,10 +27,12 @@ fi
 			steps{
 				sh '''#!/bin/bash
 source venv/bin/activate
-if [ ! -e .west.yml ]
+if [ ! -e .west ]
 then
 	west init -l lcc-tortoise
 	west update
+	west zephyr-export
+	pip3 install -r zephyr/scripts/requirements.txt
 fi
 
 cd lcc-tortoise
