@@ -35,3 +35,5 @@ https://github.com/zephyrproject-rtos/zephyr/discussions/69812
 ## License
 
 GPL v2 ONLY
+
+jksdfl
