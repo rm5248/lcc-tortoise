@@ -21,7 +21,7 @@
 		zephyr,uart-mcumgr = &usart2;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
-//		zephyr,code-partition = &slot0_partition;
+		zephyr,code-partition = &slot0_partition;
 		zephyr,canbus = &fdcan1;
 	};
 
@@ -248,30 +248,30 @@ zephyr_udc0: &usb {
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		main_partition: partition@0 {
-			label = "main";
-			reg = <0x00000000 DT_SIZE_K(128)>;
-//			read-only;
-		};
+//		main_partition: partition@0 {
+//			label = "main";
+//			reg = <0x00000000 DT_SIZE_K(128)>;
+////			read-only;
+//		};
 
-//		boot_partition: partition@0 {
-//			label = "mcuboot";
-//			reg = <0x00000000 DT_SIZE_K(48)>;
-//			read-only;
-//		};
-//		slot0_partition: partition@C000 {
-//			label = "image-0";
-//			reg = <0x0000C000 DT_SIZE_K(200)>;
-//		};
-//		slot1_partition: partition@3E000 {
-//			label = "image-1";
-//			reg = <0x0003E000 DT_SIZE_K(200)>;
-//		};
-//		/* final 64KiB reserved for app storage partition */
-//		storage_partition: partition@70000 {
-//			label = "storage";
-//			reg = <0x00070000 DT_SIZE_K(64)>;
-//		};
+		boot_partition: partition@0 {
+			label = "bootloader";
+			reg = <0x00000000 DT_SIZE_K(12)>;
+			read-only;
+		};
+		slot0_partition: partition@3000 {
+			label = "image-0";
+			reg = <0x00003000 DT_SIZE_K(56)>;
+		};
+		slot1_partition: partition@11000 {
+			label = "image-1";
+			reg = <0x00011000 DT_SIZE_K(56)>;
+		};
+		/* final 4k reserved for app storage partition */
+		storage_partition: partition@1F000 {
+			label = "storage";
+			reg = <0x0001F000 DT_SIZE_K(4)>;
+		};
 	};
 };
 

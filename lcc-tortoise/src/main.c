@@ -9,6 +9,7 @@
 #include <zephyr/drivers/can.h>
 #include <zephyr/drivers/eeprom.h>
 #include <zephyr/device.h>
+#include <zephyr/sys/reboot.h>
 
 #include "lcc-tortoise-state.h"
 #include "tortoise.h"
@@ -23,11 +24,11 @@
 /* 1000 msec = 1 sec */
 #define SLEEP_TIME_MS   1000
 
+/* 251 = node name/description */
 #define ADDRESS_SPACE_251_OFFSET 0
+/* 253 = basic config space */
 #define ADDRESS_SPACE_253_OFFSET 128
-
-// Statically allocated buffer for the reading/writing of any tortoise configs
-struct tortoise_config tortoise_configs_buffer[8];
+#define GLOBAL_CONFIG_OFFSET 512
 
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
 static struct can_frame zephyr_can_frame_tx;
@@ -48,7 +49,7 @@ K_THREAD_STACK_DEFINE(dcc_signal_stack, 128);
 
 struct k_thread poll_state_thread_data;
 struct k_thread dcc_thread_data;
-CAN_MSGQ_DEFINE(rx_msgq, 2);
+CAN_MSGQ_DEFINE(rx_msgq, 25);
 
 char *state_to_str(enum can_state state)
 {
@@ -141,25 +142,8 @@ static int lcc_write_cb(struct lcc_context*, struct lcc_can_frame* lcc_frame){
 }
 
 static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
-	if( !lcc_event_id_is_accessory_address( event_id) ){
-		return;
-	}
-
-	struct lcc_accessory_address addr;
-
-	if( lcc_event_id_to_accessory_decoder_2040(event_id, &addr) < 0){
-		return;
-	}
-
-	printf("accy %d\n", addr.dcc_accessory_address);
-
 	for(int x = 0; x < 8; x++){
-		struct tortoise* current_tort = &lcc_tortoise_state.tortoises[x];
-		if(current_tort->config.accessory_number == addr.dcc_accessory_address){
-			// This tortoise should change state
-			printf("tortoise change\n");
-			tortoise_set_position(current_tort, addr.active ? REVERSED : NORMAL);
-		}
+		tortoise_incoming_event(&lcc_tortoise_state.tortoises[x], event_id);
 	}
 }
 
@@ -199,38 +183,16 @@ static void check_eeprom(){
 }
 
 static void load_tortoise_settings(){
-	// Tortoise config data is 32 bytes long
-	struct tortoise_config current_config;
-	uint32_t offset = 0;
+	uint32_t offset = ADDRESS_SPACE_253_OFFSET;
 
-	_Static_assert(sizeof(current_config) == 32);
+	int rc = eeprom_read(lcc_tortoise_state.fram, offset, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config));
+	if(rc < 0){
+		printf("Can't read eeprom: %d\n", rc);
+		return;
+	}
 
 	for(int x = 0; x < 8; x++){
-		int rc = eeprom_read(lcc_tortoise_state.fram, offset, &current_config, sizeof(current_config));
-		if(rc < 0){
-			printf("Can't read eeprom: %d\n", rc);
-			return;
-		}
-
-		memcpy(&lcc_tortoise_state.tortoises[x].config, &current_config, sizeof(current_config));
-
-		if( lcc_tortoise_state.tortoises[x].config.startup_control == STARTUP_THROWN ){
-			lcc_tortoise_state.tortoises[x].current_position = REVERSED;
-		}else if( lcc_tortoise_state.tortoises[x].config.startup_control == STARTUP_CLOSED ){
-			lcc_tortoise_state.tortoises[x].current_position = NORMAL;
-		}else{
-			lcc_tortoise_state.tortoises[x].current_position = current_config.last_known_pos;
-		}
-	}
-}
-
-static void convert_settings_to_bigendian(){
-	for( int x = 0; x < 8; x++ ){
-		memcpy( &tortoise_configs_buffer[x], &lcc_tortoise_state.tortoises[x].config, sizeof(struct tortoise_config) );
-
-		tortoise_configs_buffer[x].event_id_closed = __builtin_bswap64(tortoise_configs_buffer[x].event_id_closed);
-		tortoise_configs_buffer[x].event_id_thrown = __builtin_bswap64(tortoise_configs_buffer[x].event_id_thrown);
-		tortoise_configs_buffer[x].accessory_number = __builtin_bswap16(tortoise_configs_buffer[x].accessory_number);
+		tortoise_init_startup_position(&lcc_tortoise_state.tortoises[x]);
 	}
 }
 
@@ -269,26 +231,23 @@ void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint
 	    lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, buffer, read_count);
 	  }else if(address_space == 253){
 		// Basic config space
-		if(starting_address + read_count > (sizeof(struct tortoise_config) * 8)){
+		if(starting_address + read_count > (sizeof(lcc_tortoise_state.tortoise_config))){
 		  // trying to read too much memory
 		  lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
 		  return;
 		}
 
-		// LCC is defined as big-endian: convert everything to big-endian in our buffer
-		convert_settings_to_bigendian();
-	    uint8_t* config_as_u8 = (uint8_t*)&tortoise_configs_buffer;
+	    uint8_t* config_as_u8 = (uint8_t*)lcc_tortoise_state.tortoise_config;
 
-	    lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, config_as_u8, read_count);
+	    lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, config_as_u8 + starting_address, read_count);
 	  }
 }
 
 void save_configs_to_fram(){
-	for( int x = 0; x < 8; x++ ){
-		memcpy( &tortoise_configs_buffer[x], &lcc_tortoise_state.tortoises[x].config, sizeof(struct tortoise_config) );
-	}
-
-	int rc = eeprom_write(lcc_tortoise_state.fram, ADDRESS_SPACE_253_OFFSET, tortoise_configs_buffer, sizeof(tortoise_configs_buffer));
+	int rc = eeprom_write(lcc_tortoise_state.fram,
+			ADDRESS_SPACE_253_OFFSET,
+			lcc_tortoise_state.tortoise_config,
+			sizeof(lcc_tortoise_state.tortoise_config));
 }
 
 void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, void* data, int data_len){
@@ -297,10 +256,13 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 
 	    lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
 	  }else if(address_space == 253){
-		  convert_settings_to_bigendian();
-		  uint8_t* buffer_u8 = (uint8_t*)tortoise_configs_buffer;
+		  if((starting_address + data_len) > sizeof(lcc_tortoise_state.tortoise_config)){
+			    lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
+			    return;
+		  }
+		  uint8_t* buffer_u8 = (uint8_t*)lcc_tortoise_state.tortoise_config;
 
-		  memcpy(buffer_u8, data, data_len);
+		  memcpy(buffer_u8 + starting_address, data, data_len);
 
 	    // Write out to FRAM
 	    save_configs_to_fram();
@@ -310,6 +272,21 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 	    lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
 	    return;
 	  }
+}
+
+static void reboot(struct lcc_memory_context* ctx){
+	sys_reboot(SYS_REBOOT_COLD);
+}
+
+static void factory_reset(struct lcc_memory_context* ctx){
+	memset(&lcc_tortoise_state.tortoise_config, 0, sizeof(lcc_tortoise_state.tortoise_config));
+
+	for(int x = 0; x < 8; x++){
+		lcc_tortoise_state.tortoise_config[x].accessory_number = __builtin_bswap16(x + 1);
+		lcc_tortoise_state.tortoise_config[x].startup_control = STARTUP_CLOSED;
+	}
+
+	save_configs_to_fram();
 }
 
 int main(void)
@@ -334,9 +311,6 @@ int main(void)
 	load_tortoise_settings();
 	for(int x = 0; x < 8; x++){
 		tortoise_set_position(&lcc_tortoise_state.tortoises[x], lcc_tortoise_state.tortoises[x].current_position);
-
-		// accy numbers 1-8 for now
-		lcc_tortoise_state.tortoises[x].config.accessory_number = x + 1;
 	}
 
 	if (!device_is_ready(can_dev)) {
@@ -362,15 +336,15 @@ int main(void)
 		printf("ERROR spawning poll_state_thread\n");
 	}
 
-	dcc_thread = k_thread_create(&dcc_thread_data,
-			dcc_signal_stack,
-			K_THREAD_STACK_SIZEOF(dcc_signal_stack),
-			dcc_decoder_thread, NULL, NULL, NULL,
-			STATE_POLL_THREAD_PRIORITY, 0,
-			K_NO_WAIT);
-	if (!dcc_thread) {
-		printf("ERROR spawning dcc thread\n");
-	}
+//	dcc_thread = k_thread_create(&dcc_thread_data,
+//			dcc_signal_stack,
+//			K_THREAD_STACK_SIZEOF(dcc_signal_stack),
+//			dcc_decoder_thread, NULL, NULL, NULL,
+//			STATE_POLL_THREAD_PRIORITY, 0,
+//			K_NO_WAIT);
+//	if (!dcc_thread) {
+//		printf("ERROR spawning dcc thread\n");
+//	}
 
 	can_set_state_change_callback(can_dev, state_change_callback, &state_change_work);
 
@@ -407,6 +381,8 @@ int main(void)
 	    mem_address_space_information_query,
 	    mem_address_space_read,
 	    mem_address_space_write);
+	lcc_memory_set_reboot_function(mem_ctx, reboot);
+	lcc_memory_set_factory_reset_function(mem_ctx, factory_reset);
 
 	int stat = lcc_context_generate_alias( ctx );
 	if(stat < 0){

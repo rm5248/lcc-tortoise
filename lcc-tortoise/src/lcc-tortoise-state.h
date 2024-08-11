@@ -26,12 +26,19 @@ struct lcc_tortoise_state{
 	const struct gpio_dt_spec gold_button;
 	const struct gpio_dt_spec dcc_signal;
 	const struct device* fram;
+	struct tortoise_config tortoise_config[8];
 	struct tortoise tortoises[8];
 
 	struct lcc_context* lcc_context;
 };
 
+struct global_config{
+	uint64_t device_id;
+	uint8_t config_version;
+};
+
 extern struct lcc_tortoise_state lcc_tortoise_state;
+extern struct global_config config;
 
 int lcc_tortoise_state_init();
 
