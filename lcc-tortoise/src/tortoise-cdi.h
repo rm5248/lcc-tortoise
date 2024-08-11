@@ -37,15 +37,15 @@ const char cdi[] = {
 <repname>Output</repname> \
 <eventid> \
 <name>Thrown EventID</name> \
-<description>Event ID to use to throw the switch</description> \
+<description>Custom Event ID to use to throw the switch.  Do not use if you are using standard EventIDs for switch control</description> \
 </eventid> \
 <eventid> \
 <name>Closed EventID</name> \
-<description>Event ID to use to close the switch</description> \
+<description>Custom Event ID to use to close the switch.  Do not use if you are using standard EventIDs for switch control</description> \
 </eventid> \
 <int size='2'> \
 <name>DCC Switch number</name> \
-<description>The DCC switch number to react to</description> \
+<description>The DCC switch number to react to.  When using standard EventIDs, set this value.</description> \
 <min>1</min> \
 <max>2048</max> \
 </int> \
@@ -73,7 +73,7 @@ const char cdi[] = {
 <map> \
 <relation> \
 <property>0</property> \
-<value>LCC Only</value> \
+<value>LCC Only(Standard event IDs)</value> \
 </relation> \
 <relation> \
 <property>1</property> \
@@ -83,8 +83,14 @@ const char cdi[] = {
 <property>2</property> \
 <value>LCC and DCC</value> \
 </relation> \
+<relation> \
+<property>3</property> \
+<value>LCC(Custom event IDs)</value> \
+</relation> \
 </map> \
 </int> \
+<!-- align to 32 bytes --> \
+<group offset='12'/> \
 </group> \
 </segment> \
 </cdi>"
