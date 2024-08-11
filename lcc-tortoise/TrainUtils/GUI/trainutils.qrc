@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>sample-cdi.xml</file>
-    </qresource>
-</RCC>
