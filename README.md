@@ -17,6 +17,15 @@ cd lcc-tortoise
 west build -b lcc_tortoise lcc-tortoise
 ```
 
+## Bootloader
+
+This is an STM32CubeIDE project with a pre-compiled hex file.  This is a very
+simple bootloader that is loosely compatible with mcuboot.  It is designed to
+be much smaller than mcuboot, which it mostly achieves.
+
+Gold LED blinking fast: Fatal error, unable to move secondary image to primary
+Blue LED blinking fast: Fatal error, no image in primary or secondary partition
+
 ## Use Stm32CubeIDE
 
 https://github.com/zephyrproject-rtos/zephyr/discussions/69812
