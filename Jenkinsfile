@@ -43,7 +43,7 @@ west build -b lcc_tortoise lcc-tortoise
 
 		stage("Archive"){
 			steps{
-				archiveArtifacts artifacts:'build/zephyr/zephyr.signed.bin,build/zephyr/zephyr.signed.hex, lcc-tortoise/bootloader-prebuild/bootloader-rm.hex'
+				archiveArtifacts artifacts:'lcc-tortoise/build/zephyr/zephyr.signed.bin,lcc-tortoise/build/zephyr/zephyr.signed.hex, lcc-tortoise/bootloader-prebuild/bootloader-rm.hex'
 			}
 		} /* stage archive */
 
