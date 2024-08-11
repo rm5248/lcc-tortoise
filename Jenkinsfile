@@ -4,7 +4,9 @@ pipeline {
 	stages{
 		stage("checkout"){
 			steps{
-				checkout scm
+				dir('lcc-tortoise'){
+					checkout scm
+				}
 			}
 		} /* stage checkout */
 
@@ -25,6 +27,11 @@ fi
 			steps{
 				sh '''#!/bin/bash
 source venv/bin/activate
+if [ ! -e .west.yml ]
+then
+	west init -l lcc-tortoise
+fi
+
 cd lcc-tortoise
 west build -b lcc_tortoise lcc-tortoise
 '''
