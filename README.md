@@ -15,6 +15,7 @@ west update
 ```
 cd lcc-tortoise
 west build -b lcc_tortoise lcc-tortoise
+west flash
 ```
 
 ## Bootloader
