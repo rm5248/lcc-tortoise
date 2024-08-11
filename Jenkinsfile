@@ -30,6 +30,7 @@ source venv/bin/activate
 if [ ! -e .west.yml ]
 then
 	west init -l lcc-tortoise
+	west update
 fi
 
 cd lcc-tortoise
