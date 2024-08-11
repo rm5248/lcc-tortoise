@@ -4,7 +4,8 @@ Code for LCC Tortoise.  Uses Zephyr RTOS.
 
 ## Build and Compile
 
-1. follow zephyr [getting started guide](https://docs.zephyrproject.org/latest/develop/getting_started/index.html)
+1. follow zephyr [getting started guide](https://docs.zephyrproject.org/latest/develop/getting_started/index.html).
+You will need to install the SDK and make sure it is available.
 2. Run the following commands:
 ```
 west init -m github.com:rm5248/lcc-tortoise.git -mr master my-workspace
