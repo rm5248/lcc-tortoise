@@ -282,11 +282,33 @@ static void factory_reset(struct lcc_memory_context* ctx){
 	memset(&lcc_tortoise_state.tortoise_config, 0, sizeof(lcc_tortoise_state.tortoise_config));
 
 	for(int x = 0; x < 8; x++){
-		lcc_tortoise_state.tortoise_config[x].accessory_number = __builtin_bswap16(x + 1);
-		lcc_tortoise_state.tortoise_config[x].startup_control = STARTUP_CLOSED;
+		lcc_tortoise_state.tortoise_config[x].BE_accessory_number = __builtin_bswap16(x + 1);
+		lcc_tortoise_state.tortoise_config[x].startup_control = STARTUP_NORMAL;
 	}
 
 	save_configs_to_fram();
+}
+
+static enum lcc_consumer_state query_consumer_state(struct lcc_context* ctx, uint64_t event_id){
+	for(int x = 0; x < 8; x++){
+		uint64_t* events = tortoise_events_consumed(&lcc_tortoise_state.tortoises[x]);
+
+		if(event_id == events[0]){
+			// reverse/off
+			if(lcc_tortoise_state.tortoises[x].current_position == POSITION_REVERSE){
+				return LCC_CONSUMER_VALID;
+			}
+			return LCC_CONSUMER_INVALID;
+		}else if(event_id == events[1]){
+			// normal/on
+			if(lcc_tortoise_state.tortoises[x].current_position == POSITION_NORMAL){
+				return LCC_CONSUMER_VALID;
+			}
+			return LCC_CONSUMER_INVALID;
+		}
+	}
+
+	return LCC_CONSUMER_UNKNOWN;
 }
 
 int main(void)
@@ -372,7 +394,13 @@ int main(void)
 	struct lcc_event_context* evt_ctx = lcc_event_new(ctx);
 
 	lcc_event_set_incoming_event_function(evt_ctx, incoming_event);
-	lcc_event_set_listen_all_events(evt_ctx, 1);
+	lcc_event_add_event_consumed_query_fn(evt_ctx, query_consumer_state);
+
+	for(int x = 0; x < 8; x++){
+		uint64_t* events_consumed = tortoise_events_consumed(&lcc_tortoise_state.tortoises[x]);
+		lcc_event_add_event_consumed(evt_ctx, events_consumed[0]);
+		lcc_event_add_event_consumed(evt_ctx, events_consumed[1]);
+	}
 
 	lcc_datagram_context_new(ctx);
 	struct lcc_memory_context* mem_ctx = lcc_memory_new(ctx);

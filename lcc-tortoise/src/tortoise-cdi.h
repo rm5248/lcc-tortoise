@@ -36,12 +36,12 @@ const char cdi[] = {
 <name>OUT</name> \
 <repname>Output</repname> \
 <eventid> \
-<name>Thrown EventID</name> \
-<description>Custom Event ID to use to throw the switch.  Do not use if you are using standard EventIDs for switch control</description> \
+<name>Reversed EventID</name> \
+<description>Custom Event ID to use to set the switch to reversed.  Do not use if you are using standard EventIDs for switch control</description> \
 </eventid> \
 <eventid> \
-<name>Closed EventID</name> \
-<description>Custom Event ID to use to close the switch.  Do not use if you are using standard EventIDs for switch control</description> \
+<name>Normal EventID</name> \
+<description>Custom Event ID to use to set the switch to normal.  Do not use if you are using standard EventIDs for switch control</description> \
 </eventid> \
 <int size='2'> \
 <name>DCC Switch number</name> \
@@ -55,11 +55,11 @@ const char cdi[] = {
 <map> \
 <relation> \
 <property>0</property> \
-<value>Thrown</value> \
+<value>Reversed</value> \
 </relation> \
 <relation> \
 <property>1</property> \
-<value>Closed</value> \
+<value>Normal</value> \
 </relation> \
 <relation> \
 <property>2</property> \

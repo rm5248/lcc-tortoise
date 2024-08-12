@@ -11,6 +11,8 @@
 #include "tortoise.h"
 #include "lcc-event.h"
 
+static uint64_t events[2];
+
 int tortoise_init(struct tortoise* tort){
 	int ret = 0;
 
@@ -34,10 +36,10 @@ int tortoise_init(struct tortoise* tort){
 }
 
 int tortoise_init_startup_position(struct tortoise* tort){
-	if( tort->config->startup_control == STARTUP_THROWN ){
-		tort->current_position = THROWN;
-	}else if( tort->config->startup_control == STARTUP_CLOSED ){
-		tort->current_position = CLOSED;
+	if( tort->config->startup_control == STARTUP_REVERSE ){
+		tort->current_position = POSITION_NORMAL;
+	}else if( tort->config->startup_control == STARTUP_NORMAL ){
+		tort->current_position = POSITION_REVERSE;
 	}else{
 		tort->current_position = tort->config->last_known_pos;
 	}
@@ -56,10 +58,10 @@ int tortoise_incoming_event(struct tortoise* tort, uint64_t event_id){
 		return -1;
 	}
 
-	uint16_t accessory_number = __builtin_bswap16(tort->config->accessory_number);
+	uint16_t accessory_number = __builtin_bswap16(tort->config->BE_accessory_number);
 	if(accessory_number == addr.dcc_accessory_address){
 		// This tortoise should change state
-		tortoise_set_position(tort, addr.active ? THROWN : CLOSED);
+		tortoise_set_position(tort, addr.active ? POSITION_NORMAL : POSITION_REVERSE);
 	}
 
 	return 0;
@@ -69,7 +71,7 @@ int tortoise_set_position(struct tortoise* tort, enum tortoise_position position
 	gpio_pin_set_dt(&tort->gpios[0], 0);
 	gpio_pin_set_dt(&tort->gpios[1], 0);
 
-	if(position == CLOSED){
+	if(position == POSITION_REVERSE){
 		gpio_pin_set_dt(&tort->gpios[0], 0);
 		gpio_pin_set_dt(&tort->gpios[1], 1);
 	}else{
@@ -78,6 +80,23 @@ int tortoise_set_position(struct tortoise* tort, enum tortoise_position position
 	}
 
 	return 0;
+}
+
+uint64_t* tortoise_events_consumed(struct tortoise* tort){
+	memset(events, 0, sizeof(events));
+
+	if(tort->config->control_type == CONTROL_LCC_ONLY){
+		struct lcc_accessory_address addr;
+		addr.dcc_accessory_address = __builtin_bswap16(tort->config->BE_accessory_number);
+		addr.active = 0;
+
+		lcc_accessory_decoder_to_event_id_2040(&addr, &events[0]);
+
+		addr.active = 1;
+		lcc_accessory_decoder_to_event_id_2040(&addr, &events[1]);
+	}
+
+	return events;
 }
 
 //int tortoise_config_to_bigendian(struct tortoise* tort, struct tortoise_config* out){

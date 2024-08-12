@@ -25,56 +25,56 @@ struct lcc_tortoise_state lcc_tortoise_state = {
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise0), gpios, 0),
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise0), gpios, 1)
 						},
-						.current_position = CLOSED
+						.current_position = POSITION_REVERSE
 				},
 				{
 						.gpios = {
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise1), gpios, 0),
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise1), gpios, 1)
 						},
-						.current_position = CLOSED
+						.current_position = POSITION_REVERSE
 				},
 				{
 						.gpios = {
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise2), gpios, 0),
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise2), gpios, 1)
 						},
-						.current_position = CLOSED
+						.current_position = POSITION_REVERSE
 				},
 				{
 						.gpios = {
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise3), gpios, 0),
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise3), gpios, 1)
 						},
-						.current_position = CLOSED
+						.current_position = POSITION_REVERSE
 				},
 				{
 						.gpios = {
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise4), gpios, 0),
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise4), gpios, 1)
 						},
-						.current_position = CLOSED
+						.current_position = POSITION_REVERSE
 				},
 				{
 						.gpios = {
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise5), gpios, 0),
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise5), gpios, 1)
 						},
-						.current_position = CLOSED
+						.current_position = POSITION_REVERSE
 				},
 				{
 						.gpios = {
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise6), gpios, 0),
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise6), gpios, 1)
 						},
-						.current_position = CLOSED
+						.current_position = POSITION_REVERSE
 				},
 				{
 						.gpios = {
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise7), gpios, 0),
 								GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(tortoise7), gpios, 1)
 						},
-						.current_position = CLOSED
+						.current_position = POSITION_REVERSE
 				},
 		}
 };

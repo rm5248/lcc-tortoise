@@ -45,4 +45,5 @@ target_compile_definitions(app PRIVATE
 )
 set(LIBLCC_DEBUG 0)
 set(LIBLCC_ENABLE_STATIC_CONTEXT 1)
+set(LIBLCC_EVENT_LIST_STATIC_SIZE 20)
 configure_file( TrainUtils/LCC/lcc-config.h.cmake TrainUtils/LCC/lcc-config.h )
