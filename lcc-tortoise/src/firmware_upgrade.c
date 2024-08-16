@@ -38,7 +38,7 @@ static void firmware_upgrade_incoming_data(struct lcc_firmware_upgrade_context* 
 		printf("write ok\n");
 		lcc_firmware_write_ok(ctx);
 	}else{
-		printf("write err\n");
+		printf("write err: %d startring addr %d\n", ret, starting_address);
 		lcc_firmware_write_error(ctx, LCC_ERRCODE_PERMANENT, NULL);
 	}
 }
