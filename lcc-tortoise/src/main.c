@@ -15,6 +15,8 @@
 #include "tortoise.h"
 #include "dcc-decode.h"
 #include "tortoise-cdi.h"
+#include "power-handler.h"
+#include "firmware_upgrade.h"
 
 #include "lcc.h"
 #include "lcc-common.h"
@@ -318,6 +320,16 @@ int main(void)
 	k_tid_t rx_tid, get_state_tid;
 	k_tid_t dcc_thread;
 
+	// Sleep for a bit before we start to allow power to become stable.
+	// This is probably not needed, but it shouldn't hurt.
+	// This will also give other devices on the network a chance to come up.
+	k_sleep(K_MSEC(250));
+
+	for(int x = 0; x < 5; x++){
+	printf("farts\n");
+	k_sleep(K_MSEC(100));
+	}
+
 	_Static_assert(sizeof(struct tortoise_config) == 32);
 
 	if(lcc_tortoise_state_init() < 0){
@@ -412,6 +424,8 @@ int main(void)
 	lcc_memory_set_reboot_function(mem_ctx, reboot);
 	lcc_memory_set_factory_reset_function(mem_ctx, factory_reset);
 
+	firmware_upgrade_init(ctx);
+
 	int stat = lcc_context_generate_alias( ctx );
 	if(stat < 0){
 		printf("error: can't gen alias: %d\n", stat);
@@ -441,6 +455,11 @@ int main(void)
 		      claim_alias_time = k_uptime_get() + 220;
 		    }else{
 		      printf("Claimed alias %X\n", lcc_context_alias(ctx) );
+
+				// initialize our low power handling.
+				// We do this right after we have an alias, since logically nothing will have changed
+				// until we are actually able to process commands from some other device on the network.
+				powerhandle_init();
 		    }
 		  }
 

@@ -63,6 +63,8 @@ int tortoise_set_position(struct tortoise* tort, enum tortoise_position position
  */
 uint64_t* tortoise_events_consumed(struct tortoise* tort);
 
+int tortoise_disable_outputs(struct tortoise* tort);
+
 /**
  * Convert the configuration for this tortoise to big-endian, putting it in 'out'
  */

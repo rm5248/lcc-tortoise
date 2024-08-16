@@ -68,6 +68,7 @@ int tortoise_incoming_event(struct tortoise* tort, uint64_t event_id){
 }
 
 int tortoise_set_position(struct tortoise* tort, enum tortoise_position position){
+	tort->current_position = position;
 	gpio_pin_set_dt(&tort->gpios[0], 0);
 	gpio_pin_set_dt(&tort->gpios[1], 0);
 
@@ -97,6 +98,13 @@ uint64_t* tortoise_events_consumed(struct tortoise* tort){
 	}
 
 	return events;
+}
+
+int tortoise_disable_outputs(struct tortoise* tort){
+	gpio_pin_set_dt(&tort->gpios[0], 0);
+	gpio_pin_set_dt(&tort->gpios[1], 0);
+
+	return 0;
 }
 
 //int tortoise_config_to_bigendian(struct tortoise* tort, struct tortoise_config* out){

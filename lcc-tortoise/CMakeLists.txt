@@ -24,6 +24,8 @@ target_sources(app PRIVATE
 	src/tortoise.c 
 	src/lcc-tortoise-state.c
 	src/dcc-decode.c
+	src/power-handler.c
+	src/firmware_upgrade.c
 	${lcc-sources}
 )
 target_include_directories(app PRIVATE
