@@ -45,7 +45,7 @@ static void firmware_upgrade_incoming_data(struct lcc_firmware_upgrade_context* 
 
 static void firmware_upgrade_finished(struct lcc_firmware_upgrade_context* ctx){
 	printf("firmware upgrade finished\n");
-//	sys_reboot(SYS_REBOOT_COLD);
+	sys_reboot(SYS_REBOOT_COLD);
 }
 
 int firmware_upgrade_init(struct lcc_context* ctx){
