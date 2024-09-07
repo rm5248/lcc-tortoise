@@ -13,6 +13,13 @@
 
 static uint64_t events[2];
 
+static void tortoise_timer_expired(struct k_timer* timer){
+	struct tortoise* tort = k_timer_user_data_get(timer);
+
+	gpio_pin_set_dt(&tort->gpios[0], 0);
+	gpio_pin_set_dt(&tort->gpios[1], 0);
+}
+
 int tortoise_init(struct tortoise* tort){
 	int ret = 0;
 
@@ -31,6 +38,9 @@ int tortoise_init(struct tortoise* tort){
 	if (ret < 0) {
 		return -1;
 	}
+
+	k_timer_init(&tort->pulse_timer, tortoise_timer_expired, NULL);
+	k_timer_user_data_set(&tort->pulse_timer, tort);
 
 	return 0;
 }
@@ -78,6 +88,28 @@ int tortoise_set_position(struct tortoise* tort, enum tortoise_position position
 	}else{
 		gpio_pin_set_dt(&tort->gpios[0], 1);
 		gpio_pin_set_dt(&tort->gpios[1], 0);
+	}
+
+	if(tort->config->output_type == OUTPUT_TYPE_PULSE){
+		int ms = 0;
+		switch(tort->config->pulse_len){
+		default:
+		case 0:
+			ms = 200;
+			break;
+		case 1:
+			ms = 400;
+			break;
+		case 2:
+			ms = 800;
+			break;
+		case 3:
+			ms = 1600;
+			break;
+		}
+
+		printf("Pulse output %d ms\n", ms);
+		k_timer_start(&tort->pulse_timer, K_MSEC(ms), K_NO_WAIT);
 	}
 
 	return 0;

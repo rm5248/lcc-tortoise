@@ -89,8 +89,45 @@ const char cdi[] = {
 </relation> \
 </map> \
 </int> \
+<!-- invisible last known pos, 1 byte --> \
+<int size='1' offset='1'> \
+<name>Output Type</name> \
+<description>How this output is changed</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Stall Motor(always-on)</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Pulse</value> \
+</relation> \
+</map> \
+</int> \
+<int size='1'> \
+<name>Pulse Length</name> \
+<description>When output is set to pulse, how long the output is pulsed for</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>200ms</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>400ms</value> \
+</relation> \
+<relation> \
+<property>2</property> \
+<value>800ms</value> \
+</relation> \
+<relation> \
+<property>3</property> \
+<value>1600ms</value> \
+</relation> \
+</map> \
+</int> \
 <!-- align to 32 bytes --> \
-<group offset='12'/> \
+<group offset='9'/> \
 </group> \
 </segment> \
 </cdi>"

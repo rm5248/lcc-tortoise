@@ -325,7 +325,7 @@ int main(void)
 	// This will also give other devices on the network a chance to come up.
 	k_sleep(K_MSEC(250));
 
-	for(int x = 0; x < 5; x++){
+	for(int x = 0; x < 15; x++){
 	printf("farts\n");
 	k_sleep(K_MSEC(100));
 	}

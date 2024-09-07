@@ -9,6 +9,15 @@
 #define LCC_TORTOISE_ZEPHYR_SRC_TORTOISE_H_
 
 #include <stdint.h>
+#include <zephyr/kernel.h>
+
+#define OUTPUT_TYPE_ALWAYS_ON 0
+#define OUTPUT_TYPE_PULSE 1
+
+#define PULSE_TIME_200MS 0
+#define PULSE_TIME_400MS 1
+#define PULSE_TIME_800MS 2
+#define PULSE_TIME_1600MS 3
 
 enum tortoise_position{
 	POSITION_REVERSE,
@@ -34,13 +43,16 @@ struct tortoise_config{
 	uint8_t startup_control;
 	uint8_t control_type;
 	uint8_t last_known_pos;
-	uint8_t reserved[11];
+	uint8_t output_type;
+	uint8_t pulse_len;
+	uint8_t reserved[9];
 };
 
 struct tortoise {
 	const struct gpio_dt_spec gpios[2];
 	enum tortoise_position current_position;
 	struct tortoise_config* config;
+	struct k_timer pulse_timer;
 };
 
 /**
