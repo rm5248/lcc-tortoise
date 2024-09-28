@@ -63,6 +63,7 @@
 		goldled = &gold_led;
 		blueswitch = &blue_switch;
 		fram = &mb85rs256;
+		timer = &timers3;
 		//sw0 = &user_button;
 		//watchdog0 = &iwdg;
 		//die-temp0 = &die_temp;
@@ -94,9 +95,9 @@
 
 &pll {
 	div-m = <1>;
-	mul-n = <12>;
+	mul-n = <16>;
 	div-p = <2>;
-	div-q = <3>;
+	div-q = <2>;
 	div-r = <4>;
 	clocks = <&clk_hse>;
 	status = "okay";
@@ -105,7 +106,7 @@
 
 &rcc {
 	clocks = <&pll>;
-	clock-frequency = <DT_FREQ_M(24)>;
+	clock-frequency = <DT_FREQ_M(32)>;
 	ahb-prescaler = <1>;
 	apb1-prescaler = <1>;
 };
@@ -145,17 +146,18 @@ zephyr_udc0: &usb {
 &iwdg {
 	status = "okay";
 };
+*/
 
 &timers3 {
-	st,prescaler = <10000>;
+	st,prescaler = <1000>;
 	status = "okay";
-	pwm3: pwm {
+	dcc_counter: counter {
+		compatible = "st,stm32-counter";
 		status = "okay";
-		pinctrl-0 = <&tim3_ch1_pb4>;
-		pinctrl-names = "default";
 	};
 };
 
+/*
 &timers15 {
 	st,prescaler = <10000>;
 	status = "okay";

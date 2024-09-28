@@ -8,22 +8,28 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include "dcc-decode.h"
+#include "lcc-tortoise-state.h"
+#include "dcc-decoder.h"
 
-struct dcc_decoder dcc_decode;
+static void polarity_change(int value){
+	const uint32_t curr_cycle = k_cycle_get_32();
+	const uint32_t cycle_time_usec = k_cyc_to_us_floor32(curr_cycle - lcc_tortoise_state.prev_cycle);
+	lcc_tortoise_state.prev_cycle = curr_cycle;
+
+	gpio_pin_set_dt(&lcc_tortoise_state.gold_led, value);
+
+	dcc_decoder_polarity_changed(lcc_tortoise_state.dcc_decoder, cycle_time_usec);
+}
 
 void dcc_decoder_thread(void*, void*, void*){
-	uint32_t num_times = 0;
 	int prev = 0;
 
 	while(1){
-		int state = gpio_pin_get_dt(dcc_decode.gpio_pin);
+		int state = gpio_pin_get_dt(&lcc_tortoise_state.dcc_signal);
 		if( state != prev ){
 			prev = state;
-			num_times++;
+			polarity_change(state);
 		}
-
-		if( num_times % 1000 == 0 ){
-			gpio_pin_toggle_dt(dcc_decode.led_pin);
-		}
+		k_yield();
 	}
 }

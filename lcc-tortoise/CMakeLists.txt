@@ -17,6 +17,8 @@ include(TrainUtils/LCC/lcc-version)
 file(GLOB lcc-sources
     TrainUtils/LCC/*.c
     TrainUtils/LCC/*.h
+    TrainUtils/DCC/*.h
+    TrainUtils/DCC/*.c
 )
 
 target_sources(app PRIVATE 
@@ -31,6 +33,7 @@ target_sources(app PRIVATE
 target_include_directories(app PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/TrainUtils/LCC
 	${CMAKE_CURRENT_BINARY_DIR}/TrainUtils/LCC
+	${CMAKE_CURRENT_SOURCE_DIR}/TrainUtils/DCC
 )
 
 

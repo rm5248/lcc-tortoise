@@ -23,6 +23,9 @@
 #include "lcc-event.h"
 #include "lcc-memory.h"
 
+#include "dcc-decoder.h"
+#include "dcc-packet-parser.h"
+
 /* 1000 msec = 1 sec */
 #define SLEEP_TIME_MS   1000
 
@@ -47,7 +50,7 @@ struct can_bus_err_cnt current_err_cnt;
 #define STATE_POLL_THREAD_PRIORITY 2
 
 K_THREAD_STACK_DEFINE(poll_state_stack, STATE_POLL_THREAD_STACK_SIZE);
-K_THREAD_STACK_DEFINE(dcc_signal_stack, 128);
+K_THREAD_STACK_DEFINE(dcc_signal_stack, 512);
 
 struct k_thread poll_state_thread_data;
 struct k_thread dcc_thread_data;
@@ -313,6 +316,19 @@ static enum lcc_consumer_state query_consumer_state(struct lcc_context* ctx, uin
 	return LCC_CONSUMER_UNKNOWN;
 }
 
+static void speed_dir_cb(struct dcc_decoder* decoder, enum dcc_decoder_direction dir, uint8_t speed){
+	printf("dir: %d speed: %d\n", dir, speed);
+}
+
+static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_bytes, int len){
+	static int count = 0;
+
+	count++;
+	if(count % 50 == 0){
+		gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
+	}
+}
+
 int main(void)
 {
 	int ret;
@@ -330,6 +346,9 @@ int main(void)
 	k_sleep(K_MSEC(100));
 	}
 
+	printf("sys_clock_hw_cycles_per_sec() / USEC_PER_SEC = %lu / %lu\n", sys_clock_hw_cycles_per_sec() , USEC_PER_SEC);
+	printf("cycles per usec = %lu\n", sys_clock_hw_cycles_per_sec() /USEC_PER_SEC);
+
 	_Static_assert(sizeof(struct tortoise_config) == 32);
 
 	if(lcc_tortoise_state_init() < 0){
@@ -337,9 +356,6 @@ int main(void)
 		printf("error: unable to initialize!\n");
 		return 0;
 	}
-
-	dcc_decode.gpio_pin = &lcc_tortoise_state.dcc_signal;
-	dcc_decode.led_pin = &lcc_tortoise_state.blue_led;
 
 	// Load the tortoise settings, and set the outputs to the correct valu depending on their startup settings
 	load_tortoise_settings();
@@ -370,21 +386,35 @@ int main(void)
 		printf("ERROR spawning poll_state_thread\n");
 	}
 
-//	dcc_thread = k_thread_create(&dcc_thread_data,
-//			dcc_signal_stack,
-//			K_THREAD_STACK_SIZEOF(dcc_signal_stack),
-//			dcc_decoder_thread, NULL, NULL, NULL,
-//			STATE_POLL_THREAD_PRIORITY, 0,
-//			K_NO_WAIT);
-//	if (!dcc_thread) {
-//		printf("ERROR spawning dcc thread\n");
-//	}
-
 	can_set_state_change_callback(can_dev, state_change_callback, &state_change_work);
 
 	init_rx_queue();
 
 //	check_eeprom();
+
+	lcc_tortoise_state.dcc_decoder = dcc_decoder_new(DCC_DECODER_IRQ_RISING_OR_FALLING);
+	if(lcc_tortoise_state.dcc_decoder == NULL){
+		// This uses only static data to initialize, so this should never happen.
+		printf("error: unable to initialize!\n");
+		return 0;
+	}
+
+//	dcc_thread = k_thread_create(&dcc_thread_data,
+//			dcc_signal_stack,
+//			K_THREAD_STACK_SIZEOF(dcc_signal_stack),
+//			dcc_decoder_thread, NULL, NULL, NULL,
+//			0, 0,
+//			K_NO_WAIT);
+//	if (!dcc_thread) {
+//		printf("ERROR spawning dcc thread\n");
+//	}
+
+	lcc_tortoise_state.packet_parser = dcc_packet_parser_new();
+	if(lcc_tortoise_state.packet_parser == NULL){
+		// This uses only static data to initialize, so this should never happen.
+		printf("error: unable to initialize!\n");
+		return 0;
+	}
 
 	lcc_tortoise_state.lcc_context = lcc_context_new();
 	if(lcc_tortoise_state.lcc_context == NULL){
@@ -392,6 +422,9 @@ int main(void)
 		printf("error: unable to initialize!\n");
 		return 0;
 	}
+
+	dcc_decoder_set_packet_callback(lcc_tortoise_state.dcc_decoder, incoming_dcc);
+	dcc_decoder_set_packet_parser(lcc_tortoise_state.dcc_decoder, lcc_tortoise_state.packet_parser);
 
 	struct lcc_context* ctx = lcc_tortoise_state.lcc_context;
 	lcc_context_set_unique_identifer( ctx,
@@ -435,6 +468,12 @@ int main(void)
 	uint64_t blinky_time = claim_alias_time;
 	struct can_frame rx_frame;
 
+	dcc_packet_parser_set_short_address(lcc_tortoise_state.packet_parser , 55);
+	dcc_packet_parser_set_speed_dir_cb(lcc_tortoise_state.packet_parser , speed_dir_cb);
+//	while(1){
+//		k_sleep(K_MSEC(1000));
+//	}
+
 	while (1) {
 		if(k_uptime_get() >= blinky_time){
 			ret = gpio_pin_toggle_dt(&lcc_tortoise_state.green_led);
@@ -474,7 +513,8 @@ int main(void)
 			lcc_context_incoming_frame(ctx, &lcc_rx);
 		}
 
-		k_yield();
+		k_sleep(K_MSEC(1));
+		dcc_decoder_pump_packet(lcc_tortoise_state.dcc_decoder);
 	}
 	return 0;
 }
