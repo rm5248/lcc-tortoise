@@ -165,40 +165,18 @@ static void init_rx_queue(){
 	printf("Filter ID: %d\n", filter_id);
 }
 
-static void check_eeprom(){
-	uint32_t values[2];
-
-	int rc = eeprom_read(lcc_tortoise_state.fram, 1024, &values, sizeof(values));
-	if(rc < 0){
-		printf("Can't read eeprom: %d\n", rc);
-		return;
-	}
-
-	printf("values:\n");
-	printf("  0x%08x\n", values[0]);
-	printf("  0x%08x\n", values[1]);
-
-	values[0] = values[0] + 1;
-	values[1] = values[1] * 2;
-	rc = eeprom_write(lcc_tortoise_state.fram, 1024, &values, sizeof(values));
-	if(rc < 0){
-		printf("Can't write eeprom: %d\n", rc);
-		return;
-	}
-}
-
 static void load_tortoise_settings(){
 	uint32_t offset = ADDRESS_SPACE_253_OFFSET;
 
-	int rc = eeprom_read(lcc_tortoise_state.fram, offset, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config));
-	if(rc < 0){
-		printf("Can't read eeprom: %d\n", rc);
-		return;
-	}
-
-	for(int x = 0; x < 8; x++){
-		tortoise_init_startup_position(&lcc_tortoise_state.tortoises[x]);
-	}
+//	int rc = eeprom_read(lcc_tortoise_state.fram, offset, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config));
+//	if(rc < 0){
+//		printf("Can't read eeprom: %d\n", rc);
+//		return;
+//	}
+//
+//	for(int x = 0; x < 8; x++){
+//		tortoise_init_startup_position(&lcc_tortoise_state.tortoises[x]);
+//	}
 }
 
 void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space){
@@ -219,7 +197,8 @@ void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint
 	 if(address_space == 251){
 	    // This space is what we use for node name/description
 	    uint8_t buffer[64];
-	    int rc = eeprom_read(lcc_tortoise_state.fram, ADDRESS_SPACE_251_OFFSET + starting_address, &buffer, read_count);
+//	    int rc = eeprom_read(lcc_tortoise_state.fram, ADDRESS_SPACE_251_OFFSET + starting_address, &buffer, read_count);
+	    int rc = -1;
 	    if(rc < 0){
 	    	lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
 	    	return;
@@ -249,15 +228,15 @@ void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint
 }
 
 void save_configs_to_fram(){
-	int rc = eeprom_write(lcc_tortoise_state.fram,
-			ADDRESS_SPACE_253_OFFSET,
-			lcc_tortoise_state.tortoise_config,
-			sizeof(lcc_tortoise_state.tortoise_config));
+//	int rc = eeprom_write(lcc_tortoise_state.fram,
+//			ADDRESS_SPACE_253_OFFSET,
+//			lcc_tortoise_state.tortoise_config,
+//			sizeof(lcc_tortoise_state.tortoise_config));
 }
 
 void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, void* data, int data_len){
 	  if(address_space == 251){
-	    eeprom_write(lcc_tortoise_state.fram, ADDRESS_SPACE_251_OFFSET + starting_address, data, data_len);
+//	    eeprom_write(lcc_tortoise_state.fram, ADDRESS_SPACE_251_OFFSET + starting_address, data, data_len);
 
 	    lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
 	  }else if(address_space == 253){

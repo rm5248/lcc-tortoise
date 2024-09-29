@@ -3,3 +3,9 @@ board:
   vendor: snowball_creek
   socs:
     - name: stm32g0b1xx
+  revision:
+    format: number
+    default: "3"
+    revisions:
+    - name: "2"
+    - name: "3"
