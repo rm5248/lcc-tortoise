@@ -1,5 +1,5 @@
 board:
-  name: lcc_tortoise
+  name: lcc_tortoise_p2
   vendor: snowball_creek
   socs:
     - name: stm32g0b1xx
@@ -7,4 +7,5 @@ board:
     format: number
     default: "3"
     revisions:
+    - name: "2"
     - name: "3"

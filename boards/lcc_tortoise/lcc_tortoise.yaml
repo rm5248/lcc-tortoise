@@ -1,0 +1,20 @@
+identifier: lcc_tortoise
+name: Snowball Creek LCC Tortoise
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 144
+flash: 512
+supported:
+  - adc
+  - can
+  - uart
+  - gpio
+  - i2c
+  - spi
+  - dma
+  - lptim
+vendor: st

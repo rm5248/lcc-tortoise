@@ -1,23 +1,21 @@
-
+#include <st/g0/stm32g0b1Xe.dtsi>
+#include <st/g0/stm32g0b1k(b-c-e)tx-pinctrl.dtsi>
+ 
 / {
-	chosen {
-		zephyr,console = &usart2;
-		zephyr,shell-uart = &usart2;
-		zephyr,uart-mcumgr = &usart2;
-	};
+	compatible = "st,stm32g0b1ke-tortoise";
 
 	leds: leds {
 		compatible = "gpio-leds";
-		green_led: led_6 {
+		green_led: led_g {
 			gpios = <&gpioc 6 GPIO_ACTIVE_HIGH>;
 			label = "Green LED";
 		};
-		blue_led: led_10 {
-			gpios = <&gpioa 10 GPIO_ACTIVE_HIGH>;
+		blue_led: led_b {
+			gpios = <&gpioa 4 GPIO_ACTIVE_HIGH>;
 			label = "Blue LED";
 		};
-		gold_led: led_11 {
-			gpios = <&gpioa 11 GPIO_ACTIVE_HIGH>;
+		gold_led: led_gl {
+			gpios = <&gpioa 3 GPIO_ACTIVE_HIGH>;
 			label = "Gold LED";
 		};
 	};
@@ -26,11 +24,11 @@
 		compatible = "gpio-keys";
 		blue_switch: button_blue {
 			label = "blue_switch";
-			gpios = <&gpiod 2 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			gpios = <&gpioa 5 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 		};
 		gold_switch: button_gold {
 			label = "gold_switch";
-			gpios = <&gpiod 3 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			gpios = <&gpioa 6 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 		};
 		volts: volts_0 {
 			label = "volts";
@@ -38,13 +36,6 @@
 		};
 	};
 
-};
-
-&usart2 {
-	pinctrl-0 = <&usart2_tx_pa2 &usart2_rx_pa3>;
-	pinctrl-names = "default";
-	current-speed = <115200>;
-	status = "okay";
 };
 
 / {
@@ -118,7 +109,7 @@
 
 		boot_partition: partition@0 {
 			label = "bootloader";
-			reg = <0x00000000 DT_SIZE_K(12)>;
+			reg = <0x00000000 DT_SIZE_K(32)>;
 			read-only;
 		};
 		slot0_partition: partition@3000 {
@@ -136,4 +127,5 @@
 		};
 	};
 };
+
 

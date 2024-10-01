@@ -1,25 +1,28 @@
 /*
- * Copyright (c) 2020 Thomas Stranger
+ * Copyright (c) 2024 Robert Middleton
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 /dts-v1/;
-#include <st/g0/stm32g0b1Xb.dtsi>
-#include <st/g0/stm32g0b1c(b-c-e)tx-pinctrl.dtsi>
+#include <st/g0/stm32g0b1Xe.dtsi>
+#include <st/g0/stm32g0b1k(b-c-e)tx-pinctrl.dtsi>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/pinctrl/stm32-pinctrl.h>
 #include <zephyr/dt-bindings/pinctrl/stm32-pinctrl-common.h>
 
 / {
 	model = "Snowball Creek LCC Tortoise";
-	compatible = "st,stm32g0b1cb-tortoise";
+	compatible = "st,stm32g0b1ke-tortoise";
 
 	chosen {
+		zephyr,console = &usart2;
+		zephyr,shell-uart = &usart2;
+		zephyr,uart-mcumgr = &usart2;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 		zephyr,code-partition = &slot0_partition;
-		zephyr,canbus = &fdcan1;
+		zephyr,canbus = &fdcan2;
 	};
 
 
@@ -29,6 +32,38 @@
 		goldled = &gold_led;
 		blueswitch = &blue_switch;
 		timer = &timers3;
+	};
+
+	leds: leds {
+		compatible = "gpio-leds";
+		green_led: led_g {
+			gpios = <&gpioc 6 GPIO_ACTIVE_HIGH>;
+			label = "Green LED";
+		};
+		blue_led: led_b {
+			gpios = <&gpioa 4 GPIO_ACTIVE_HIGH>;
+			label = "Blue LED";
+		};
+		gold_led: led_gl {
+			gpios = <&gpioa 1 GPIO_ACTIVE_HIGH>;
+			label = "Gold LED";
+		};
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		blue_switch: button_blue {
+			label = "blue_switch";
+			gpios = <&gpioa 5 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		};
+		gold_switch: button_gold {
+			label = "gold_switch";
+			gpios = <&gpioa 6 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+		};
+		volts: volts_0 {
+			label = "volts";
+			gpios = <&gpioa 0 (GPIO_ACTIVE_LOW)>;
+		};
 	};
 };
 
@@ -137,32 +172,126 @@ zephyr_udc0: &usb {
 };
 */
 
-&spi1 {
-	pinctrl-0 = <&spi1_nss_pa4 &spi1_sck_pa5
-		     &spi1_miso_pa6 &spi1_mosi_pa7>;
+&spi3 {
+	pinctrl-0 = <&spi3_sck_pb3
+		     &spi1_miso_pb4 &spi1_mosi_pb5>;
 	pinctrl-names = "default";
-	status = "disabled";
+	status = "okay";
 
-	cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
+	cs-gpios = <&gpiob 7 GPIO_ACTIVE_LOW>;
 
-	/* The MB85RS256 uses the same commands as the AT25 EEPROM */
-	mb85rs256: fram@0 {
-		compatible = "atmel,at25";
-		reg = <0>;
-		spi-max-frequency = <1000000>;
-		size = <32768>;
-		pagesize = <32768>;
-		address-width = <16>;
-		timeout = <1>;
+	gpio_expander: mcp23s17@0 {
+		compatible = "microchip,mcp23s17";
+		spi-max-frequency = <0>;
+		reg = <0x0>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <16>;
+		//reset-gpios = <&gpioa 8 GPIO_ACTIVE_LOW>;
 	};
 };
 
-&fdcan1 {
-	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00001000>,
-		 <&rcc STM32_SRC_PLL_Q FDCAN_SEL(1)>;
-	pinctrl-0 = <&fdcan1_rx_pd0 &fdcan1_tx_pd1>;
+&usart2 {
+	pinctrl-0 = <&usart2_tx_pa2 &usart2_rx_pa3>;
 	pinctrl-names = "default";
+	current-speed = <115200>;
 	status = "okay";
 };
 
+/ {
+	tortoise0: tort0 {
+		compatible = "tortoise-output";
+		gpios = <&gpio_expander 0 GPIO_ACTIVE_HIGH>,
+		        <&gpio_expander 1 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise1: tort1 {
+		compatible = "tortoise-output";
+		gpios = <&gpio_expander 2 GPIO_ACTIVE_HIGH>,
+		        <&gpio_expander 3 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise2: tort2 {
+		compatible = "tortoise-output";
+		gpios = <&gpio_expander 4 GPIO_ACTIVE_HIGH>,
+		        <&gpio_expander 5 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise3: tort3 {
+		compatible = "tortoise-output";
+		gpios = <&gpio_expander 6 GPIO_ACTIVE_HIGH>,
+		        <&gpio_expander 7 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise4: tort4 {
+		compatible = "tortoise-output";
+		gpios = <&gpio_expander 8 GPIO_ACTIVE_HIGH>,
+		        <&gpio_expander 9 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise5: tort5 {
+		compatible = "tortoise-output";
+		gpios = <&gpio_expander 10 GPIO_ACTIVE_HIGH>,
+		        <&gpio_expander 11 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise6: tort6 {
+		compatible = "tortoise-output";
+		gpios = <&gpio_expander 12 GPIO_ACTIVE_HIGH>,
+		        <&gpio_expander 13 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise7: tort7 {
+		compatible = "tortoise-output";
+		gpios = <&gpio_expander 14 GPIO_ACTIVE_HIGH>,
+		        <&gpio_expander 15 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
 
+	dcc_pin: dcc_pin {
+		compatible = "dcc-pin";
+		gpios = <&gpioa 15 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+//		main_partition: partition@0 {
+//			label = "main";
+//			reg = <0x00000000 DT_SIZE_K(128)>;
+////			read-only;
+//		};
+
+		boot_partition: partition@0 {
+			label = "bootloader";
+			reg = <0x00000000 DT_SIZE_K(32)>;
+			read-only;
+		};
+		slot0_partition: partition@8000 {
+			label = "image-0";
+			reg = <0x00008000 DT_SIZE_K(128)>;
+		};
+		slot1_partition: partition@28000 {
+			label = "image-1";
+			reg = <0x00028000 DT_SIZE_K(128)>;
+		};
+		/* 4k reserved for app storage partition */
+		storage_partition: partition@48000 {
+			label = "storage";
+			reg = <0x00048000 DT_SIZE_K(4)>;
+		};
+	};
+};
+
+&fdcan2 {
+	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00001000>,
+		 <&rcc STM32_SRC_PLL_Q FDCAN_SEL(1)>;
+	pinctrl-0 = <&fdcan2_rx_pb0 &fdcan2_tx_pb1>;
+	pinctrl-names = "default";
+	status = "okay";
+};
