@@ -233,6 +233,19 @@ int lcc_tortoise_state_init(){
 		return -1;
 	}
 
+	// for now force the GPIO expander out of reset
+	{
+		const struct gpio_dt_spec reset_switch = GPIO_DT_SPEC_GET(DT_ALIAS(gpioreset), gpios);
+		if (!gpio_is_ready_dt(&reset_switch)) {
+			return -1;
+		}
+
+		if(gpio_pin_configure_dt(&reset_switch, GPIO_OUTPUT_ACTIVE) < 0){
+			return -1;
+		}
+
+	}
+
 	if(gpio_int_type == GPIO_INT_EDGE_BOTH){
 		gpio_init_callback(&lcc_tortoise_state.dcc_cb_data, gpio_pin_change, BIT(lcc_tortoise_state.dcc_signal.pin));
 	}else if(gpio_int_type == GPIO_INT_EDGE_RISING){

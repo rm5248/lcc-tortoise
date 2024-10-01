@@ -174,9 +174,9 @@ static void load_tortoise_settings(){
 //		return;
 //	}
 //
-//	for(int x = 0; x < 8; x++){
-//		tortoise_init_startup_position(&lcc_tortoise_state.tortoises[x]);
-//	}
+	for(int x = 0; x < 8; x++){
+		tortoise_init_startup_position(&lcc_tortoise_state.tortoises[x]);
+	}
 }
 
 void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space){
@@ -332,7 +332,7 @@ int main(void)
 
 	if(lcc_tortoise_state_init() < 0){
 		// This uses only static data to initialize, so this should never happen.
-		printf("error: unable to initialize!\n");
+		printf("error: unable to initialize! %d\n", __LINE__);
 		return 0;
 	}
 
@@ -374,7 +374,7 @@ int main(void)
 	lcc_tortoise_state.dcc_decoder = dcc_decoder_new(DCC_DECODER_IRQ_RISING_OR_FALLING);
 	if(lcc_tortoise_state.dcc_decoder == NULL){
 		// This uses only static data to initialize, so this should never happen.
-		printf("error: unable to initialize!\n");
+		printf("error: unable to initialize! %d\n", __LINE__);
 		return 0;
 	}
 
@@ -391,14 +391,14 @@ int main(void)
 	lcc_tortoise_state.packet_parser = dcc_packet_parser_new();
 	if(lcc_tortoise_state.packet_parser == NULL){
 		// This uses only static data to initialize, so this should never happen.
-		printf("error: unable to initialize!\n");
+		printf("error: unable to initialize! %d\n", __LINE__);
 		return 0;
 	}
 
 	lcc_tortoise_state.lcc_context = lcc_context_new();
 	if(lcc_tortoise_state.lcc_context == NULL){
 		// This uses only static data to initialize, so this should never happen.
-		printf("error: unable to initialize!\n");
+		printf("error: unable to initialize! %d\n", __LINE__);
 		return 0;
 	}
 
@@ -411,8 +411,8 @@ int main(void)
 	lcc_context_set_simple_node_information(ctx,
 			"Snowball Creek",
 			"Tortoise-8",
-			"0.1",
-			"0.1");
+			"P3",
+			"0.3");
 
 	lcc_context_set_write_function( ctx, lcc_write_cb, NULL );
 	struct lcc_event_context* evt_ctx = lcc_event_new(ctx);

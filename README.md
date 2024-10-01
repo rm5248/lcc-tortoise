@@ -19,7 +19,13 @@ west build -b lcc_tortoise lcc-tortoise
 west flash
 ```
 
-## Bootloader
+## Mcuboot(P3 and above revisions)
+
+```
+west build -b lcc_tortoise --sysbuild lcc-tortoise
+```
+
+## Bootloader(OBSOLETE)
 
 This is an STM32CubeIDE project with a pre-compiled hex file.  This is a very
 simple bootloader that is loosely compatible with mcuboot.  It is designed to
