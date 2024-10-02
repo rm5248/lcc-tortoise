@@ -8,6 +8,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/can.h>
 #include <zephyr/drivers/eeprom.h>
+#include <zephyr/storage/flash_map.h>
 #include <zephyr/device.h>
 #include <zephyr/sys/reboot.h>
 
@@ -33,7 +34,7 @@
 #define ADDRESS_SPACE_251_OFFSET 0
 /* 253 = basic config space */
 #define ADDRESS_SPACE_253_OFFSET 128
-#define GLOBAL_CONFIG_OFFSET 512
+#define GLOBAL_CONFIG_OFFSET 2048
 
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
 static struct can_frame zephyr_can_frame_tx;
@@ -54,7 +55,7 @@ K_THREAD_STACK_DEFINE(dcc_signal_stack, 512);
 
 struct k_thread poll_state_thread_data;
 struct k_thread dcc_thread_data;
-CAN_MSGQ_DEFINE(rx_msgq, 25);
+CAN_MSGQ_DEFINE(rx_msgq, 55);
 
 char *state_to_str(enum can_state state)
 {
@@ -165,18 +166,43 @@ static void init_rx_queue(){
 	printf("Filter ID: %d\n", filter_id);
 }
 
-static void load_tortoise_settings(){
+/**
+ * Load the tortoise settings.
+ *
+ * @return 0 if settings were loaded, 1 if they were not, 2 if settings are blank
+ */
+static int load_tortoise_settings(){
 	uint32_t offset = ADDRESS_SPACE_253_OFFSET;
+	int ret = 0;
 
-//	int rc = eeprom_read(lcc_tortoise_state.fram, offset, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config));
-//	if(rc < 0){
-//		printf("Can't read eeprom: %d\n", rc);
-//		return;
-//	}
-//
+	const struct flash_area* storage_area = NULL;
+	int id = FIXED_PARTITION_ID(storage_partition);
+
+	if(flash_area_open(id, &storage_area) < 0){
+		return 1;
+	}
+
+	if(flash_area_read(storage_area, offset, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config)) < 0){
+		return 1;
+	}
+
+	// Check to see if the first 8 bytes are 0xFF.  If so, we assume the data is uninitialized
+	const uint8_t mem[8] = {
+			0xFF, 0xFF, 0xFF, 0xFF,
+			0xFF, 0xFF, 0xFF, 0xFF
+	};
+	if(memcmp(lcc_tortoise_state.tortoise_config, mem, 8) == 0){
+		ret = 2;
+		goto out;
+	}
+
 	for(int x = 0; x < 8; x++){
 		tortoise_init_startup_position(&lcc_tortoise_state.tortoises[x]);
 	}
+
+out:
+	flash_area_close(storage_area);
+	return ret;
 }
 
 void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space){
@@ -227,11 +253,32 @@ void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint
 	  }
 }
 
-void save_configs_to_fram(){
-//	int rc = eeprom_write(lcc_tortoise_state.fram,
-//			ADDRESS_SPACE_253_OFFSET,
-//			lcc_tortoise_state.tortoise_config,
-//			sizeof(lcc_tortoise_state.tortoise_config));
+int save_configs_to_flash(){
+	uint32_t offset = ADDRESS_SPACE_253_OFFSET;
+	int ret = 0;
+
+	const struct flash_area* storage_area = NULL;
+	int id = FIXED_PARTITION_ID(storage_partition);
+
+	if(flash_area_open(id, &storage_area) < 0){
+		return 1;
+	}
+
+	ret = flash_area_erase(storage_area, 0, sizeof(lcc_tortoise_state.tortoise_config));
+	if(ret){
+		goto out;
+	}
+
+	if(flash_area_write(storage_area, offset, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config)) < 0){
+		ret = 1;
+	}
+
+out:
+	flash_area_close(storage_area);
+	if(ret){
+		printf("Unable to save configs to flash\n");
+	}
+	return ret;
 }
 
 void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, void* data, int data_len){
@@ -248,8 +295,8 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 
 		  memcpy(buffer_u8 + starting_address, data, data_len);
 
-	    // Write out to FRAM
-	    save_configs_to_fram();
+	    // Write out to non-volatile memory
+	    save_configs_to_flash();
 
 	    lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
 	  }else{
@@ -270,7 +317,7 @@ static void factory_reset(struct lcc_memory_context* ctx){
 		lcc_tortoise_state.tortoise_config[x].startup_control = STARTUP_NORMAL;
 	}
 
-	save_configs_to_fram();
+	save_configs_to_flash();
 }
 
 static enum lcc_consumer_state query_consumer_state(struct lcc_context* ctx, uint64_t event_id){
@@ -337,7 +384,14 @@ int main(void)
 	}
 
 	// Load the tortoise settings, and set the outputs to the correct valu depending on their startup settings
-	load_tortoise_settings();
+	int tortoise_load_stat = load_tortoise_settings();
+	if(tortoise_load_stat == 1){
+		printf("Error: Unable to load settings!\n");
+		return 1;
+	}else if(tortoise_load_stat == 2){
+		printf("Chip is blank, initializing to default values...\n");
+		factory_reset(NULL);
+	}
 	for(int x = 0; x < 8; x++){
 		tortoise_set_position(&lcc_tortoise_state.tortoises[x], lcc_tortoise_state.tortoises[x].current_position);
 	}

@@ -177,8 +177,8 @@ zephyr_udc0: &usb {
 };
 */
 
-&spi3 {
-	pinctrl-0 = <&spi3_sck_pb3
+&spi1 {
+	pinctrl-0 = <&spi1_sck_pb3
 		     &spi1_miso_pb4 &spi1_mosi_pb5>;
 	pinctrl-names = "default";
 	status = "okay";
@@ -192,7 +192,7 @@ zephyr_udc0: &usb {
 		gpio-controller;
 		#gpio-cells = <2>;
 		ngpios = <16>;
-		//reset-gpios = <&gpioa 8 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpioa 8 GPIO_ACTIVE_LOW>;
 	};
 };
 
@@ -230,26 +230,26 @@ zephyr_udc0: &usb {
         };
 	tortoise4: tort4 {
 		compatible = "tortoise-output";
-		gpios = <&gpio_expander 8 GPIO_ACTIVE_HIGH>,
-		        <&gpio_expander 9 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpio_expander 14 GPIO_ACTIVE_HIGH>,
+		        <&gpio_expander 15 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
 	tortoise5: tort5 {
-		compatible = "tortoise-output";
-		gpios = <&gpio_expander 10 GPIO_ACTIVE_HIGH>,
-		        <&gpio_expander 11 GPIO_ACTIVE_HIGH>;
-		status = "okay";
-        };
-	tortoise6: tort6 {
 		compatible = "tortoise-output";
 		gpios = <&gpio_expander 12 GPIO_ACTIVE_HIGH>,
 		        <&gpio_expander 13 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
+	tortoise6: tort6 {
+		compatible = "tortoise-output";
+		gpios = <&gpio_expander 10 GPIO_ACTIVE_HIGH>,
+		        <&gpio_expander 11 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
 	tortoise7: tort7 {
 		compatible = "tortoise-output";
-		gpios = <&gpio_expander 14 GPIO_ACTIVE_HIGH>,
-		        <&gpio_expander 15 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpio_expander 8 GPIO_ACTIVE_HIGH>,
+		        <&gpio_expander 9 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
 
