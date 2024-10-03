@@ -1,7 +1,18 @@
 pipeline {
 	agent any
 
+	parameters{
+		booleanParam(name: "CLEAN_ALL", defaultValue: false, description: "Clean the entire workspace")
+	}
+
 	stages{
+		stage("Clean all"){
+			when { expression { return params.CLEAN_ALL } }
+			steps{
+				cleanWs()
+			}
+		}
+
 		stage("checkout"){
 			steps{
 				dir('lcc-tortoise'){
@@ -36,14 +47,24 @@ then
 fi
 
 cd lcc-tortoise
-west build -b lcc_tortoise lcc-tortoise
+west update
+west build -b lcc_tortoise --sysbuild lcc-tortoise
 '''
 			}
 		} /* stage build */
 
 		stage("Archive"){
 			steps{
-				archiveArtifacts artifacts:'lcc-tortoise/build/zephyr/zephyr.signed.bin,lcc-tortoise/build/zephyr/zephyr.signed.hex, lcc-tortoise/bootloader-prebuild/bootloader-rm.hex'
+				sh '''#!/bin/bash
+
+mkdir -p artifacts
+rm artifacts/* || true
+
+cp lcc-tortoise/build/lcc-tortoise/zephyr/zephyr.signed.bin artifacts/lcc-tortoise-8.bin
+cp lcc-tortoise/build/mcuboot/zephyr/zephyr.bin artifacts/lcc-tortoise-8-bootloader.bin
+'''
+
+				archiveArtifacts artifacts:'artifacts/lcc-tortoise-8.bin,artifacts/lcc-tortoise-8-bootloader.bin'
 			}
 		} /* stage archive */
 
