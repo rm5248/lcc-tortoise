@@ -299,6 +299,17 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 	    save_configs_to_flash();
 
 	    lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
+
+	    // Re-init the events we consume
+	    {
+	    	struct lcc_event_context* evt_ctx = lcc_context_get_event_context(lcc_tortoise_state.lcc_context);
+			lcc_event_clear_events(evt_ctx, LCC_EVENT_CONTEXT_CLEAR_EVENTS_CONSUMED);
+			for(int x = 0; x < 8; x++){
+				uint64_t* events_consumed = tortoise_events_consumed(&lcc_tortoise_state.tortoises[x]);
+				lcc_event_add_event_consumed(evt_ctx, events_consumed[0]);
+				lcc_event_add_event_consumed(evt_ctx, events_consumed[1]);
+			}
+	    }
 	  }else{
 	    lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
 	    return;
