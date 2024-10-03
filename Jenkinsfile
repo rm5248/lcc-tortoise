@@ -55,7 +55,16 @@ west build -b lcc_tortoise --sysbuild lcc-tortoise
 
 		stage("Archive"){
 			steps{
-				archiveArtifacts artifacts:'lcc-tortoise/build/zephyr/zephyr.signed.bin,lcc-tortoise/build/zephyr/zephyr.signed.hex, lcc-tortoise/bootloader-prebuild/bootloader-rm.hex'
+				sh '''#!/bin/bash
+
+mkdir -p artifacts
+rm artifacts/*
+
+cp build/lcc-tortoise/build/zephyr/zephyr.signed.bin artifacts/lcc-tortoise-8.bin
+cp build/mcuboot/build/zephyr/zephyr.bin artifacts/lcc-tortoise-8-bootloader.bin
+'''
+
+				archiveArtifacts artifacts:'artifacts/lcc-tortoise-8.bin,artifacts/lcc-tortoise-8-bootloader.bin'
 			}
 		} /* stage archive */
 
