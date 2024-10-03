@@ -1,7 +1,18 @@
 pipeline {
 	agent any
 
+	parameters{
+		booleanParam(name: "CLEAN_ALL", defaultValue: false, description: "Clean the entire workspace")
+	}
+
 	stages{
+		stage("Clean all"){
+			when { expression { return params.CLEAN_ALL } }
+			steps{
+				cleanWs()
+			}
+		}
+
 		stage("checkout"){
 			steps{
 				dir('lcc-tortoise'){
@@ -36,7 +47,7 @@ then
 fi
 
 cd lcc-tortoise
-west build -b lcc_tortoise lcc-tortoise
+west build -b lcc_tortoise --sysbuild lcc-tortoise
 '''
 			}
 		} /* stage build */
