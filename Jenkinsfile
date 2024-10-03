@@ -47,6 +47,7 @@ then
 fi
 
 cd lcc-tortoise
+west update
 west build -b lcc_tortoise --sysbuild lcc-tortoise
 '''
 			}
