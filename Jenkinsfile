@@ -58,10 +58,10 @@ west build -b lcc_tortoise --sysbuild lcc-tortoise
 				sh '''#!/bin/bash
 
 mkdir -p artifacts
-rm artifacts/*
+rm artifacts/* || true
 
-cp build/lcc-tortoise/build/zephyr/zephyr.signed.bin artifacts/lcc-tortoise-8.bin
-cp build/mcuboot/build/zephyr/zephyr.bin artifacts/lcc-tortoise-8-bootloader.bin
+cp lcc-tortoise/build/lcc-tortoise/build/zephyr/zephyr.signed.bin artifacts/lcc-tortoise-8.bin
+cp lcc-tortoise/build/mcuboot/build/zephyr/zephyr.bin artifacts/lcc-tortoise-8-bootloader.bin
 '''
 
 				archiveArtifacts artifacts:'artifacts/lcc-tortoise-8.bin,artifacts/lcc-tortoise-8-bootloader.bin'
