@@ -519,14 +519,15 @@ int main(void)
 //	}
 
 	while (1) {
-		if(k_uptime_get() >= blinky_time){
+		int64_t uptime = k_uptime_get();
+		if(uptime >= blinky_time){
 			ret = gpio_pin_toggle_dt(&lcc_tortoise_state.green_led);
 			if (ret < 0) {
 				return 0;
 			}
 
 			led_state = !led_state;
-			blinky_time = k_uptime_get() + 250;
+			blinky_time = uptime + 250;
 		}
 
 		if(k_uptime_get() >= claim_alias_time &&
@@ -557,7 +558,7 @@ int main(void)
 			lcc_context_incoming_frame(ctx, &lcc_rx);
 		}
 
-		k_sleep(K_MSEC(1));
+		k_sleep(K_MSEC(4));
 		dcc_decoder_pump_packet(lcc_tortoise_state.dcc_decoder);
 	}
 	return 0;

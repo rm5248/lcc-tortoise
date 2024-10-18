@@ -119,7 +119,16 @@ static void gpio_pin_change(const struct device *dev, struct gpio_callback *cb, 
 
 	uint32_t current_ticks;
 	counter_get_value(lcc_tortoise_state.dcc_counter, &current_ticks);
-	uint32_t cycle_time_usec = counter_ticks_to_us(lcc_tortoise_state.dcc_counter, current_ticks - lcc_tortoise_state.prev_cycle);
+	uint32_t counter_diff;
+	if(lcc_tortoise_state.prev_cycle > current_ticks){
+		// rollover
+		counter_diff = 0;
+		counter_diff += (counter_get_top_value(lcc_tortoise_state.dcc_counter) - lcc_tortoise_state.prev_cycle);
+		counter_diff += current_ticks;
+	}else{
+		counter_diff = current_ticks - lcc_tortoise_state.prev_cycle;
+	}
+	uint32_t cycle_time_usec = counter_ticks_to_us(lcc_tortoise_state.dcc_counter, counter_diff);
 
 //	printf("curr %lu prev %lu cycles/usec %lu\n", curr_cycle, lcc_tortoise_state.prev_cycle, cycles_per_usec );
 
@@ -128,7 +137,8 @@ static void gpio_pin_change(const struct device *dev, struct gpio_callback *cb, 
 	lcc_tortoise_state.prev_cycle = current_ticks;
 
 	int value = gpio_pin_get_dt(&lcc_tortoise_state.dcc_signal);
-	gpio_pin_set_dt(&lcc_tortoise_state.gold_led, value);
+//	gpio_pin_set_dt(&lcc_tortoise_state.gold_led, value);
+//	gpio_pin_set_dt(&lcc_tortoise_state.blue_led, value);
 
 //	dcc_decoder_polarity_changed(lcc_tortoise_state.dcc_decoder, cycle_time_usec);
 
@@ -139,7 +149,7 @@ static void gpio_pin_change(const struct device *dev, struct gpio_callback *cb, 
 		int num_readings_good = 0;
 		int num_readings_bad = 0;
 		for(int x = 0; x < sizeof(readings)/sizeof(readings[0]); x++){
-			printf("%lu,", readings[x]);
+//			printf("%lu,", readings[x]);
 			if(readings[x] >= 52 && readings[x] <= 64){
 				num_readings_good++;
 //				printf("1");
@@ -151,7 +161,7 @@ static void gpio_pin_change(const struct device *dev, struct gpio_callback *cb, 
 //				printf("-");
 			}
 		}
-//		printf("good: %d bad: %d", num_readings_good, num_readings_bad);
+		printf("good: %d bad: %d", num_readings_good, num_readings_bad);
 		printf("\n");
 
 //		gpio_remove_callback(lcc_tortoise_state.dcc_signal.port, &lcc_tortoise_state.dcc_cb_data);
@@ -226,11 +236,20 @@ int lcc_tortoise_state_init(){
 	if(init_button(&lcc_tortoise_state.gold_button) < 0){
 		return -1;
 	}
-	if(init_button(&lcc_tortoise_state.dcc_signal) < 0){
-		return -1;
-	}
-	if(gpio_pin_interrupt_configure_dt(&lcc_tortoise_state.dcc_signal, gpio_int_type) < 0){
-		return -1;
+
+	{
+		const struct gpio_dt_spec* signal = &lcc_tortoise_state.dcc_signal;
+		if (!gpio_is_ready_dt(signal)) {
+			return -1;
+		}
+
+		if(gpio_pin_configure_dt(signal, GPIO_INPUT) < 0){
+			return -1;
+		}
+
+		if(gpio_pin_interrupt_configure_dt(signal, gpio_int_type) < 0){
+			return -1;
+		}
 	}
 
 	if(gpio_int_type == GPIO_INT_EDGE_BOTH){
@@ -240,20 +259,9 @@ int lcc_tortoise_state_init(){
 	}
 	gpio_add_callback(lcc_tortoise_state.dcc_signal.port, &lcc_tortoise_state.dcc_cb_data);
 
-
 	lcc_tortoise_state.dcc_counter = DEVICE_DT_GET(DT_NODELABEL(dcc_counter));
 
-	alarm_cfg.flags = 0;
-	alarm_cfg.ticks = counter_us_to_ticks(lcc_tortoise_state.dcc_counter , 80);
-	alarm_cfg.callback = test_counter_interrupt_fn;
-	alarm_cfg.user_data = NULL;
-
-//	counter_set_channel_alarm(lcc_tortoise_state.dcc_counter , 0, &alarm_cfg);
-
-
-	printf("freq: %lu\n", counter_get_frequency(lcc_tortoise_state.dcc_counter));
 	counter_start(lcc_tortoise_state.dcc_counter);
-
 
 	for(int x = 0; x < 8; x++){
 		lcc_tortoise_state.tortoises[x].config = &lcc_tortoise_state.tortoise_config[x];
