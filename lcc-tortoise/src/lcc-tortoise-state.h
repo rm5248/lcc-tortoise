@@ -36,6 +36,7 @@ struct lcc_tortoise_state{
 	struct gpio_callback dcc_cb_data;
 	uint32_t prev_cycle;
 	const struct device* dcc_counter;
+	const struct device* gpio_expander;
 };
 
 struct global_config{

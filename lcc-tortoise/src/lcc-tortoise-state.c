@@ -116,7 +116,6 @@ static void gpio_pin_change(const struct device *dev, struct gpio_callback *cb, 
 //printk("Button pressed at %" PRIu32 "\n", k_cycle_get_32());
 //	const uint32_t curr_cycle = k_cycle_get_32();
 //	const uint32_t cycle_time_usec = k_cyc_to_us_floor32(curr_cycle - lcc_tortoise_state.prev_cycle);
-
 	uint32_t current_ticks;
 	counter_get_value(lcc_tortoise_state.dcc_counter, &current_ticks);
 	uint32_t counter_diff;
@@ -138,34 +137,34 @@ static void gpio_pin_change(const struct device *dev, struct gpio_callback *cb, 
 
 	int value = gpio_pin_get_dt(&lcc_tortoise_state.dcc_signal);
 //	gpio_pin_set_dt(&lcc_tortoise_state.gold_led, value);
-//	gpio_pin_set_dt(&lcc_tortoise_state.blue_led, value);
+	gpio_pin_set_dt(&lcc_tortoise_state.blue_led, value);
 
 //	dcc_decoder_polarity_changed(lcc_tortoise_state.dcc_decoder, cycle_time_usec);
 
-	readings[pos++] = cycle_time_usec;
-	if(pos == (sizeof(readings)/sizeof(readings[0]))){
-		pos = 0;
-		printf("readings:\n");
-		int num_readings_good = 0;
-		int num_readings_bad = 0;
-		for(int x = 0; x < sizeof(readings)/sizeof(readings[0]); x++){
-//			printf("%lu,", readings[x]);
-			if(readings[x] >= 52 && readings[x] <= 64){
-				num_readings_good++;
-//				printf("1");
-			}else if(readings[x] >= 90 && readings[x] <= 200){
-				num_readings_good++;
-//				printf("0");
-			}else{
-				num_readings_bad++;
-//				printf("-");
-			}
-		}
-		printf("good: %d bad: %d", num_readings_good, num_readings_bad);
-		printf("\n");
-
-//		gpio_remove_callback(lcc_tortoise_state.dcc_signal.port, &lcc_tortoise_state.dcc_cb_data);
-	}
+//	readings[pos++] = cycle_time_usec;
+//	if(pos == (sizeof(readings)/sizeof(readings[0]))){
+//		pos = 0;
+////		printf("readings:\n");
+//		int num_readings_good = 0;
+//		int num_readings_bad = 0;
+//		for(int x = 0; x < sizeof(readings)/sizeof(readings[0]); x++){
+////			printf("%lu,", readings[x]);
+//			if(readings[x] >= 52 && readings[x] <= 64){
+//				num_readings_good++;
+////				printf("1");
+//			}else if(readings[x] >= 90 && readings[x] <= 200){
+//				num_readings_good++;
+////				printf("0");
+//			}else{
+//				num_readings_bad++;
+////				printf("-");
+//			}
+//		}
+////		printf("good: %d bad: %d ISR? %d", num_readings_good, num_readings_bad, k_is_in_isr());
+////		printf("\n");
+//
+////		gpio_remove_callback(lcc_tortoise_state.dcc_signal.port, &lcc_tortoise_state.dcc_cb_data);
+//	}
 
 }
 
@@ -260,6 +259,7 @@ int lcc_tortoise_state_init(){
 	gpio_add_callback(lcc_tortoise_state.dcc_signal.port, &lcc_tortoise_state.dcc_cb_data);
 
 	lcc_tortoise_state.dcc_counter = DEVICE_DT_GET(DT_NODELABEL(dcc_counter));
+	lcc_tortoise_state.gpio_expander = DEVICE_DT_GET(DT_NODELABEL(gpio_expander));
 
 	counter_start(lcc_tortoise_state.dcc_counter);
 

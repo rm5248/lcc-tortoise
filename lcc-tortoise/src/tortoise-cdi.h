@@ -55,11 +55,11 @@ const char cdi[] = {
 <map> \
 <relation> \
 <property>0</property> \
-<value>Reversed</value> \
+<value>Normal</value> \
 </relation> \
 <relation> \
 <property>1</property> \
-<value>Normal</value> \
+<value>Reversed</value> \
 </relation> \
 <relation> \
 <property>2</property> \

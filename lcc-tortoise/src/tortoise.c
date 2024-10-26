@@ -7,6 +7,8 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "tortoise.h"
 #include "lcc-event.h"
@@ -47,9 +49,9 @@ int tortoise_init(struct tortoise* tort){
 
 int tortoise_init_startup_position(struct tortoise* tort){
 	if( tort->config->startup_control == STARTUP_REVERSE ){
-		tort->current_position = POSITION_NORMAL;
-	}else if( tort->config->startup_control == STARTUP_NORMAL ){
 		tort->current_position = POSITION_REVERSE;
+	}else if( tort->config->startup_control == STARTUP_NORMAL ){
+		tort->current_position = POSITION_NORMAL;
 	}else{
 		tort->current_position = tort->config->last_known_pos;
 	}
@@ -82,7 +84,7 @@ int tortoise_set_position(struct tortoise* tort, enum tortoise_position position
 	gpio_pin_set_dt(&tort->gpios[0], 0);
 	gpio_pin_set_dt(&tort->gpios[1], 0);
 
-	if(position == POSITION_REVERSE){
+	if(position == POSITION_NORMAL){
 		gpio_pin_set_dt(&tort->gpios[0], 0);
 		gpio_pin_set_dt(&tort->gpios[1], 1);
 	}else{

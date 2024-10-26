@@ -3,6 +3,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
@@ -11,6 +12,7 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/device.h>
 #include <zephyr/sys/reboot.h>
+#include <zephyr/console/console.h>
 
 #include "lcc-tortoise-state.h"
 #include "tortoise.h"
@@ -34,7 +36,6 @@
 #define ADDRESS_SPACE_251_OFFSET 0
 /* 253 = basic config space */
 #define ADDRESS_SPACE_253_OFFSET 128
-#define GLOBAL_CONFIG_OFFSET 2048
 
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
 static struct can_frame zephyr_can_frame_tx;
@@ -174,15 +175,26 @@ static void init_rx_queue(){
 static int load_tortoise_settings(){
 	uint32_t offset = ADDRESS_SPACE_253_OFFSET;
 	int ret = 0;
+	uint8_t tortoise_positions[8 * 4];
 
 	const struct flash_area* storage_area = NULL;
-	int id = FIXED_PARTITION_ID(storage_partition);
+	int id = FIXED_PARTITION_ID(config_partition);
+	const struct flash_area* location_area = NULL;
+	int id2 = FIXED_PARTITION_ID(location_partition);
 
 	if(flash_area_open(id, &storage_area) < 0){
 		return 1;
 	}
 
+	if(flash_area_open(id2, &location_area) < 0){
+		return 1;
+	}
+
 	if(flash_area_read(storage_area, offset, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config)) < 0){
+		return 1;
+	}
+
+	if(flash_area_read(location_area, 0, tortoise_positions, sizeof(tortoise_positions)) < 0){
 		return 1;
 	}
 
@@ -197,11 +209,33 @@ static int load_tortoise_settings(){
 	}
 
 	for(int x = 0; x < 8; x++){
+		if(lcc_tortoise_state.tortoise_config[x].startup_control == STARTUP_LAST_POSITION){
+			// Figure out the last position
+			int count_agree_normal = 0;
+			int count_agree_reverse = 0;
+
+			for(int y = 0; y < 4; y++){
+				int offset_val = tortoise_positions[x + (8 * y)];
+				if(offset_val == 0){
+					count_agree_normal++;
+				}else if(offset_val == 1){
+					count_agree_reverse++;
+				}
+			}
+
+			if(count_agree_normal > count_agree_reverse){
+				lcc_tortoise_state.tortoise_config[x].last_known_pos = POSITION_NORMAL;
+			}else if(count_agree_reverse > count_agree_normal){
+				lcc_tortoise_state.tortoise_config[x].last_known_pos = POSITION_REVERSE;
+			}
+		}
+
 		tortoise_init_startup_position(&lcc_tortoise_state.tortoises[x]);
 	}
 
 out:
 	flash_area_close(storage_area);
+	flash_area_close(location_area);
 	return ret;
 }
 
@@ -258,7 +292,7 @@ int save_configs_to_flash(){
 	int ret = 0;
 
 	const struct flash_area* storage_area = NULL;
-	int id = FIXED_PARTITION_ID(storage_partition);
+	int id = FIXED_PARTITION_ID(config_partition);
 
 	if(flash_area_open(id, &storage_area) < 0){
 		return 1;
@@ -278,6 +312,8 @@ out:
 	if(ret){
 		printf("Unable to save configs to flash\n");
 	}
+
+	powerhandle_check_if_save_required();
 	return ret;
 }
 
@@ -366,6 +402,56 @@ static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_byte
 	}
 }
 
+static uint64_t load_lcc_id(){
+	uint64_t ret = 0;
+
+	const struct flash_area* lcc_storage_area = NULL;
+	int id = FIXED_PARTITION_ID(lcc_partition);
+
+	if(flash_area_open(id, &lcc_storage_area) < 0){
+		return 1;
+	}
+
+	if(flash_area_read(lcc_storage_area, 0, &ret, sizeof(ret)) < 0){
+		return 1;
+	}
+
+	// Check to see if the first 8 bytes are 0xFF.  If so, we assume the data is uninitialized
+	const uint8_t mem[8] = {
+			0xFF, 0xFF, 0xFF, 0xFF,
+			0xFF, 0xFF, 0xFF, 0xFF
+	};
+	if(memcmp(&ret, mem, 8) == 0){
+		uint64_t new_id = 0;
+		int valid = 0;
+
+		console_getline_init();
+
+		while(!valid){
+			printf("LCC ID blank!  Please input LCC ID as a single hex string followed by enter:\n");
+			char id_buffer[32];
+			char* console_data = console_getline();
+			printf("console line: %s\n", console_data);
+			new_id = strtoull(console_data, NULL, 16);
+			lcc_node_id_to_dotted_format(new_id, id_buffer, sizeof(id_buffer));
+
+			printf("New node ID will be %s.  Type 'y'<ENTER> to accept\n", id_buffer);
+			console_data = console_getline();
+			printf("response: %s\n", console_data);
+			if(console_data[0] == 'y'){
+				valid = 1;
+				ret = new_id;
+			}
+		}
+
+		flash_area_write(lcc_storage_area, 0, &ret, sizeof(ret));
+	}
+
+out:
+	flash_area_close(lcc_storage_area);
+	return ret;
+}
+
 int main(void)
 {
 	int ret;
@@ -377,14 +463,6 @@ int main(void)
 	// This is probably not needed, but it shouldn't hurt.
 	// This will also give other devices on the network a chance to come up.
 	k_sleep(K_MSEC(250));
-
-	for(int x = 0; x < 15; x++){
-	printf("farts\n");
-	k_sleep(K_MSEC(100));
-	}
-
-	printf("sys_clock_hw_cycles_per_sec() / USEC_PER_SEC = %lu / %lu\n", sys_clock_hw_cycles_per_sec() , USEC_PER_SEC);
-	printf("cycles per usec = %lu\n", sys_clock_hw_cycles_per_sec() /USEC_PER_SEC);
 
 	_Static_assert(sizeof(struct tortoise_config) == 32);
 
@@ -470,9 +548,10 @@ int main(void)
 	dcc_decoder_set_packet_callback(lcc_tortoise_state.dcc_decoder, incoming_dcc);
 	dcc_decoder_set_packet_parser(lcc_tortoise_state.dcc_decoder, lcc_tortoise_state.packet_parser);
 
+	uint64_t lcc_id = load_lcc_id();
 	struct lcc_context* ctx = lcc_tortoise_state.lcc_context;
 	lcc_context_set_unique_identifer( ctx,
-			0x020202000012ll );
+			lcc_id );
 	lcc_context_set_simple_node_information(ctx,
 			"Snowball Creek",
 			"Tortoise-8",
@@ -515,7 +594,7 @@ int main(void)
 	dcc_packet_parser_set_short_address(lcc_tortoise_state.packet_parser , 55);
 	dcc_packet_parser_set_speed_dir_cb(lcc_tortoise_state.packet_parser , speed_dir_cb);
 //	while(1){
-//		k_sleep(K_MSEC(1000));
+//		k_sleep(K_MSEC(1));
 //	}
 
 	while (1) {
@@ -530,13 +609,13 @@ int main(void)
 			blinky_time = uptime + 250;
 		}
 
-		if(k_uptime_get() >= claim_alias_time &&
+		if(uptime >= claim_alias_time &&
 		    lcc_context_current_state(ctx) == LCC_STATE_INHIBITED){
 		    int stat = lcc_context_claim_alias(ctx);
 		    if(stat != LCC_OK){
 		      // If we were unable to claim our alias, we need to generate a new one and start over
 		      lcc_context_generate_alias(ctx);
-		      claim_alias_time = k_uptime_get() + 220;
+		      claim_alias_time = uptime + 220;
 		    }else{
 		      printf("Claimed alias %X\n", lcc_context_alias(ctx) );
 
@@ -544,6 +623,7 @@ int main(void)
 				// We do this right after we have an alias, since logically nothing will have changed
 				// until we are actually able to process commands from some other device on the network.
 				powerhandle_init();
+				powerhandle_check_if_save_required();
 		    }
 		  }
 
@@ -558,7 +638,7 @@ int main(void)
 			lcc_context_incoming_frame(ctx, &lcc_rx);
 		}
 
-		k_sleep(K_MSEC(4));
+		k_sleep(K_MSEC(1));
 		dcc_decoder_pump_packet(lcc_tortoise_state.dcc_decoder);
 	}
 	return 0;

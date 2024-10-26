@@ -11,6 +11,11 @@
 #include <zephyr/dt-bindings/pinctrl/stm32-pinctrl.h>
 #include <zephyr/dt-bindings/pinctrl/stm32-pinctrl-common.h>
 
+/* CPU: STM32G0B1KE
+ * FLASH: 512k
+ * SRAM: 128(parity-protected)/144(not parity-protected)
+ */
+
 / {
 	model = "Snowball Creek LCC Tortoise";
 	compatible = "st,stm32g0b1ke-tortoise";
@@ -266,12 +271,6 @@ zephyr_udc0: &usb {
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-//		main_partition: partition@0 {
-//			label = "main";
-//			reg = <0x00000000 DT_SIZE_K(128)>;
-////			read-only;
-//		};
-
 		boot_partition: partition@0 {
 			label = "bootloader";
 			reg = <0x00000000 DT_SIZE_K(32)>;
@@ -285,10 +284,29 @@ zephyr_udc0: &usb {
 			label = "image-1";
 			reg = <0x00028000 DT_SIZE_K(128)>;
 		};
-		/* 4k reserved for app storage partition */
-		storage_partition: partition@48000 {
-			label = "storage";
-			reg = <0x00048000 DT_SIZE_K(4)>;
+
+		/*
+		 * 2k reserved for app storage partition.
+		 * This is used for configuration data.
+		 */
+		config_partition: partition@48000 {
+			label = "config";
+			reg = <0x00048000 DT_SIZE_K(2)>;
+		};
+		/*
+		 * 2k for data that needs to be saved on shutdown.
+		 * This is used for the current tortoise position.
+		 */
+		location_partition: partition@48800 {
+			label = "location-partition";
+			reg = <0x00048800 DT_SIZE_K(2)>;
+		};
+		/*
+		 * 2k for LCC ID data
+		 */
+		lcc_partition: partition@49000 {
+			label = "lcc-partition";
+			reg = <0x00049000 DT_SIZE_K(2)>;
 		};
 	};
 };
