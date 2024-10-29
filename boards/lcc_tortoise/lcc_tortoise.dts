@@ -30,13 +30,11 @@
 		zephyr,canbus = &fdcan2;
 	};
 
-
 	aliases {
 		greenled = &green_led;
 		blueled = &blue_led;
 		goldled = &gold_led;
 		blueswitch = &blue_switch;
-		timer = &timers3;
 		gpioreset = &gpio_exp_reset;
 	};
 
@@ -147,41 +145,6 @@ zephyr_udc0: &usb {
 };
 */
 
-&timers3 {
-	st,prescaler = <32>;
-	status = "okay";
-	dcc_counter: counter {
-		compatible = "st,stm32-counter";
-		status = "okay";
-	};
-};
-
-/*
-&timers15 {
-	st,prescaler = <10000>;
-	status = "okay";
-	pwm15: pwm {
-		status = "okay";
-		pinctrl-0 = <&tim15_ch1_pb14>;
-		pinctrl-names = "default";
-	};
-};
-
-&i2c1 {
-	pinctrl-0 = <&i2c1_scl_pb8 &i2c1_sda_pb9>;
-	pinctrl-names = "default";
-	status = "okay";
-	clock-frequency = <I2C_BITRATE_FAST>;
-};
-
-&i2c2 {
-	pinctrl-0 = <&i2c2_scl_pa11 &i2c2_sda_pa12>;
-	pinctrl-names = "default";
-	status = "okay";
-	clock-frequency = <I2C_BITRATE_FAST>;
-};
-*/
-
 &spi1 {
 	pinctrl-0 = <&spi1_sck_pb3
 		     &spi1_miso_pb4 &spi1_mosi_pb5>;
@@ -257,12 +220,6 @@ zephyr_udc0: &usb {
 		        <&gpio_expander 9 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
-
-	dcc_pin: dcc_pin {
-		compatible = "dcc-pin";
-		gpios = <&gpioa 15 GPIO_ACTIVE_HIGH>;
-		status = "okay";
-	};
 };
 
 &flash0 {

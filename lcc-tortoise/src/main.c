@@ -395,10 +395,28 @@ static void speed_dir_cb(struct dcc_decoder* decoder, enum dcc_decoder_direction
 
 static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_bytes, int len){
 	static int count = 0;
+	static int idle_packet_count = 0;
 
 	count++;
 	if(count % 50 == 0){
 		gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
+	}
+
+	if(len == 3 &&
+			packet_bytes[0] == 0xFF &&
+			packet_bytes[1] == 0x00 &&
+			packet_bytes[2] == 0xFF){
+		// Idle packet
+		idle_packet_count++;
+		if(idle_packet_count %50 == 0){
+			printf("idle: %d\n", idle_packet_count);
+		}
+	}else{
+		printf("Packet [%d]: ", len);
+		for(int x = 0; x < len; x++){
+			printf("0x%02X ", packet_bytes[x]);
+		}
+		printf("\n");
 	}
 }
 
@@ -638,7 +656,7 @@ int main(void)
 			lcc_context_incoming_frame(ctx, &lcc_rx);
 		}
 
-		k_sleep(K_MSEC(1));
+//		k_sleep(K_MSEC(100));
 		dcc_decoder_pump_packet(lcc_tortoise_state.dcc_decoder);
 	}
 	return 0;
