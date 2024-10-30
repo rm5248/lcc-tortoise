@@ -390,34 +390,34 @@ static enum lcc_consumer_state query_consumer_state(struct lcc_context* ctx, uin
 }
 
 static void speed_dir_cb(struct dcc_decoder* decoder, enum dcc_decoder_direction dir, uint8_t speed){
-	printf("dir: %d speed: %d\n", dir, speed);
+//	printf("dir: %d speed: %d\n", dir, speed);
 }
 
 static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_bytes, int len){
 	static int count = 0;
 	static int idle_packet_count = 0;
 
-	count++;
-	if(count % 50 == 0){
-		gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
-	}
-
-	if(len == 3 &&
-			packet_bytes[0] == 0xFF &&
-			packet_bytes[1] == 0x00 &&
-			packet_bytes[2] == 0xFF){
-		// Idle packet
-		idle_packet_count++;
-		if(idle_packet_count %50 == 0){
-			printf("idle: %d\n", idle_packet_count);
-		}
-	}else{
-		printf("Packet [%d]: ", len);
-		for(int x = 0; x < len; x++){
-			printf("0x%02X ", packet_bytes[x]);
-		}
-		printf("\n");
-	}
+//	count++;
+//	if(count % 50 == 0){
+//		gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
+//	}
+//
+//	if(len == 3 &&
+//			packet_bytes[0] == 0xFF &&
+//			packet_bytes[1] == 0x00 &&
+//			packet_bytes[2] == 0xFF){
+//		// Idle packet
+//		idle_packet_count++;
+//		if(idle_packet_count %50 == 0){
+//			printf("idle: %d\n", idle_packet_count);
+//		}
+//	}else{
+//		printf("Packet [%d]: ", len);
+//		for(int x = 0; x < len; x++){
+//			printf("0x%02X ", packet_bytes[x]);
+//		}
+//		printf("\n");
+//	}
 }
 
 static uint64_t load_lcc_id(){
@@ -468,6 +468,18 @@ static uint64_t load_lcc_id(){
 out:
 	flash_area_close(lcc_storage_area);
 	return ret;
+}
+
+static void blue_button_pressed(const struct device *dev, struct gpio_callback *cb,
+		    uint32_t pins)
+{
+	printk("Blue Button pressed at %" PRIu32 "\n", k_cycle_get_32());
+}
+
+static void gold_button_pressed(const struct device *dev, struct gpio_callback *cb,
+		    uint32_t pins)
+{
+	printk("Gold Button pressed at %" PRIu32 "\n", k_cycle_get_32());
 }
 
 int main(void)
@@ -611,9 +623,12 @@ int main(void)
 
 	dcc_packet_parser_set_short_address(lcc_tortoise_state.packet_parser , 55);
 	dcc_packet_parser_set_speed_dir_cb(lcc_tortoise_state.packet_parser , speed_dir_cb);
-//	while(1){
-//		k_sleep(K_MSEC(1));
-//	}
+
+	// Init our callbacks
+	gpio_init_callback(&gold_button_cb_data, gold_button_pressed, BIT(lcc_tortoise_state.gold_button.pin));
+	gpio_add_callback(lcc_tortoise_state.gold_button.port, &gold_button_cb_data);
+	gpio_init_callback(&blue_button_cb_data, blue_button_pressed, BIT(lcc_tortoise_state.blue_button.pin));
+	gpio_add_callback(lcc_tortoise_state.blue_button.port, &blue_button_cb_data);
 
 	while (1) {
 		int64_t uptime = k_uptime_get();

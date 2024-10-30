@@ -104,6 +104,10 @@ static int init_button(const struct gpio_dt_spec* button){
 		return -1;
 	}
 
+	if(gpio_pin_interrupt_configure_dt(button, GPIO_INT_EDGE_BOTH) < 0){
+		return -1;
+	}
+
 	// TODO callbacks on button press
 
 	return 0;

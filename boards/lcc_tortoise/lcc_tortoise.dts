@@ -66,7 +66,7 @@
 		};
 		gold_switch: button_gold {
 			label = "gold_switch";
-			gpios = <&gpioa 6 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			gpios = <&gpioa 14 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
 		};
 		volts: volts_0 {
 			label = "volts";
