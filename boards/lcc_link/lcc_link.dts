@@ -1,0 +1,202 @@
+/*
+ * Copyright (c) 2024 Robert Middleton
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <st/g0/stm32g0b1Xe.dtsi>
+#include <st/g0/stm32g0b1k(b-c-e)tx-pinctrl.dtsi>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/pinctrl/stm32-pinctrl.h>
+#include <zephyr/dt-bindings/pinctrl/stm32-pinctrl-common.h>
+
+/* CPU: STM32G0B1CB
+ * FLASH: 128k
+ * SRAM: 128(parity-protected)/144(not parity-protected)
+ */
+
+/ {
+	model = "Snowball Creek LCC Link";
+	compatible = "st,stm32g0b1cb-lcc-link";
+
+	chosen {
+		zephyr,console = &cdc_acm_console;
+		zephyr,shell-uart = &usart2;
+		zephyr,uart-mcumgr = &usart2;
+		zephyr,canbus = &fdcan2;
+	};
+
+	aliases {
+	};
+
+	leds: leds {
+		compatible = "gpio-leds";
+		status_led: status_led {
+			gpios = <&gpiob 13 GPIO_ACTIVE_HIGH>;
+			label = "Status LED";
+		};
+	};
+};
+
+/*
+&clk_lsi {
+	status = "okay";
+};
+
+&clk_hsi {
+	status = "okay";
+};
+
+&clk_hsi48 {
+	status = "okay";
+	crs-usb-sof;
+};
+*/
+
+&clk_hse {
+	status = "okay";
+	clock-frequency = <DT_FREQ_M(8)>;
+};
+
+&pll {
+	div-m = <1>;
+	mul-n = <12>;
+	div-p = <2>;
+	div-q = <2>;
+	div-r = <2>;
+	clocks = <&clk_hse>;
+	status = "okay";
+};
+
+
+&rcc {
+	clocks = <&pll>;
+	clock-frequency = <DT_FREQ_M(48)>;
+	ahb-prescaler = <1>;
+	apb1-prescaler = <1>;
+};
+
+
+zephyr_udc0: &usb {
+	pinctrl-0 = <&usb_dm_pa11 &usb_dp_pa12>;
+	pinctrl-names = "default";
+	status = "okay";
+	// USB_SEL is 2 for some reason:
+	// https://klipper.discourse.group/t/stm32g0-usb-clock-config/4487/2
+	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00002000>,
+		<&rcc STM32_SRC_PLL_Q USB_SEL(2)>;
+
+	cdc_acm_console: cdc_acm_console {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+	cdc_acm_can: cdc_acm_can {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+	cdc_acm_dcc: cdc_acm_dcc {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
+/*
+&usart1 {
+	pinctrl-0 = <&usart1_tx_pc4 &usart1_rx_pc5>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "disabled";
+};
+*/
+
+
+/*
+&rtc {
+	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00000400>,
+		 <&rcc STM32_SRC_LSI RTC_SEL(2)>;
+	status = "okay";
+};
+
+&iwdg {
+	status = "okay";
+};
+*/
+
+&spi1 {
+	pinctrl-0 = <&spi1_sck_pb3
+		     &spi1_miso_pb4 &spi1_mosi_pb5>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	cs-gpios = <&gpiob 7 GPIO_ACTIVE_LOW>;
+
+	gpio_expander: mcp23s17@0 {
+		compatible = "microchip,mcp23s17";
+		spi-max-frequency = <1000000>;
+		reg = <0x0>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <16>;
+		reset-gpios = <&gpioa 8 GPIO_ACTIVE_LOW>;
+	};
+};
+
+&usart2 {
+	pinctrl-0 = <&usart2_tx_pa2 &usart2_rx_pa3>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+};
+
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "bootloader";
+			reg = <0x00000000 DT_SIZE_K(32)>;
+			read-only;
+		};
+		slot0_partition: partition@8000 {
+			label = "image-0";
+			reg = <0x00008000 DT_SIZE_K(128)>;
+		};
+		slot1_partition: partition@28000 {
+			label = "image-1";
+			reg = <0x00028000 DT_SIZE_K(128)>;
+		};
+
+		/*
+		 * 2k reserved for app storage partition.
+		 * This is used for configuration data.
+		 */
+		config_partition: partition@48000 {
+			label = "config";
+			reg = <0x00048000 DT_SIZE_K(2)>;
+		};
+		/*
+		 * 2k for data that needs to be saved on shutdown.
+		 * This is used for the current tortoise position.
+		 */
+		location_partition: partition@48800 {
+			label = "location-partition";
+			reg = <0x00048800 DT_SIZE_K(2)>;
+		};
+		/*
+		 * 2k for LCC ID data
+		 */
+		lcc_partition: partition@49000 {
+			label = "lcc-partition";
+			reg = <0x00049000 DT_SIZE_K(2)>;
+		};
+	};
+};
+
+&fdcan2 {
+	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00001000>,
+		 <&rcc STM32_SRC_PLL_Q FDCAN_SEL(1)>;
+	pinctrl-0 = <&fdcan2_rx_pb5 &fdcan2_tx_pb6>;
+	pinctrl-names = "default";
+	status = "okay";
+};

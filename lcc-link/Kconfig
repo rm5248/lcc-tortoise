@@ -1,0 +1,9 @@
+mainmenu "LCC Link"
+
+source "Kconfig.zephyr"
+config LCC_LINK
+	default y
+	bool
+	select USE_STM32_LL_USB
+	select USE_STM32_HAL_PCD
+	select USE_STM32_HAL_PCD_EX

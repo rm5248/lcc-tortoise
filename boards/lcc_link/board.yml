@@ -1,0 +1,10 @@
+board:
+  name: lcc_link
+  vendor: snowball_creek
+  socs:
+    - name: stm32g0b1xx
+  revision:
+    format: number
+    default: "2"
+    revisions:
+    - name: "2"
