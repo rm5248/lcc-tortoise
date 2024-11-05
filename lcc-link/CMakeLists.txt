@@ -23,6 +23,8 @@ file(GLOB lcc-sources
 
 target_sources(app PRIVATE 
 	src/main.c 
+	src/computer_to_can.c
+	src/can_to_computer.c
 	${lcc-sources}
 )
 target_include_directories(app PRIVATE
