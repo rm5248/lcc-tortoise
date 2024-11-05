@@ -81,7 +81,7 @@ then
 	pip3 install -r zephyr/scripts/requirements.txt
 fi
 
-cd lcc-tortoise
+cd lcc-link
 west update
 west build --build-dir build-lcclink -b lcc_link lcc-link
 '''
@@ -92,7 +92,7 @@ west build --build-dir build-lcclink -b lcc_link lcc-link
 			steps{
 				sh '''#!/bin/bash
 
-cp lcc-tortoise/build-lcclink/lcc-tortoise/zephyr/zephyr.bin artifacts/lcc-link.bin
+cp lcc-link/build-lcclink/zephyr/zephyr.bin artifacts/lcc-link.bin
 '''
 
 				archiveArtifacts artifacts:'artifacts/lcc-link.bin'
