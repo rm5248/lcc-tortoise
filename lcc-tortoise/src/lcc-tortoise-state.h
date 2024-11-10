@@ -12,6 +12,7 @@
 #include <zephyr/drivers/can.h>
 
 #include "tortoise.h"
+#include "dcc-decode-stm32.h"
 
 struct lcc_context;
 struct dcc_decoder;
@@ -31,11 +32,6 @@ struct lcc_tortoise_state{
 	struct tortoise tortoises[8];
 
 	struct lcc_context* lcc_context;
-	struct dcc_decoder* dcc_decoder;
-	struct dcc_packet_parser* packet_parser;
-	struct gpio_callback dcc_cb_data;
-	uint32_t prev_cycle;
-	const struct device* dcc_counter;
 	const struct device* gpio_expander;
 };
 

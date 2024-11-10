@@ -13,10 +13,10 @@
 #include <zephyr/device.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/console/console.h>
+#include "dcc-decode-stm32.h"
 
 #include "lcc-tortoise-state.h"
 #include "tortoise.h"
-#include "dcc-decode.h"
 #include "tortoise-cdi.h"
 #include "power-handler.h"
 #include "firmware_upgrade.h"
@@ -502,6 +502,8 @@ int main(void)
 		return 0;
 	}
 
+	dcc_decoder_init(&dcc_decode_ctx);
+
 	// Load the tortoise settings, and set the outputs to the correct valu depending on their startup settings
 	int tortoise_load_stat = load_tortoise_settings();
 	if(tortoise_load_stat == 1){
@@ -542,41 +544,15 @@ int main(void)
 
 	init_rx_queue();
 
-//	check_eeprom();
-
-	lcc_tortoise_state.dcc_decoder = dcc_decoder_new(DCC_DECODER_IRQ_RISING_OR_FALLING);
-	if(lcc_tortoise_state.dcc_decoder == NULL){
-		// This uses only static data to initialize, so this should never happen.
-		printf("error: unable to initialize! %d\n", __LINE__);
-		return 0;
-	}
-
-//	dcc_thread = k_thread_create(&dcc_thread_data,
-//			dcc_signal_stack,
-//			K_THREAD_STACK_SIZEOF(dcc_signal_stack),
-//			dcc_decoder_thread, NULL, NULL, NULL,
-//			0, 0,
-//			K_NO_WAIT);
-//	if (!dcc_thread) {
-//		printf("ERROR spawning dcc thread\n");
-//	}
-
-	lcc_tortoise_state.packet_parser = dcc_packet_parser_new();
-	if(lcc_tortoise_state.packet_parser == NULL){
-		// This uses only static data to initialize, so this should never happen.
-		printf("error: unable to initialize! %d\n", __LINE__);
-		return 0;
-	}
-
 	lcc_tortoise_state.lcc_context = lcc_context_new();
 	if(lcc_tortoise_state.lcc_context == NULL){
 		// This uses only static data to initialize, so this should never happen.
 		printf("error: unable to initialize! %d\n", __LINE__);
-		return 0;
+		return -1;
 	}
 
-	dcc_decoder_set_packet_callback(lcc_tortoise_state.dcc_decoder, incoming_dcc);
-	dcc_decoder_set_packet_parser(lcc_tortoise_state.dcc_decoder, lcc_tortoise_state.packet_parser);
+	dcc_decoder_set_packet_callback(dcc_decode_ctx.dcc_decoder, incoming_dcc);
+	dcc_decoder_set_packet_parser(dcc_decode_ctx.dcc_decoder, dcc_decode_ctx.packet_parser);
 
 	uint64_t lcc_id = load_lcc_id();
 	struct lcc_context* ctx = lcc_tortoise_state.lcc_context;
@@ -621,8 +597,8 @@ int main(void)
 	uint64_t blinky_time = claim_alias_time;
 	struct can_frame rx_frame;
 
-	dcc_packet_parser_set_short_address(lcc_tortoise_state.packet_parser , 55);
-	dcc_packet_parser_set_speed_dir_cb(lcc_tortoise_state.packet_parser , speed_dir_cb);
+	dcc_packet_parser_set_short_address(dcc_decode_ctx.packet_parser , 55);
+	dcc_packet_parser_set_speed_dir_cb(dcc_decode_ctx.packet_parser, speed_dir_cb);
 
 	// Init our callbacks
 	gpio_init_callback(&gold_button_cb_data, gold_button_pressed, BIT(lcc_tortoise_state.gold_button.pin));
@@ -672,7 +648,7 @@ int main(void)
 		}
 
 //		k_sleep(K_MSEC(100));
-		dcc_decoder_pump_packet(lcc_tortoise_state.dcc_decoder);
+		dcc_decoder_pump_packet(dcc_decode_ctx.dcc_decoder);
 	}
 	return 0;
 }
