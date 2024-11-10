@@ -44,19 +44,11 @@ static struct lcc_can_frame lcc_rx;
 static struct gpio_callback blue_button_cb_data;
 static struct gpio_callback gold_button_cb_data;
 
-struct k_work state_change_work;
-enum can_state current_state;
-struct can_bus_err_cnt current_err_cnt;
-
-#define STATE_POLL_THREAD_STACK_SIZE 512
-#define STATE_POLL_THREAD_PRIORITY 2
-
-K_THREAD_STACK_DEFINE(poll_state_stack, STATE_POLL_THREAD_STACK_SIZE);
-K_THREAD_STACK_DEFINE(dcc_signal_stack, 512);
-
-struct k_thread poll_state_thread_data;
-struct k_thread dcc_thread_data;
+K_THREAD_STACK_DEFINE(tx_stack, 512);
+struct k_thread tx_thread_data;
+k_tid_t tx_thread_tid;
 CAN_MSGQ_DEFINE(rx_msgq, 55);
+CAN_MSGQ_DEFINE(tx_msgq, 12);
 
 char *state_to_str(enum can_state state)
 {
@@ -76,59 +68,33 @@ char *state_to_str(enum can_state state)
 	}
 }
 
-void poll_state_thread(void *unused1, void *unused2, void *unused3)
+static void can_frame_send_thread(void *unused1, void *unused2, void *unused3)
 {
+	static struct can_frame tx_frame;
 	struct can_bus_err_cnt err_cnt = {0, 0};
-	struct can_bus_err_cnt err_cnt_prev = {0, 0};
-	enum can_state state_prev = CAN_STATE_ERROR_ACTIVE;
 	enum can_state state;
-	int err;
 
-	while (1) {
-		err = can_get_state(can_dev, &state, &err_cnt);
-		if (err != 0) {
-			printf("Failed to get CAN controller state: %d", err);
-			k_sleep(K_MSEC(100));
-			continue;
-		}
+	while(1){
+		if(k_msgq_get(&tx_msgq, &tx_frame, K_FOREVER) == 0){
+			printf("Send frame 0x%08X\n", tx_frame.id);
 
-		if (err_cnt.tx_err_cnt != err_cnt_prev.tx_err_cnt ||
-		    err_cnt.rx_err_cnt != err_cnt_prev.rx_err_cnt ||
-		    state_prev != state) {
+			int err = can_get_state(can_dev, &state, &err_cnt);
+			if(err != 0){
+				printf("Can't get CAN state\n");
+				continue;
+			}
 
-			err_cnt_prev.tx_err_cnt = err_cnt.tx_err_cnt;
-			err_cnt_prev.rx_err_cnt = err_cnt.rx_err_cnt;
-			state_prev = state;
-			printf("state: %s\n"
-			       "rx error count: %d\n"
-			       "tx error count: %d\n",
-			       state_to_str(state),
-			       err_cnt.rx_err_cnt, err_cnt.tx_err_cnt);
-		} else {
-			k_sleep(K_MSEC(100));
+			if(state == CAN_STATE_BUS_OFF){
+				printf("CAN bus off, dropping packet\n");
+				continue;
+			}
+
+			int stat = can_send(can_dev, &tx_frame, K_FOREVER, NULL, NULL );
+			if(stat < 0){
+				printf("Unable to send: %d\n", stat);
+			}
 		}
 	}
-}
-
-void state_change_work_handler(struct k_work *work)
-{
-	printf("State Change ISR\nstate: %s\n"
-	       "rx error count: %d\n"
-	       "tx error count: %d\n",
-		state_to_str(current_state),
-		current_err_cnt.rx_err_cnt, current_err_cnt.tx_err_cnt);
-}
-
-void state_change_callback(const struct device *dev, enum can_state state,
-			   struct can_bus_err_cnt err_cnt, void *user_data)
-{
-	struct k_work *work = (struct k_work *)user_data;
-
-	ARG_UNUSED(dev);
-
-	current_state = state;
-	current_err_cnt = err_cnt;
-	k_work_submit(work);
 }
 
 static int lcc_write_cb(struct lcc_context*, struct lcc_can_frame* lcc_frame){
@@ -138,14 +104,11 @@ static int lcc_write_cb(struct lcc_context*, struct lcc_can_frame* lcc_frame){
 	zephyr_can_frame_tx.flags = CAN_FRAME_IDE;
 	memcpy(zephyr_can_frame_tx.data, lcc_frame->data, 8);
 
-	printf("Send frame 0x%08X\n", lcc_frame->can_id);
-
-	int stat = can_send(can_dev, &zephyr_can_frame_tx, K_FOREVER, NULL, NULL );
-	if( stat == 0 ){
-		return LCC_OK;
+	if(k_msgq_put(&tx_msgq, &zephyr_can_frame_tx, K_NO_WAIT) < 0){
+		return LCC_ERROR_TX;
 	}
 
-	return LCC_ERROR_TX;
+	return LCC_OK;
 }
 
 static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
@@ -154,17 +117,26 @@ static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
 	}
 }
 
-static void init_rx_queue(){
+static void init_can_txrx(){
 	const struct can_filter filter = {
 			.flags = CAN_FILTER_IDE,
 			.id = 0x0,
 			.mask = 0
 	};
-	struct can_frame frame;
 	int filter_id;
 
 	filter_id = can_add_rx_filter_msgq(can_dev, &rx_msgq, &filter);
 	printf("Filter ID: %d\n", filter_id);
+
+	tx_thread_tid = k_thread_create(&tx_thread_data,
+				tx_stack,
+				K_THREAD_STACK_SIZEOF(tx_stack),
+				can_frame_send_thread, NULL, NULL, NULL,
+				0, 0,
+				K_NO_WAIT);
+	if (!tx_thread_tid) {
+		printf("ERROR spawning tx thread\n");
+	}
 }
 
 /**
@@ -482,12 +454,74 @@ static void gold_button_pressed(const struct device *dev, struct gpio_callback *
 	printk("Gold Button pressed at %" PRIu32 "\n", k_cycle_get_32());
 }
 
+static void main_loop(){
+	struct k_poll_event poll_data[2];
+	struct k_timer alias_timer;
+	struct can_frame rx_frame;
+	struct lcc_context* ctx = lcc_tortoise_state.lcc_context;
+
+	k_poll_event_init(&poll_data[0],
+			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
+			K_POLL_MODE_NOTIFY_ONLY,
+			&rx_msgq);
+	k_poll_event_init(&poll_data[1],
+			K_POLL_TYPE_SEM_AVAILABLE,
+			K_POLL_MODE_NOTIFY_ONLY,
+			&dcc_decode_ctx.notification_sem);
+
+	k_timer_init(&alias_timer, NULL, NULL);
+	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
+
+	while (1) {
+		int rc = k_poll(poll_data, ARRAY_SIZE(poll_data), K_MSEC(250));
+		if(poll_data[0].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
+			// Receive a CAN frame if there is any
+			while(k_msgq_get(&rx_msgq, &rx_frame, K_NO_WAIT) == 0){
+				memset(&lcc_rx, 0, sizeof(lcc_rx));
+				lcc_rx.can_id = rx_frame.id;
+				lcc_rx.can_len = rx_frame.dlc;
+				memcpy(lcc_rx.data, rx_frame.data, 8);
+
+				printf("Incoming frame: %x\n", lcc_rx.can_id);
+				lcc_context_incoming_frame(ctx, &lcc_rx);
+			}
+			poll_data[0].state = K_POLL_STATE_NOT_READY;
+		}else if(poll_data[1].state == K_POLL_STATE_SEM_AVAILABLE){
+			dcc_decoder_pump_packet(dcc_decode_ctx.dcc_decoder);
+			k_sem_take(&dcc_decode_ctx.notification_sem, K_FOREVER);
+			poll_data[1].state = K_POLL_STATE_NOT_READY;
+		}
+
+		if(k_timer_status_get(&alias_timer) > 0 &&
+		    lcc_context_current_state(ctx) == LCC_STATE_INHIBITED){
+		    int stat = lcc_context_claim_alias(ctx);
+		    if(stat == LCC_ERROR_ALIAS_TX_NOT_EMPTY){
+		    	k_timer_start(&alias_timer, K_MSEC(500), K_NO_WAIT);
+		    	continue;
+		    }
+		    if(stat != LCC_OK){
+		      // If we were unable to claim our alias, we need to generate a new one and start over
+		      lcc_context_generate_alias(ctx);
+		    }else{
+		      printf("Claimed alias %X\n", lcc_context_alias(ctx) );
+
+				// initialize our low power handling.
+				// We do this right after we have an alias, since logically nothing will have changed
+				// until we are actually able to process commands from some other device on the network.
+				powerhandle_init();
+				powerhandle_check_if_save_required();
+		    }
+		}
+	}
+}
+
+static int tx_queue_size_cb(struct lcc_context*){
+	return k_msgq_num_used_get(&tx_msgq);
+}
+
 int main(void)
 {
 	int ret;
-	bool led_state = true;
-	k_tid_t rx_tid, get_state_tid;
-	k_tid_t dcc_thread;
 
 	// Sleep for a bit before we start to allow power to become stable.
 	// This is probably not needed, but it shouldn't hurt.
@@ -528,21 +562,7 @@ int main(void)
 		return 0;
 	}
 
-	k_work_init(&state_change_work, state_change_work_handler);
-
-	get_state_tid = k_thread_create(&poll_state_thread_data,
-					poll_state_stack,
-					K_THREAD_STACK_SIZEOF(poll_state_stack),
-					poll_state_thread, NULL, NULL, NULL,
-					STATE_POLL_THREAD_PRIORITY, 0,
-					K_NO_WAIT);
-	if (!get_state_tid) {
-		printf("ERROR spawning poll_state_thread\n");
-	}
-
-	can_set_state_change_callback(can_dev, state_change_callback, &state_change_work);
-
-	init_rx_queue();
+	init_can_txrx();
 
 	lcc_tortoise_state.lcc_context = lcc_context_new();
 	if(lcc_tortoise_state.lcc_context == NULL){
@@ -564,7 +584,7 @@ int main(void)
 			"P3",
 			"0.3");
 
-	lcc_context_set_write_function( ctx, lcc_write_cb, NULL );
+	lcc_context_set_write_function( ctx, lcc_write_cb, tx_queue_size_cb );
 	struct lcc_event_context* evt_ctx = lcc_event_new(ctx);
 
 	lcc_event_set_incoming_event_function(evt_ctx, incoming_event);
@@ -593,9 +613,6 @@ int main(void)
 		printf("error: can't gen alias: %d\n", stat);
 		return 0;
 	}
-	uint64_t claim_alias_time = k_uptime_get() + 250;
-	uint64_t blinky_time = claim_alias_time;
-	struct can_frame rx_frame;
 
 	dcc_packet_parser_set_short_address(dcc_decode_ctx.packet_parser , 55);
 	dcc_packet_parser_set_speed_dir_cb(dcc_decode_ctx.packet_parser, speed_dir_cb);
@@ -606,49 +623,7 @@ int main(void)
 	gpio_init_callback(&blue_button_cb_data, blue_button_pressed, BIT(lcc_tortoise_state.blue_button.pin));
 	gpio_add_callback(lcc_tortoise_state.blue_button.port, &blue_button_cb_data);
 
-	while (1) {
-		int64_t uptime = k_uptime_get();
-		if(uptime >= blinky_time){
-			ret = gpio_pin_toggle_dt(&lcc_tortoise_state.green_led);
-			if (ret < 0) {
-				return 0;
-			}
+	main_loop();
 
-			led_state = !led_state;
-			blinky_time = uptime + 250;
-		}
-
-		if(uptime >= claim_alias_time &&
-		    lcc_context_current_state(ctx) == LCC_STATE_INHIBITED){
-		    int stat = lcc_context_claim_alias(ctx);
-		    if(stat != LCC_OK){
-		      // If we were unable to claim our alias, we need to generate a new one and start over
-		      lcc_context_generate_alias(ctx);
-		      claim_alias_time = uptime + 220;
-		    }else{
-		      printf("Claimed alias %X\n", lcc_context_alias(ctx) );
-
-				// initialize our low power handling.
-				// We do this right after we have an alias, since logically nothing will have changed
-				// until we are actually able to process commands from some other device on the network.
-				powerhandle_init();
-				powerhandle_check_if_save_required();
-		    }
-		  }
-
-		// Receive a CAN frame if there is any
-		if(k_msgq_get(&rx_msgq, &rx_frame, K_NO_WAIT) == 0){
-			memset(&lcc_rx, 0, sizeof(lcc_rx));
-			lcc_rx.can_id = rx_frame.id;
-			lcc_rx.can_len = rx_frame.dlc;
-			memcpy(lcc_rx.data, rx_frame.data, 8);
-
-			printf("Incoming frame: %x\n", lcc_rx.can_id);
-			lcc_context_incoming_frame(ctx, &lcc_rx);
-		}
-
-//		k_sleep(K_MSEC(100));
-		dcc_decoder_pump_packet(dcc_decode_ctx.dcc_decoder);
-	}
 	return 0;
 }
