@@ -265,6 +265,11 @@ zephyr_udc0: &usb {
 			label = "lcc-partition";
 			reg = <0x00049000 DT_SIZE_K(2)>;
 		};
+
+		global_partition: partition@49800 {
+			label = "global-partition";
+			reg = <0x00049800 DT_SIZE_K(2)>;
+		};
 	};
 };
 

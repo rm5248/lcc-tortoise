@@ -29,17 +29,30 @@
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
 
-/* 1000 msec = 1 sec */
-#define SLEEP_TIME_MS   1000
+/*
+ * Address Space / storage information
+ * 253 = basic config space.  This is stored in RAM during run-time.
+ *   If it changes, it is written to the config_partition location
+ * 251 = node name/description.  This is stored in the global_partition
+ *
+ * LCC ID is stored in the lcc_partition.  This partition is effectively readonly,
+ * it should never be overwritten as it is possible that writing to it might occur
+ * at a bad time causing the LCC ID to be lost.
+ *
+ * The base event ID(when the system is reset) is stored in the global_partition.
+ * This is for the LCC specification that when a node is reset to factory defaults,
+ * the eventIDs need to not repeat.
+ */
 
-/* 251 = node name/description */
-#define ADDRESS_SPACE_251_OFFSET 0
-/* 253 = basic config space */
-#define ADDRESS_SPACE_253_OFFSET 128
+struct global_config_data {
+	char node_name[64];
+	char node_description[64];
+	uint64_t base_event_id;
+};
 
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
-static struct can_frame zephyr_can_frame_tx;
 static struct lcc_can_frame lcc_rx;
+static struct global_config_data global_config;
 
 static struct gpio_callback blue_button_cb_data;
 static struct gpio_callback gold_button_cb_data;
@@ -98,6 +111,7 @@ static void can_frame_send_thread(void *unused1, void *unused2, void *unused3)
 }
 
 static int lcc_write_cb(struct lcc_context*, struct lcc_can_frame* lcc_frame){
+	static struct can_frame zephyr_can_frame_tx;
 	memset(&zephyr_can_frame_tx, 0, sizeof(zephyr_can_frame_tx));
 	zephyr_can_frame_tx.id = lcc_frame->can_id;
 	zephyr_can_frame_tx.dlc = lcc_frame->can_len;
@@ -145,7 +159,6 @@ static void init_can_txrx(){
  * @return 0 if settings were loaded, 1 if they were not, 2 if settings are blank
  */
 static int load_tortoise_settings(){
-	uint32_t offset = ADDRESS_SPACE_253_OFFSET;
 	int ret = 0;
 	uint8_t tortoise_positions[8 * 4];
 
@@ -162,7 +175,7 @@ static int load_tortoise_settings(){
 		return 1;
 	}
 
-	if(flash_area_read(storage_area, offset, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config)) < 0){
+	if(flash_area_read(storage_area, 0, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config)) < 0){
 		return 1;
 	}
 
@@ -226,25 +239,17 @@ void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_
 }
 
 void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, uint8_t read_count){
-	 if(address_space == 251){
-	    // This space is what we use for node name/description
-	    uint8_t buffer[64];
-//	    int rc = eeprom_read(lcc_tortoise_state.fram, ADDRESS_SPACE_251_OFFSET + starting_address, &buffer, read_count);
-	    int rc = -1;
-	    if(rc < 0){
-	    	lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
-	    	return;
-	    }
+	if(address_space == 251){
+		// This space is what we use for node name/description
+		uint8_t* buffer = global_config.node_name + starting_address;
 
-	    // For any blank data, we will read 0xFF
-	    // In this example, we know that we have strings, so replace all 0xFF with 0x00
-	    for(int x = 0; x < sizeof(buffer); x++){
-	      if(buffer[x] == 0xFF){
-	        buffer[x] = 0x00;
-	      }
-	    }
+		if(starting_address + read_count > 128){
+			// trying to read too much memory
+			lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
+			return;
+		}
 
-	    lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, buffer, read_count);
+		lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, buffer, read_count);
 	  }else if(address_space == 253){
 		// Basic config space
 		if(starting_address + read_count > (sizeof(lcc_tortoise_state.tortoise_config))){
@@ -260,7 +265,6 @@ void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint
 }
 
 int save_configs_to_flash(){
-	uint32_t offset = ADDRESS_SPACE_253_OFFSET;
 	int ret = 0;
 
 	const struct flash_area* storage_area = NULL;
@@ -275,7 +279,7 @@ int save_configs_to_flash(){
 		goto out;
 	}
 
-	if(flash_area_write(storage_area, offset, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config)) < 0){
+	if(flash_area_write(storage_area, 0, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config)) < 0){
 		ret = 1;
 	}
 
@@ -289,11 +293,45 @@ out:
 	return ret;
 }
 
+static int save_global_config(){
+	const struct flash_area* storage_area = NULL;
+	int id = FIXED_PARTITION_ID(global_partition);
+	int ret = 0;
+
+	if(flash_area_open(id, &storage_area) < 0){
+		return 1;
+	}
+
+	ret = flash_area_erase(storage_area, 0, sizeof(global_config));
+	if(ret){
+		goto out;
+	}
+
+	if(flash_area_write(storage_area, 0, &global_config, sizeof(global_config)) < 0){
+		ret = 1;
+	}
+
+out:
+	flash_area_close(storage_area);
+	if(ret){
+		printf("Unable to save global config to flash\n");
+	}
+
+	return ret;
+}
+
 void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, void* data, int data_len){
 	  if(address_space == 251){
-//	    eeprom_write(lcc_tortoise_state.fram, ADDRESS_SPACE_251_OFFSET + starting_address, data, data_len);
+		  if((starting_address + data_len) > 128){
+				lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
+				return;
+		  }
 
-	    lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
+		  uint8_t* global_config_raw = &global_config;
+		  memcpy(global_config_raw + starting_address, data, data_len);
+		  save_global_config();
+
+		  lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
 	  }else if(address_space == 253){
 		  if((starting_address + data_len) > sizeof(lcc_tortoise_state.tortoise_config)){
 			    lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
@@ -330,13 +368,19 @@ static void reboot(struct lcc_memory_context* ctx){
 
 static void factory_reset(struct lcc_memory_context* ctx){
 	memset(&lcc_tortoise_state.tortoise_config, 0, sizeof(lcc_tortoise_state.tortoise_config));
+	uint64_t new_base_eventid = global_config.base_event_id + 16;
+	memset(&global_config, 0, sizeof(global_config));
+	global_config.base_event_id = new_base_eventid;
 
 	for(int x = 0; x < 8; x++){
 		lcc_tortoise_state.tortoise_config[x].BE_accessory_number = __builtin_bswap16(x + 1);
 		lcc_tortoise_state.tortoise_config[x].startup_control = STARTUP_NORMAL;
+		lcc_tortoise_state.tortoise_config[x].BE_event_id_closed = __builtin_bswap64(new_base_eventid++);
+		lcc_tortoise_state.tortoise_config[x].BE_event_id_thrown = __builtin_bswap64(new_base_eventid++);
 	}
 
 	save_configs_to_flash();
+	save_global_config();
 }
 
 static enum lcc_consumer_state query_consumer_state(struct lcc_context* ctx, uint64_t event_id){
@@ -444,10 +488,36 @@ static uint64_t load_lcc_id(){
 		}
 
 		flash_area_write(lcc_storage_area, 0, &ret, sizeof(ret));
+
+		global_config.base_event_id = ret << 16;
+		// Do a 'factory reset' to make sure everything is initialized
+		factory_reset(NULL);
 	}
 
 out:
 	flash_area_close(lcc_storage_area);
+	return ret;
+}
+
+static void load_global_config(){
+	const struct flash_area* storage_area = NULL;
+	int id = FIXED_PARTITION_ID(global_partition);
+	int ret = 0;
+
+	if(flash_area_open(id, &storage_area) < 0){
+		return 1;
+	}
+
+	if(flash_area_read(storage_area, 0, &global_config, sizeof(global_config)) < 0){
+		ret = 1;
+	}
+
+out:
+	flash_area_close(storage_area);
+	if(ret){
+		printf("Unable to load global config\n");
+	}
+
 	return ret;
 }
 
@@ -544,7 +614,7 @@ static void main_loop(){
 }
 
 static int tx_queue_size_cb(struct lcc_context*){
-	return k_msgq_num_used_get(&tx_msgq);
+	return k_msgq_num_free_get(&tx_msgq);
 }
 
 int main(void)
@@ -603,6 +673,7 @@ int main(void)
 	dcc_decoder_set_packet_parser(dcc_decode_ctx.dcc_decoder, dcc_decode_ctx.packet_parser);
 
 	uint64_t lcc_id = load_lcc_id();
+	load_global_config();
 	struct lcc_context* ctx = lcc_tortoise_state.lcc_context;
 	lcc_context_set_unique_identifer( ctx,
 			lcc_id );
