@@ -20,6 +20,7 @@
 static uint32_t readings[1000];
 static uint32_t pos = 0;
 static uint32_t num_sr = 0;
+static uint32_t num_bad_bits = 0;
 
 struct dcc_decoder_stm32 dcc_decode_ctx;
 
@@ -77,14 +78,13 @@ ISR_DIRECT_DECLARE(tim2_irq_fn)
 {
 	if (LL_TIM_IsActiveFlag_CC1(TIM2))
 	{
-		uint32_t value = LL_TIM_IC_GetCaptureCH1(TIM2); // read value and clear the IRQ by reading CCR1
+		const uint32_t value = LL_TIM_IC_GetCaptureCH1(TIM2); // read value and clear the IRQ by reading CCR1
 		// Timer should keep on running here.
 		// We need to rebase the time on the counter such that 0 is the time that the value changed.
 		// Since our IRQ doesn't happen immediately, calculate the new difference and set the timer
 		// to that value.
 		uint32_t new_value = LL_TIM_GetCounter(TIM2) - value;
 		LL_TIM_SetCounter(TIM2, new_value);
-		dcc_decoder_polarity_changed(dcc_decode_ctx.dcc_decoder, value);
 		uint32_t sr = TIM2->SR;
 		int overcap = sr & (0x01 << 9);
 		if(overcap){
@@ -92,9 +92,8 @@ ISR_DIRECT_DECLARE(tim2_irq_fn)
 			sr &= ~(0x01 << 9);
 			TIM2->SR = sr;
 		}
-//		debug_isr_halfbit(value);
 
-		k_sem_give(&dcc_decode_ctx.notification_sem);
+		k_msgq_put(&dcc_decode_ctx.readings, &value, K_NO_WAIT);
 	}
 
 	return 0;
@@ -120,7 +119,8 @@ static int timer2_init(){
 	// 3: set filter duration
 	// (nothing to do, reset value at 0)
 	// 4: Set polarity of transitions.  We want both for DCC
-	TIM2->CCER = 0xb;
+//	TIM2->CCER = 0xb; // both polarity
+	TIM2->CCER = 0x1; // rising only
 	// 5: set input prescaler.  Leave at default values
 	// 6: enable capture from counter into capture register
 	// 7: enable the interrupt
@@ -131,12 +131,13 @@ static int timer2_init(){
 }
 
 int dcc_decoder_init(struct dcc_decoder_stm32* decoder){
-	k_sem_init(&decoder->notification_sem, 0, 1);
+	k_msgq_init(&decoder->readings, decoder->readings_data, sizeof(uint32_t), 128);
 
 	timer2_init();
 
 	// Configure the pin input for timer 2
 	LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_15, LL_GPIO_MODE_ALTERNATE);
+	LL_GPIO_SetPinPull(GPIOA, LL_GPIO_PIN_15, LL_GPIO_PULL_DOWN);
 	LL_GPIO_SetAFPin_8_15(GPIOA, LL_GPIO_PIN_15, LL_GPIO_AF_2);
 
 	// Custom IRQ handler for timer 2
@@ -156,7 +157,7 @@ int dcc_decoder_init(struct dcc_decoder_stm32* decoder){
 		return -1;
 	}
 
-	decoder->dcc_decoder = dcc_decoder_new(DCC_DECODER_IRQ_RISING_OR_FALLING);
+	decoder->dcc_decoder = dcc_decoder_new(DCC_DECODER_IRQ_BOTH);
 	if(decoder->dcc_decoder == NULL){
 		// This uses only static data to initialize, so this should never happen.
 		printf("error: unable to initialize! %d\n", __LINE__);

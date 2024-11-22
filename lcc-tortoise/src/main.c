@@ -361,35 +361,44 @@ static enum lcc_consumer_state query_consumer_state(struct lcc_context* ctx, uin
 	return LCC_CONSUMER_UNKNOWN;
 }
 
-static void speed_dir_cb(struct dcc_decoder* decoder, enum dcc_decoder_direction dir, uint8_t speed){
-//	printf("dir: %d speed: %d\n", dir, speed);
+static void speed_dir_cb(struct dcc_packet_parser* decoder, enum dcc_decoder_direction dir, uint8_t speed){
+	printf("dir: %d speed: %d\n", dir, speed);
 }
 
 static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_bytes, int len){
 	static int count = 0;
 	static int idle_packet_count = 0;
 
-//	count++;
-//	if(count % 50 == 0){
-//		gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
-//	}
-//
-//	if(len == 3 &&
-//			packet_bytes[0] == 0xFF &&
-//			packet_bytes[1] == 0x00 &&
-//			packet_bytes[2] == 0xFF){
-//		// Idle packet
-//		idle_packet_count++;
-//		if(idle_packet_count %50 == 0){
-//			printf("idle: %d\n", idle_packet_count);
-//		}
-//	}else{
-//		printf("Packet [%d]: ", len);
-//		for(int x = 0; x < len; x++){
-//			printf("0x%02X ", packet_bytes[x]);
-//		}
-//		printf("\n");
-//	}
+	count++;
+	if(count % 50 == 0){
+		gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
+	}
+
+	if(len == 3 &&
+			packet_bytes[0] == 0xFF &&
+			packet_bytes[1] == 0x00 &&
+			packet_bytes[2] == 0xFF){
+		// Idle packet
+		printf("^\n");
+		idle_packet_count++;
+		if(idle_packet_count % 50 == 0){
+			printf("idle: %d\n", idle_packet_count);
+		}
+	}else{
+		printf("Packet [%d]: ", len);
+		for(int x = 0; x < len; x++){
+			printf("0x%02X ", packet_bytes[x]);
+		}
+		printf("\n");
+
+		if(packet_bytes[0] >= 1 && packet_bytes[0] <= 127){
+//			printf("multi function 7 bit addr\n");
+		}else if(packet_bytes[0] >= 128 && packet_bytes[0] <= 191){
+			printf("basic accessory\n");
+		}else if(packet_bytes[0] >= 192 && packet_bytes[0] <= 231){
+//			printf("multi function 14 bit addr\n");
+		}
+	}
 }
 
 static uint64_t load_lcc_id(){
@@ -454,6 +463,9 @@ static void gold_button_pressed(const struct device *dev, struct gpio_callback *
 	printk("Gold Button pressed at %" PRIu32 "\n", k_cycle_get_32());
 }
 
+static uint32_t readings[1000];
+static uint32_t pos = 0;
+
 static void main_loop(){
 	struct k_poll_event poll_data[2];
 	struct k_timer alias_timer;
@@ -465,9 +477,9 @@ static void main_loop(){
 			K_POLL_MODE_NOTIFY_ONLY,
 			&rx_msgq);
 	k_poll_event_init(&poll_data[1],
-			K_POLL_TYPE_SEM_AVAILABLE,
+			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
 			K_POLL_MODE_NOTIFY_ONLY,
-			&dcc_decode_ctx.notification_sem);
+			&dcc_decode_ctx.readings);
 
 	k_timer_init(&alias_timer, NULL, NULL);
 	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
@@ -486,9 +498,25 @@ static void main_loop(){
 				lcc_context_incoming_frame(ctx, &lcc_rx);
 			}
 			poll_data[0].state = K_POLL_STATE_NOT_READY;
-		}else if(poll_data[1].state == K_POLL_STATE_SEM_AVAILABLE){
-			dcc_decoder_pump_packet(dcc_decode_ctx.dcc_decoder);
-			k_sem_take(&dcc_decode_ctx.notification_sem, K_FOREVER);
+		}else if(poll_data[1].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
+			uint32_t timediff;
+			while(k_msgq_get(&dcc_decode_ctx.readings, &timediff, K_NO_WAIT) == 0){
+				readings[pos] = timediff;
+				pos++;
+				if(pos > ARRAY_SIZE(readings)){
+					pos = 0;
+				}
+				if(timediff < 104 ) printf("%u\n", timediff);
+				if(dcc_decoder_rising_or_falling(dcc_decode_ctx.dcc_decoder, timediff) == 1){
+					printf("$");
+					for(int x = 0; x < pos; x++){
+						printf("%u,", readings[x]);
+					}
+					printf("\n");
+					pos=0;
+				}
+				dcc_decoder_pump_packet(dcc_decode_ctx.dcc_decoder);
+			}
 			poll_data[1].state = K_POLL_STATE_NOT_READY;
 		}
 
