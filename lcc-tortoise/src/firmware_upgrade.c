@@ -8,6 +8,9 @@
 
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/sys/reboot.h>
+#include <zephyr/kernel.h>
+// zephyr/west does not find the bootutil header??
+//#include "bootutil/bootutil_public.h"
 #include <stdio.h>
 
 #include "firmware_upgrade.h"
@@ -45,6 +48,9 @@ static void firmware_upgrade_incoming_data(struct lcc_firmware_upgrade_context* 
 
 static void firmware_upgrade_finished(struct lcc_firmware_upgrade_context* ctx){
 	printf("firmware upgrade finished\n");
+	boot_set_pending(1);
+	// Wait for the final message to flush before we reboot
+	k_sleep(K_MSEC(50));
 	sys_reboot(SYS_REBOOT_COLD);
 }
 
