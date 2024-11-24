@@ -4,8 +4,8 @@
 	<identification>
 		<manufacturer>Snowball Creek</manufacturer>
 		<model>Tortoise LCC-8</model>
-		<hardwareVersion>0.1</hardwareVersion>
-		<softwareVersion>0.1</softwareVersion>
+		<hardwareVersion>P3</hardwareVersion>
+		<softwareVersion>0.3.0</softwareVersion>
 	</identification>
 	<acdi/>
 	<segment space='251'>
