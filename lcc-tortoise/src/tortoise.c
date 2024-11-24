@@ -59,7 +59,24 @@ int tortoise_init_startup_position(struct tortoise* tort){
 	return 0;
 }
 
+static int tortoise_handle_custom_event(struct tortoise* tort, uint64_t event_id){
+	uint64_t throw_event_id = __builtin_bswap64(tort->config->BE_event_id_thrown);
+	uint64_t close_event_id = __builtin_bswap64(tort->config->BE_event_id_closed);
+
+	if(event_id == throw_event_id){
+		tortoise_set_position(tort, POSITION_REVERSE);
+	}else if(event_id == close_event_id){
+		tortoise_set_position(tort, POSITION_NORMAL);
+	}
+
+	return 0;
+}
+
 int tortoise_incoming_event(struct tortoise* tort, uint64_t event_id){
+	if(tort->config->control_type == CONTROL_LCC_CUSTOM_EVENT_ID){
+		return tortoise_handle_custom_event(tort, event_id);
+	}
+
 	if( !lcc_event_id_is_accessory_address( event_id) ){
 		return 0;
 	}
@@ -129,6 +146,9 @@ uint64_t* tortoise_events_consumed(struct tortoise* tort){
 
 		addr.active = 1;
 		lcc_accessory_decoder_to_event_id_2040(&addr, &events[1]);
+	}else if(tort->config->control_type == CONTROL_LCC_CUSTOM_EVENT_ID){
+		events[0] = __builtin_bswap64(tort->config->BE_event_id_closed);
+		events[1] = __builtin_bswap64(tort->config->BE_event_id_thrown);
 	}
 
 	return events;

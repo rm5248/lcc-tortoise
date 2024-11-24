@@ -34,6 +34,7 @@ enum ControlMethods{
 	CONTROL_LCC_ONLY,
 	CONTROL_DCC_ONLY,
 	CONTROL_LCC_DCC,
+	CONTROL_LCC_CUSTOM_EVENT_ID,
 };
 
 struct tortoise_config{
