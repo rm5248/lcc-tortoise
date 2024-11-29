@@ -96,6 +96,21 @@ int tortoise_incoming_event(struct tortoise* tort, uint64_t event_id){
 	return 0;
 }
 
+int tortoise_incoming_accy_command(struct tortoise* tort, uint16_t accy_number, enum tortoise_position pos){
+	if(tort->config->control_type == CONTROL_LCC_ONLY ||
+			tort->config->control_type == CONTROL_LCC_CUSTOM_EVENT_ID){
+		return 0;
+	}
+
+	uint16_t accessory_number = __builtin_bswap16(tort->config->BE_accessory_number);
+	if(accessory_number == accy_number){
+		// This tortoise should change state
+		tortoise_set_position(tort, pos);
+	}
+
+	return 0;
+}
+
 int tortoise_set_position(struct tortoise* tort, enum tortoise_position position){
 	tort->current_position = position;
 	gpio_pin_set_dt(&tort->gpios[0], 0);

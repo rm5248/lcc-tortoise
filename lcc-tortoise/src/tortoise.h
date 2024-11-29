@@ -65,6 +65,8 @@ int tortoise_init_startup_position(struct tortoise* tort);
 
 int tortoise_incoming_event(struct tortoise* tort, uint64_t event_id);
 
+int tortoise_incoming_accy_command(struct tortoise* tort, uint16_t accy_number, enum tortoise_position pos);
+
 /**
  * Set the position that the tortoise should go to
  */

@@ -405,8 +405,12 @@ static enum lcc_consumer_state query_consumer_state(struct lcc_context* ctx, uin
 	return LCC_CONSUMER_UNKNOWN;
 }
 
-static void speed_dir_cb(struct dcc_packet_parser* decoder, enum dcc_decoder_direction dir, uint8_t speed){
-	printf("dir: %d speed: %d\n", dir, speed);
+static void accy_cb(struct dcc_packet_parser* parser, uint16_t accy_number, enum dcc_accessory_direction accy_dir){
+	for(int x = 0; x < 8; x++){
+		tortoise_incoming_accy_command(&lcc_tortoise_state.tortoises[x],
+				accy_number,
+				accy_dir == ACCESSORY_NORMAL ? POSITION_NORMAL : POSITION_REVERSE);
+	}
 }
 
 static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_bytes, int len){
@@ -414,9 +418,6 @@ static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_byte
 	static int idle_packet_count = 0;
 
 	count++;
-//	if(count % 50 == 0){
-//		gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
-//	}
 
 	if(len == 3 &&
 			packet_bytes[0] == 0xFF &&
@@ -424,34 +425,9 @@ static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_byte
 			packet_bytes[2] == 0xFF){
 		// Idle packet
 		idle_packet_count++;
-		if(idle_packet_count % 50 == 0){
-			printf("idle: %d\n", idle_packet_count);
-		}
-	}else{
-//		printf("Packet [%d]: ", len);
-//		for(int x = 0; x < len; x++){
-//			printf("0x%02X ", packet_bytes[x]);
-//		}
-//		printf("\n");
-
-		if(packet_bytes[0] >= 1 && packet_bytes[0] <= 127){
-//			printf("multi function 7 bit addr\n");
-		}else if(packet_bytes[0] >= 128 && packet_bytes[0] <= 191){
-			printf("basic accessory: ");
-			for(int x = 0; x < len; x++){
-				printf("0x%02X ", packet_bytes[x]);
-			}
-			printf("\n");
-			int addr = packet_bytes[0] & 0x3F;
-			int upper_bits = (packet_bytes[1] & 0x70) >> 4;
-			upper_bits = ~upper_bits;
-			upper_bits = upper_bits & 0x7;
-			addr = addr | (upper_bits << 6);
-			printf("addr: %d\n", addr);
-		}else if(packet_bytes[0] >= 192 && packet_bytes[0] <= 231){
-//			printf("multi function 14 bit addr\n");
-		}
 	}
+
+	// TODO do we periodically blink an LED here?
 }
 
 static uint64_t load_lcc_id(){
@@ -707,8 +683,7 @@ int main(void)
 		return 0;
 	}
 
-	dcc_packet_parser_set_short_address(dcc_decode_ctx.packet_parser , 55);
-	dcc_packet_parser_set_speed_dir_cb(dcc_decode_ctx.packet_parser, speed_dir_cb);
+	dcc_packet_parser_set_accessory_cb(dcc_decode_ctx.packet_parser, accy_cb);
 
 	// Init our callbacks
 	gpio_init_callback(&gold_button_cb_data, gold_button_pressed, BIT(lcc_tortoise_state.gold_button.pin));
