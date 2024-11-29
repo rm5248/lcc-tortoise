@@ -414,31 +414,40 @@ static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_byte
 	static int idle_packet_count = 0;
 
 	count++;
-	if(count % 50 == 0){
-		gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
-	}
+//	if(count % 50 == 0){
+//		gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
+//	}
 
 	if(len == 3 &&
 			packet_bytes[0] == 0xFF &&
 			packet_bytes[1] == 0x00 &&
 			packet_bytes[2] == 0xFF){
 		// Idle packet
-		printf("^\n");
 		idle_packet_count++;
 		if(idle_packet_count % 50 == 0){
 			printf("idle: %d\n", idle_packet_count);
 		}
 	}else{
-		printf("Packet [%d]: ", len);
-		for(int x = 0; x < len; x++){
-			printf("0x%02X ", packet_bytes[x]);
-		}
-		printf("\n");
+//		printf("Packet [%d]: ", len);
+//		for(int x = 0; x < len; x++){
+//			printf("0x%02X ", packet_bytes[x]);
+//		}
+//		printf("\n");
 
 		if(packet_bytes[0] >= 1 && packet_bytes[0] <= 127){
 //			printf("multi function 7 bit addr\n");
 		}else if(packet_bytes[0] >= 128 && packet_bytes[0] <= 191){
-			printf("basic accessory\n");
+			printf("basic accessory: ");
+			for(int x = 0; x < len; x++){
+				printf("0x%02X ", packet_bytes[x]);
+			}
+			printf("\n");
+			int addr = packet_bytes[0] & 0x3F;
+			int upper_bits = (packet_bytes[1] & 0x70) >> 4;
+			upper_bits = ~upper_bits;
+			upper_bits = upper_bits & 0x7;
+			addr = addr | (upper_bits << 6);
+			printf("addr: %d\n", addr);
 		}else if(packet_bytes[0] >= 192 && packet_bytes[0] <= 231){
 //			printf("multi function 14 bit addr\n");
 		}
@@ -533,9 +542,6 @@ static void gold_button_pressed(const struct device *dev, struct gpio_callback *
 	printk("Gold Button pressed at %" PRIu32 "\n", k_cycle_get_32());
 }
 
-static uint32_t readings[1000];
-static uint32_t pos = 0;
-
 static void main_loop(){
 	struct k_poll_event poll_data[2];
 	struct k_timer alias_timer;
@@ -571,21 +577,9 @@ static void main_loop(){
 		}else if(poll_data[1].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
 			uint32_t timediff;
 			while(k_msgq_get(&dcc_decode_ctx.readings, &timediff, K_NO_WAIT) == 0){
-				readings[pos] = timediff;
-				pos++;
-				if(pos > ARRAY_SIZE(readings)){
-					pos = 0;
+				if(dcc_decoder_polarity_changed(dcc_decode_ctx.dcc_decoder, timediff) == 1){
+					dcc_decoder_pump_packet(dcc_decode_ctx.dcc_decoder);
 				}
-				if(timediff < 104 ) printf("%u\n", timediff);
-				if(dcc_decoder_rising_or_falling(dcc_decode_ctx.dcc_decoder, timediff) == 1){
-					printf("$");
-					for(int x = 0; x < pos; x++){
-						printf("%u,", readings[x]);
-					}
-					printf("\n");
-					pos=0;
-				}
-				dcc_decoder_pump_packet(dcc_decode_ctx.dcc_decoder);
 			}
 			poll_data[1].state = K_POLL_STATE_NOT_READY;
 		}

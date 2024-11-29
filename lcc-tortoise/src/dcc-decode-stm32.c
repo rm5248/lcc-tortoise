@@ -76,6 +76,8 @@ static void debug_isr_fullbit(uint32_t cycle_time_usec){
 
 ISR_DIRECT_DECLARE(tim2_irq_fn)
 {
+	ISR_DIRECT_HEADER();
+
 	if (LL_TIM_IsActiveFlag_CC1(TIM2))
 	{
 		const uint32_t value = LL_TIM_IC_GetCaptureCH1(TIM2); // read value and clear the IRQ by reading CCR1
@@ -96,7 +98,8 @@ ISR_DIRECT_DECLARE(tim2_irq_fn)
 		k_msgq_put(&dcc_decode_ctx.readings, &value, K_NO_WAIT);
 	}
 
-	return 0;
+	ISR_DIRECT_FOOTER(1);
+	return 1;
 }
 
 static int timer2_init(){
@@ -115,12 +118,12 @@ static int timer2_init(){
 	// Step 1: Set TI1SEL bits to 0
 	TIM2->TISEL = 0;
 	// 2: select active input: TIM2_CCR1 must be linked to T1 input
-	TIM2->CCMR1 = 1;
-	// 3: set filter duration
-	// (nothing to do, reset value at 0)
+	TIM2->CCMR1 = 1 | (0x2 << 4); // seems okay??
+//	TIM2->CCMR1 = 1 | (0x3 << 4);
+	// 3: set filter duration in CCMR1
 	// 4: Set polarity of transitions.  We want both for DCC
-//	TIM2->CCER = 0xb; // both polarity
-	TIM2->CCER = 0x1; // rising only
+	TIM2->CCER = 0xb; // both polarity
+//	TIM2->CCER = 0x1; // rising only
 	// 5: set input prescaler.  Leave at default values
 	// 6: enable capture from counter into capture register
 	// 7: enable the interrupt
@@ -131,7 +134,10 @@ static int timer2_init(){
 }
 
 int dcc_decoder_init(struct dcc_decoder_stm32* decoder){
-	k_msgq_init(&decoder->readings, decoder->readings_data, sizeof(uint32_t), 128);
+	k_msgq_init(&decoder->readings,
+			decoder->readings_data,
+			sizeof(uint32_t),
+			ARRAY_SIZE(decoder->readings_data));
 
 	timer2_init();
 
