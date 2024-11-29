@@ -163,7 +163,7 @@ int dcc_decoder_init(struct dcc_decoder_stm32* decoder){
 		return -1;
 	}
 
-	decoder->dcc_decoder = dcc_decoder_new(DCC_DECODER_IRQ_BOTH);
+	decoder->dcc_decoder = dcc_decoder_new(DCC_DECODER_IRQ_BOTH, DCC_DECODER_FLAG_EXPAND_ONE_BIT_DURATION);
 	if(decoder->dcc_decoder == NULL){
 		// This uses only static data to initialize, so this should never happen.
 		printf("error: unable to initialize! %d\n", __LINE__);
