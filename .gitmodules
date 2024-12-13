@@ -1,3 +1,3 @@
-[submodule "lcc-tortoise/TrainUtils"]
-	path = lcc-smtc8/TrainUtils
-	url = git@github.com:rm5248/TrainUtils.git
+[submodule "TrainUtils"]
+	path = TrainUtils
+	url = https://github.com/rm5248/TrainUtils.git

@@ -12,13 +12,14 @@ project(LCC-Tortoise)
 # https://github.com/zephyrproject-rtos/zephyr/issues/8439
 # So we do the highly annoying thing here of re-creating part of the liblcc cmake file
 # in order to bring in all of the sources that we need
-include(TrainUtils/LCC/lcc-version)
+set(TRAINUTILS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../TrainUtils")
+include(${TRAINUTILS_DIR}/LCC/lcc-version)
 
 file(GLOB lcc-sources
-    TrainUtils/LCC/*.c
-    TrainUtils/LCC/*.h
-    TrainUtils/DCC/*.h
-    TrainUtils/DCC/*.c
+    ${TRAINUTILS_DIR}/LCC/*.c
+    ${TRAINUTILS_DIR}/LCC/*.h
+    ${TRAINUTILS_DIR}/DCC/*.h
+    ${TRAINUTILS_DIR}/DCC/*.c
 )
 
 target_sources(app PRIVATE 
@@ -31,9 +32,9 @@ target_sources(app PRIVATE
 	${lcc-sources}
 )
 target_include_directories(app PRIVATE
-	${CMAKE_CURRENT_SOURCE_DIR}/TrainUtils/LCC
+	${TRAINUTILS_DIR}/LCC
 	${CMAKE_CURRENT_BINARY_DIR}/TrainUtils/LCC
-	${CMAKE_CURRENT_SOURCE_DIR}/TrainUtils/DCC
+	${TRAINUTILS_DIR}/DCC
 )
 
 
@@ -51,4 +52,4 @@ target_compile_definitions(app PRIVATE
 set(LIBLCC_DEBUG 0)
 set(LIBLCC_ENABLE_STATIC_CONTEXT 1)
 set(LIBLCC_EVENT_LIST_STATIC_SIZE 20)
-configure_file( TrainUtils/LCC/lcc-config.h.cmake TrainUtils/LCC/lcc-config.h )
+configure_file( ${TRAINUTILS_DIR}/LCC/lcc-config.h.cmake TrainUtils/LCC/lcc-config.h )
