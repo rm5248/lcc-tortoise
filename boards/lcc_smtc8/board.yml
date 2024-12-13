@@ -1,5 +1,5 @@
 board:
-  name: lcc_tortoise
+  name: lcc_smtc8
   vendor: snowball_creek
   socs:
     - name: stm32g0b1xx

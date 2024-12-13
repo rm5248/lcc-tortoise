@@ -17,8 +17,8 @@
  */
 
 / {
-	model = "Snowball Creek LCC Tortoise";
-	compatible = "st,stm32g0b1ke-tortoise";
+	model = "Snowball Creek LCC SMTC-8";
+	compatible = "st,stm32g0b1ke-smtc8";
 
 	chosen {
 		zephyr,console = &usart2;

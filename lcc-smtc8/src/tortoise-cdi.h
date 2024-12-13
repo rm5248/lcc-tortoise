@@ -13,7 +13,7 @@ const char cdi[] = {
 <cdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/schema/cdi/1/1/cdi.xsd'> \
 <identification> \
 <manufacturer>Snowball Creek</manufacturer> \
-<model>Tortoise LCC-8</model> \
+<model>SMTC-8</model> \
 <hardwareVersion>0.1</hardwareVersion> \
 <softwareVersion>0.1</softwareVersion> \
 </identification> \

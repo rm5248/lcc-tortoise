@@ -34,7 +34,7 @@ fi
 			}
 		} /* stage venv*/
 
-		stage("Build Switch Decoder"){
+		stage("Build SMTC8"){
 			steps{
 				sh '''#!/bin/bash
 source venv/bin/activate
@@ -48,7 +48,7 @@ fi
 
 cd lcc-tortoise
 west update
-west build -b lcc_tortoise --sysbuild lcc-tortoise
+west build -b lcc_smtc8 --sysbuild lcc-smtc8
 '''
 			}
 		} /* stage build */
@@ -61,11 +61,11 @@ west build -b lcc_tortoise --sysbuild lcc-tortoise
 mkdir -p artifacts
 rm artifacts/* || true
 
-cp lcc-tortoise/build/lcc-tortoise/zephyr/zephyr.signed.bin artifacts/lcc-tortoise-8.bin
-cp lcc-tortoise/build/mcuboot/zephyr/zephyr.bin artifacts/lcc-tortoise-8-bootloader.bin
+cp lcc-tortoise/build/lcc-smtc8/zephyr/lcc-smtc8.signed.bin artifacts/lcc-smtc8.bin
+cp lcc-tortoise/build/mcuboot/zephyr/zephyr.bin artifacts/lcc-smtc8-bootloader.bin
 '''
 
-				archiveArtifacts artifacts:'artifacts/lcc-tortoise-8.bin,artifacts/lcc-tortoise-8-bootloader.bin'
+				archiveArtifacts artifacts:'artifacts/lcc-smtc8.bin,artifacts/lcc-smtc8-bootloader.bin'
 			}
 		} /* stage archive */
 

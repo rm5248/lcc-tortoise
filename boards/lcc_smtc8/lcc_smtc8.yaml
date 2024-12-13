@@ -1,5 +1,5 @@
-identifier: lcc_tortoise
-name: Snowball Creek LCC Tortoise
+identifier: lcc_smtc8
+name: Snowball Creek LCC Slow Motion Tortoise Control-8
 type: mcu
 arch: arm
 toolchain:
