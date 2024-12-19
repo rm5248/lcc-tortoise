@@ -77,6 +77,8 @@ static void debug_isr_fullbit(uint32_t cycle_time_usec){
 ISR_DIRECT_DECLARE(tim2_irq_fn)
 {
 	ISR_DIRECT_HEADER();
+	// Return 1 if a reschedule should be done, 0 if not
+	int ret = 0;
 
 	if (LL_TIM_IsActiveFlag_CC1(TIM2))
 	{
@@ -96,10 +98,16 @@ ISR_DIRECT_DECLARE(tim2_irq_fn)
 		}
 
 		k_msgq_put(&dcc_decode_ctx.readings, &value, K_NO_WAIT);
+
+		// We don't need to reschedule on every bit change, but we do need to do
+		// it on a somewhat regular schedule.
+		if(k_msgq_num_used_get(&dcc_decode_ctx.readings) >= 16){
+			ret = 1;
+		}
 	}
 
-	ISR_DIRECT_FOOTER(1);
-	return 1;
+	ISR_DIRECT_FOOTER(ret);
+	return ret;
 }
 
 static int timer2_init(){

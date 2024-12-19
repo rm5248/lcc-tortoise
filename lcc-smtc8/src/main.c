@@ -20,6 +20,7 @@
 #include "tortoise-cdi.h"
 #include "power-handler.h"
 #include "firmware_upgrade.h"
+#include "switch-tracker.h"
 
 #include "lcc.h"
 #include "lcc-common.h"
@@ -411,6 +412,8 @@ static void accy_cb(struct dcc_packet_parser* parser, uint16_t accy_number, enum
 				accy_number,
 				accy_dir == ACCESSORY_NORMAL ? POSITION_NORMAL : POSITION_REVERSE);
 	}
+
+	switch_tracker_incoming_switch_command(accy_number, accy_dir);
 }
 
 static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_bytes, int len){
@@ -428,6 +431,9 @@ static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_byte
 	}
 
 	// TODO do we periodically blink an LED here?
+	if(count % 200 == 0){
+		gpio_pin_toggle_dt(&lcc_tortoise_state.green_led);
+	}
 }
 
 static uint64_t load_lcc_id(){
@@ -684,6 +690,8 @@ int main(void)
 	}
 
 	dcc_packet_parser_set_accessory_cb(dcc_decode_ctx.packet_parser, accy_cb);
+
+	switch_tracker_init();
 
 	// Init our callbacks
 	gpio_init_callback(&gold_button_cb_data, gold_button_pressed, BIT(lcc_tortoise_state.gold_button.pin));

@@ -29,6 +29,7 @@ target_sources(app PRIVATE
 	src/dcc-decode-stm32.c
 	src/power-handler.c
 	src/firmware_upgrade.c
+	src/switch-tracker.c
 	${lcc-sources}
 )
 target_include_directories(app PRIVATE
@@ -51,5 +52,5 @@ target_compile_definitions(app PRIVATE
 )
 set(LIBLCC_DEBUG 0)
 set(LIBLCC_ENABLE_STATIC_CONTEXT 1)
-set(LIBLCC_EVENT_LIST_STATIC_SIZE 20)
+set(LIBLCC_EVENT_LIST_STATIC_SIZE 4224)
 configure_file( ${TRAINUTILS_DIR}/LCC/lcc-config.h.cmake TrainUtils/LCC/lcc-config.h )
