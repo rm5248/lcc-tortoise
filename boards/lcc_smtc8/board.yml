@@ -8,3 +8,4 @@ board:
     default: "3"
     revisions:
     - name: "3"
+    - name: "4"

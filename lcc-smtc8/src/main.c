@@ -433,6 +433,8 @@ static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_byte
 	// TODO do we periodically blink an LED here?
 	if(count % 200 == 0){
 		gpio_pin_toggle_dt(&lcc_tortoise_state.green_led);
+		gpio_pin_toggle_dt(&lcc_tortoise_state.gold_led);
+		gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
 	}
 }
 
