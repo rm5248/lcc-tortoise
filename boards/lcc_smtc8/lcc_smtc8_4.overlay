@@ -1,3 +1,11 @@
 &gold_led {
 	gpios = <&gpioa 7 GPIO_ACTIVE_HIGH>;
 };
+
+&blue_led {
+	gpios = <&gpioa 6 GPIO_ACTIVE_HIGH>;
+};
+
+&spi1 {
+	cs-gpios = <&gpiob 6 GPIO_ACTIVE_LOW>;
+};
