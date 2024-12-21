@@ -40,20 +40,20 @@ static enum lcc_producer_state switch_producer_state(struct lcc_context* ctx, ui
 		break;
 	case SWITCH_NORMAL:
 		if(addr.active){
-			ret = LCC_PRODUCER_INVALID;
-		}else{
 			ret = LCC_PRODUCER_VALID;
+		}else{
+			ret = LCC_PRODUCER_INVALID;
 		}
+		break;
 	case SWITCH_REVERSED:
 		if(!addr.active){
-			ret = LCC_PRODUCER_INVALID;
-		}else{
 			ret = LCC_PRODUCER_VALID;
+		}else{
+			ret = LCC_PRODUCER_INVALID;
 		}
 	}
 
 out:
-	printf("addr %d[%d] ret %d\n", addr.dcc_accessory_address, addr.active, ret);
 	return ret;
 }
 
