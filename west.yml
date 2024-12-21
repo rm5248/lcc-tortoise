@@ -27,3 +27,8 @@ manifest:
       path: bootloader/mcuboot
       groups:
         - bootloader
+    - name: mbedtls
+      revision: 4952e1328529ee549d412b498ea71c54f30aa3b1
+      path: modules/crypto/mbedtls
+      groups:
+        - crypto
