@@ -717,7 +717,7 @@ int main(void)
 	lcc_context_set_simple_node_information(ctx,
 			"Snowball Creek",
 			"Tortoise-8",
-			"P3",
+			"P" CONFIG_BOARD_REVISION,
 			"0.3");
 
 	lcc_context_set_write_function( ctx, lcc_write_cb, tx_queue_size_cb );
