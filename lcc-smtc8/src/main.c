@@ -155,8 +155,6 @@ static void can_frame_send_thread(void *unused1, void *unused2, void *unused3)
 
 	while(1){
 		if(k_msgq_get(&tx_msgq, &tx_frame, K_FOREVER) == 0){
-			printf("Send frame 0x%08X\n", tx_frame.id);
-
 			int err = can_get_state(can_dev, &state, &err_cnt);
 			if(err != 0){
 				printf("Can't get CAN state\n");
@@ -654,7 +652,6 @@ static void main_loop(){
 				lcc_rx.can_len = rx_frame.dlc;
 				memcpy(lcc_rx.data, rx_frame.data, 8);
 
-				printf("Incoming frame: %x\n", lcc_rx.can_id);
 				lcc_context_incoming_frame(ctx, &lcc_rx);
 			}
 			poll_data[0].state = K_POLL_STATE_NOT_READY;
