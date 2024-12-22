@@ -72,6 +72,63 @@ k_tid_t tx_thread_tid;
 CAN_MSGQ_DEFINE(rx_msgq, 55);
 CAN_MSGQ_DEFINE(tx_msgq, 12);
 
+static void blink_led_green(){
+	while(1){
+		uint64_t diff = k_cycle_get_32() - lcc_tortoise_state.last_rx_dcc_msg;
+
+		if(k_cyc_to_ms_ceil32(diff) < 500){
+			// Receiving DCC signal, double blink
+			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
+			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
+			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
+			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
+			k_sleep(K_MSEC(700));
+		}else{
+			// No DCC signal, single blink
+			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
+			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
+			k_sleep(K_MSEC(900));
+		}
+	}
+}
+
+static void blink_led_blue(){
+	while(1){
+		uint64_t diff = k_cycle_get_32() - lcc_tortoise_state.last_rx_can_msg;
+
+		if(k_cyc_to_ms_ceil32(diff) < 10){
+			gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 1);
+			k_sleep(K_MSEC(50));
+			gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 0);
+		}
+		k_sleep(K_MSEC(10));
+	}
+}
+
+static void blink_led_gold(){
+	while(1){
+		uint64_t diff = k_cycle_get_32() - lcc_tortoise_state.last_tx_can_msg;
+
+		if(k_cyc_to_ms_ceil32(diff) < 10){
+			gpio_pin_set_dt(&lcc_tortoise_state.gold_led, 1);
+			k_sleep(K_MSEC(50));
+			gpio_pin_set_dt(&lcc_tortoise_state.gold_led, 0);
+		}
+		k_sleep(K_MSEC(10));
+	}
+}
+
+K_THREAD_DEFINE(green_blink, 512, blink_led_green, NULL, NULL, NULL,
+		7, 0, 0);
+K_THREAD_DEFINE(blue_blink, 512, blink_led_blue, NULL, NULL, NULL,
+		7, 0, 0);
+K_THREAD_DEFINE(gold_blink, 512, blink_led_gold, NULL, NULL, NULL,
+		7, 0, 0);
+
 char *state_to_str(enum can_state state)
 {
 	switch (state) {
@@ -115,6 +172,8 @@ static void can_frame_send_thread(void *unused1, void *unused2, void *unused3)
 			if(stat < 0){
 				printf("Unable to send: %d\n", stat);
 			}
+
+			lcc_tortoise_state.last_tx_can_msg = k_cycle_get_32();
 		}
 	}
 }
@@ -476,25 +535,7 @@ static void accy_cb(struct dcc_packet_parser* parser, uint16_t accy_number, enum
 }
 
 static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_bytes, int len){
-	static int count = 0;
-	static int idle_packet_count = 0;
-
-	count++;
-
-	if(len == 3 &&
-			packet_bytes[0] == 0xFF &&
-			packet_bytes[1] == 0x00 &&
-			packet_bytes[2] == 0xFF){
-		// Idle packet
-		idle_packet_count++;
-	}
-
-	// TODO do we periodically blink an LED here?
-	if(count % 200 == 0){
-		gpio_pin_toggle_dt(&lcc_tortoise_state.green_led);
-		gpio_pin_toggle_dt(&lcc_tortoise_state.gold_led);
-		gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
-	}
+	lcc_tortoise_state.last_rx_dcc_msg = k_cycle_get_32();
 }
 
 static uint64_t load_lcc_id(){
@@ -617,6 +658,7 @@ static void main_loop(){
 				lcc_context_incoming_frame(ctx, &lcc_rx);
 			}
 			poll_data[0].state = K_POLL_STATE_NOT_READY;
+			lcc_tortoise_state.last_rx_can_msg = k_cycle_get_32();
 		}else if(poll_data[1].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
 			uint32_t timediff;
 			while(k_msgq_get(&dcc_decode_ctx.readings, &timediff, K_NO_WAIT) == 0){

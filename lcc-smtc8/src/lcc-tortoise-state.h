@@ -33,6 +33,11 @@ struct lcc_tortoise_state{
 
 	struct lcc_context* lcc_context;
 	const struct device* gpio_expander;
+
+	// State information for LED blinking
+	uint32_t last_rx_dcc_msg;
+	uint32_t last_rx_can_msg;
+	uint32_t last_tx_can_msg;
 };
 
 struct global_config{
