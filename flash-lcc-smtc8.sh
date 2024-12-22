@@ -7,6 +7,6 @@ STM32_CLI=~/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programme
 # Flash the main code
 "$STM32_CLI" -c port=swd -w build/lcc-smtc8/zephyr/lcc-smtc8.signed.bin 0x08008000
 # Flash the bootloader
-"$STM32_CLI" -c port=swd -w build/mcuboot/zephyr/zephyr.bin 0x08000000
+"$STM32_CLI" -c port=swd -w build/mcuboot/zephyr/lcc-smtc8-bootloader.bin 0x08000000
 # Start it up
 #"$STM32_CLI" -c port=swd --start 0x08000000
