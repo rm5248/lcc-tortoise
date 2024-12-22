@@ -13,6 +13,7 @@
 #include <zephyr/device.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/console/console.h>
+#include <zephyr/dfu/mcuboot.h>
 #include "dcc-decode-stm32.h"
 
 #include "lcc-tortoise-state.h"
@@ -35,6 +36,8 @@
  * 253 = basic config space.  This is stored in RAM during run-time.
  *   If it changes, it is written to the config_partition location
  * 251 = node name/description.  This is stored in the global_partition
+ * 250 = DCC translation configuration.  Stored in the global_partition, but handled separately over LCC
+ * 249 = firmware version header information
  *
  * LCC ID is stored in the lcc_partition.  This partition is effectively readonly,
  * it should never be overwritten as it is possible that writing to it might occur
@@ -45,10 +48,15 @@
  * the eventIDs need to not repeat.
  */
 
+struct dcc_address_translation_config{
+	int do_dcc_translation;
+};
+
 struct global_config_data {
 	char node_name[64];
 	char node_description[64];
 	uint64_t base_event_id;
+	struct dcc_address_translation_config dcc_translation;
 };
 
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
@@ -233,6 +241,12 @@ void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_
 		// 32 bytes * 8 tortoises
 		uint32_t upper_address = sizeof(struct tortoise_config) * 8;
 		lcc_memory_respond_information_query(ctx, alias, 1, address_space, upper_address, 0, 0);
+	}else if(address_space == 250){
+		// Global config
+		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 1, 0, 0);
+	}else if(address_space = 249){
+		// Firmware versions
+		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 16, 0, 0);
 	}else{
 		// This memory space does not exist: return an error
 		lcc_memory_respond_information_query(ctx, alias, 0, address_space, 0, 0, 0);
@@ -262,6 +276,36 @@ void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint
 	    uint8_t* config_as_u8 = (uint8_t*)lcc_tortoise_state.tortoise_config;
 
 	    lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, config_as_u8 + starting_address, read_count);
+	  }else if(address_space == 250){
+		  // Global config
+		  uint8_t* buffer = &global_config.dcc_translation + starting_address;
+
+		  if(starting_address + read_count > 1){
+				// trying to read too much memory
+				lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
+				return;
+			}
+
+			lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, buffer, read_count);
+	  }else if(address_space == 249){
+		  struct mcuboot_img_header versions[2];
+		  struct mcuboot_img_sem_ver semver[2] = {0};
+
+		  if(boot_read_bank_header(FIXED_PARTITION_ID(slot0_partition), &versions[0], sizeof(struct mcuboot_img_header)) == 0){
+			  semver[0] = versions[0].h.v1.sem_ver;
+		  }
+		  if(boot_read_bank_header(FIXED_PARTITION_ID(slot1_partition), &versions[1], sizeof(struct mcuboot_img_header)) == 0){
+			  semver[1] = versions[1].h.v1.sem_ver;
+		  }
+
+		  if(starting_address + read_count > sizeof(semver)){
+				// trying to read too much memory
+				lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
+				return;
+			}
+
+		  uint8_t* buffer = ((uint8_t*)&semver) + starting_address;
+			lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, buffer, read_count);
 	  }
 }
 
@@ -357,6 +401,19 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 				lcc_event_add_event_consumed(evt_ctx, events_consumed[1]);
 			}
 	    }
+	  }else if(address_space == 250){
+		  // Global config
+		  uint8_t* buffer_u8 = ((uint8_t*)&global_config.dcc_translation) + starting_address;
+
+		  if(starting_address + data_len > 1){
+				// trying to write too much memory
+			    lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
+				return;
+		  }
+		  memcpy(buffer_u8 + starting_address, data, data_len);
+
+		  lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
+		  save_global_config();
 	  }else{
 	    lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
 	    return;
@@ -413,7 +470,9 @@ static void accy_cb(struct dcc_packet_parser* parser, uint16_t accy_number, enum
 				accy_dir == ACCESSORY_NORMAL ? POSITION_NORMAL : POSITION_REVERSE);
 	}
 
-	switch_tracker_incoming_switch_command(accy_number, accy_dir);
+	if(global_config.dcc_translation.do_dcc_translation){
+		switch_tracker_incoming_switch_command(accy_number, accy_dir);
+	}
 }
 
 static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_bytes, int len){
@@ -693,7 +752,9 @@ int main(void)
 
 	dcc_packet_parser_set_accessory_cb(dcc_decode_ctx.packet_parser, accy_cb);
 
-	switch_tracker_init();
+	if(global_config.dcc_translation.do_dcc_translation){
+		switch_tracker_init();
+	}
 
 	// Init our callbacks
 	gpio_init_callback(&gold_button_cb_data, gold_button_pressed, BIT(lcc_tortoise_state.gold_button.pin));

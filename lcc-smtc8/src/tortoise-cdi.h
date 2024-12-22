@@ -14,8 +14,8 @@ const char cdi[] = {
 <identification> \
 <manufacturer>Snowball Creek</manufacturer> \
 <model>SMTC-8</model> \
-<hardwareVersion>0.1</hardwareVersion> \
-<softwareVersion>0.1</softwareVersion> \
+<hardwareVersion>P3</hardwareVersion> \
+<softwareVersion>0.3.0</softwareVersion> \
 </identification> \
 <acdi/> \
 <segment space='251'> \
@@ -128,6 +128,56 @@ const char cdi[] = {
 </int> \
 <!-- align to 32 bytes --> \
 <group offset='9'/> \
+</group> \
+</segment> \
+<segment space='250'> \
+<name>Global Config</name> \
+<int size='1'> \
+<name>DCC to LCC switch message</name> \
+<description>Should this node translate DCC switch messages to well-known LCC messages?(requires reboot to take effect)</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Disabled</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Enabled</value> \
+</relation> \
+</map> \
+</int> \
+</segment> \
+<segment space='249'> \
+<name>Firmware Versions</name> \
+<group> \
+<name>Primary version</name> \
+<int size='1'> \
+<name>Major</name> \
+</int> \
+<int size='1'> \
+<name>Minor</name> \
+</int> \
+<int size='2'> \
+<name>Revision</name> \
+</int> \
+<int size='4'> \
+<name>Build Number</name> \
+</int> \
+</group> \
+<group> \
+<name>Secondary version</name> \
+<int size='1'> \
+<name>Major</name> \
+</int> \
+<int size='1'> \
+<name>Minor</name> \
+</int> \
+<int size='2'> \
+<name>Revision</name> \
+</int> \
+<int size='4'> \
+<name>Build Number</name> \
+</int> \
 </group> \
 </segment> \
 </cdi>"
