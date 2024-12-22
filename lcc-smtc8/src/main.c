@@ -100,7 +100,7 @@ static void blink_led_blue(){
 	while(1){
 		uint64_t diff = k_cycle_get_32() - lcc_tortoise_state.last_rx_can_msg;
 
-		if(k_cyc_to_ms_ceil32(diff) < 10){
+		if(k_cyc_to_ms_ceil32(diff) < 25){
 			gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 1);
 			k_sleep(K_MSEC(50));
 			gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 0);
@@ -113,7 +113,7 @@ static void blink_led_gold(){
 	while(1){
 		uint64_t diff = k_cycle_get_32() - lcc_tortoise_state.last_tx_can_msg;
 
-		if(k_cyc_to_ms_ceil32(diff) < 10){
+		if(k_cyc_to_ms_ceil32(diff) < 25){
 			gpio_pin_set_dt(&lcc_tortoise_state.gold_led, 1);
 			k_sleep(K_MSEC(50));
 			gpio_pin_set_dt(&lcc_tortoise_state.gold_led, 0);
@@ -755,7 +755,7 @@ int main(void)
 			lcc_id );
 	lcc_context_set_simple_node_information(ctx,
 			"Snowball Creek",
-			"Tortoise-8",
+			"SMTC-8",
 			"P" CONFIG_BOARD_REVISION,
 			"0.3");
 
