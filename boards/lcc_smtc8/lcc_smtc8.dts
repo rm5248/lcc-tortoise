@@ -228,47 +228,48 @@ zephyr_udc0: &usb {
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+		/* We have 512k of flash, so let's not worry too much about space */
 		boot_partition: partition@0 {
 			label = "bootloader";
-			reg = <0x00000000 DT_SIZE_K(32)>;
+			reg = <0x00000000 DT_SIZE_K(48)>;
 			read-only;
 		};
-		slot0_partition: partition@8000 {
+		slot0_partition: partition@C000 {
 			label = "image-0";
-			reg = <0x00008000 DT_SIZE_K(128)>;
+			reg = <0x0000C000 DT_SIZE_K(192)>;
 		};
-		slot1_partition: partition@28000 {
+		slot1_partition: partition@3C000 {
 			label = "image-1";
-			reg = <0x00028000 DT_SIZE_K(128)>;
+			reg = <0x0003C000 DT_SIZE_K(192)>;
 		};
 
 		/*
 		 * 2k reserved for app storage partition.
 		 * This is used for configuration data.
 		 */
-		config_partition: partition@48000 {
+		config_partition: partition@7E000 {
 			label = "config";
-			reg = <0x00048000 DT_SIZE_K(2)>;
+			reg = <0x0007E000 DT_SIZE_K(2)>;
 		};
 		/*
 		 * 2k for data that needs to be saved on shutdown.
 		 * This is used for the current tortoise position.
 		 */
-		location_partition: partition@48800 {
+		location_partition: partition@7E800 {
 			label = "location-partition";
-			reg = <0x00048800 DT_SIZE_K(2)>;
+			reg = <0x0007E800 DT_SIZE_K(2)>;
 		};
 		/*
 		 * 2k for LCC ID data
 		 */
-		lcc_partition: partition@49000 {
+		lcc_partition: partition@7F000 {
 			label = "lcc-partition";
-			reg = <0x00049000 DT_SIZE_K(2)>;
+			reg = <0x0007F000 DT_SIZE_K(2)>;
 		};
 
-		global_partition: partition@49800 {
+		global_partition: partition@7F800 {
 			label = "global-partition";
-			reg = <0x00049800 DT_SIZE_K(2)>;
+			reg = <0x0007F800 DT_SIZE_K(2)>;
 		};
 	};
 };
