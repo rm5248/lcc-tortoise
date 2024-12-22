@@ -15,7 +15,7 @@ manifest:
   projects:
     - name: zephyr
       remote: zephyrproject-rtos
-      revision: a6ed05e76532210b6e53124a897243f15e4f9e9e
+      revision: 8469084dfae85f854555f0607f2c838dad097235
       import:
         # By using name-allowlist we can clone only the modules that are
         # strictly needed by the application.
@@ -23,7 +23,7 @@ manifest:
           - cmsis      # required by the ARM port
           - hal_stm32  # required by the nucleo_f302r8 board (STM32 based)
     - name: mcuboot
-      revision: fb2cf0ec3da3687b93f28e556ab682bdd4b85223
+      revision: 9c99326b9756dbcc35b524636d99ed5f3e6cb29b
       path: bootloader/mcuboot
       groups:
         - bootloader
