@@ -18,6 +18,13 @@ struct lcc_context;
 struct dcc_decoder;
 struct dcc_packet_parser;
 
+enum ButtonControlState{
+	BUTTON_CONTROL_NORMAL = 0,
+	BUTTON_CONTROL_DCC_ADDR_PROG = 1,
+	BUTTON_CONTROL_FACTORY_RESET = 2,
+	BUTTON_CONTROL_MAX = 2,
+};
+
 /**
  * The global state struct for our application
  */
@@ -38,6 +45,15 @@ struct lcc_tortoise_state{
 	uint32_t last_rx_dcc_msg;
 	uint32_t last_rx_can_msg;
 	uint32_t last_tx_can_msg;
+
+	// Internal state programming tracking
+	uint32_t blue_button_press;
+	uint32_t blue_button_press_diff;
+	uint32_t gold_button_press;
+	uint32_t gold_button_press_diff;
+	uint8_t allow_new_command;
+	enum ButtonControlState button_control;
+	uint8_t tort_output_current_idx;
 };
 
 struct global_config{

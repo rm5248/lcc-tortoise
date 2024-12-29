@@ -176,6 +176,18 @@ int tortoise_disable_outputs(struct tortoise* tort){
 	return 0;
 }
 
+int tortoise_enable_outputs(struct tortoise* tort){
+	enum tortoise_position position = tort->current_position;
+
+	if(position == POSITION_NORMAL){
+		gpio_pin_set_dt(&tort->gpios[0], 0);
+		gpio_pin_set_dt(&tort->gpios[1], 1);
+	}else{
+		gpio_pin_set_dt(&tort->gpios[0], 1);
+		gpio_pin_set_dt(&tort->gpios[1], 0);
+	}
+}
+
 //int tortoise_config_to_bigendian(struct tortoise* tort, struct tortoise_config* out){
 //	if(tort == NULL || out == NULL){
 //		return -1;

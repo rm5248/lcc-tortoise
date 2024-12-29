@@ -74,38 +74,58 @@ CAN_MSGQ_DEFINE(tx_msgq, 12);
 
 static void blink_led_green(){
 	while(1){
-		uint64_t diff = k_cycle_get_32() - lcc_tortoise_state.last_rx_dcc_msg;
-
-		if(k_cyc_to_ms_ceil32(diff) < 500){
-			// Receiving DCC signal, double blink
+		if(lcc_tortoise_state.button_control != BUTTON_CONTROL_NORMAL){
+			// LED should be on, wink off once every three seconds
 			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
-			k_sleep(K_MSEC(100));
+			k_sleep(K_MSEC(2900));
 			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
 			k_sleep(K_MSEC(100));
-			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
-			k_sleep(K_MSEC(100));
-			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
-			k_sleep(K_MSEC(700));
 		}else{
-			// No DCC signal, single blink
-			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
-			k_sleep(K_MSEC(100));
-			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
-			k_sleep(K_MSEC(900));
+			uint64_t diff = k_cycle_get_32() - lcc_tortoise_state.last_rx_dcc_msg;
+
+			if(k_cyc_to_ms_ceil32(diff) < 500){
+				// Receiving DCC signal, double blink
+				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
+				k_sleep(K_MSEC(100));
+				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
+				k_sleep(K_MSEC(100));
+				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
+				k_sleep(K_MSEC(100));
+				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
+				k_sleep(K_MSEC(700));
+			}else{
+				// No DCC signal, single blink
+				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
+				k_sleep(K_MSEC(100));
+				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
+				k_sleep(K_MSEC(900));
+			}
 		}
 	}
 }
 
 static void blink_led_blue(){
 	while(1){
-		uint64_t diff = k_cycle_get_32() - lcc_tortoise_state.last_rx_can_msg;
 
-		if(k_cyc_to_ms_ceil32(diff) < 25){
-			gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 1);
-			k_sleep(K_MSEC(50));
-			gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 0);
+		if(lcc_tortoise_state.button_control != BUTTON_CONTROL_NORMAL){
+			// LED should blink with the mode, waiting two seconds between blinks
+			for(int x = 0; x < lcc_tortoise_state.button_control; x++){
+				gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 1);
+				k_sleep(K_MSEC(100));
+				gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 0);
+				k_sleep(K_MSEC(100));
+			}
+			k_sleep(K_SECONDS(2));
+		}else{
+			uint64_t diff = k_cycle_get_32() - lcc_tortoise_state.last_rx_can_msg;
+
+			if(k_cyc_to_ms_ceil32(diff) < 25){
+				gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 1);
+				k_sleep(K_MSEC(50));
+				gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 0);
+			}
+			k_sleep(K_MSEC(10));
 		}
-		k_sleep(K_MSEC(10));
 	}
 }
 
@@ -521,6 +541,21 @@ static enum lcc_consumer_state query_consumer_state(struct lcc_context* ctx, uin
 }
 
 static void accy_cb(struct dcc_packet_parser* parser, uint16_t accy_number, enum dcc_accessory_direction accy_dir){
+	if(lcc_tortoise_state.button_control == BUTTON_CONTROL_DCC_ADDR_PROG){
+		struct tortoise* current_tort = &lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx];
+		struct tortoise_config* config = current_tort->config;
+		int current_accy_number = __builtin_bswap16(config->BE_accessory_number);
+		if(current_accy_number != accy_number){
+			config->BE_accessory_number = __builtin_bswap16(accy_number);
+			config->control_type = CONTROL_DCC_ONLY;
+			tortoise_enable_outputs(current_tort);
+			k_sleep(K_MSEC(250));
+			tortoise_disable_outputs(current_tort);
+			save_configs_to_flash();
+		}
+		return;
+	}
+
 	for(int x = 0; x < 8; x++){
 		tortoise_incoming_accy_command(&lcc_tortoise_state.tortoises[x],
 				accy_number,
@@ -615,13 +650,114 @@ out:
 static void blue_button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
-	printk("Blue Button pressed at %" PRIu32 "\n", k_cycle_get_32());
+	int blue_value = gpio_pin_get_dt(&lcc_tortoise_state.blue_button);
+
+	if(blue_value){
+		lcc_tortoise_state.blue_button_press = k_cycle_get_32();
+	}else{
+		lcc_tortoise_state.blue_button_press_diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - lcc_tortoise_state.blue_button_press);
+		lcc_tortoise_state.blue_button_press = 0;
+		lcc_tortoise_state.allow_new_command = 1;
+	}
 }
 
 static void gold_button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
-	printk("Gold Button pressed at %" PRIu32 "\n", k_cycle_get_32());
+	int gold_value = gpio_pin_get_dt(&lcc_tortoise_state.gold_button);
+
+	if(gold_value){
+		lcc_tortoise_state.gold_button_press = k_cycle_get_32();
+	}else{
+		lcc_tortoise_state.gold_button_press_diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - lcc_tortoise_state.gold_button_press);
+		lcc_tortoise_state.gold_button_press = 0;
+	}
+}
+
+static void handle_button_press(){
+
+	// First check the blue button for being held down, since that will get us into or out of the configuration mode
+	if(lcc_tortoise_state.blue_button_press != 0 && lcc_tortoise_state.allow_new_command){
+		int diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - lcc_tortoise_state.blue_button_press);
+		if(diff > 5000 && (lcc_tortoise_state.button_control == BUTTON_CONTROL_NORMAL)){
+			lcc_tortoise_state.button_control = BUTTON_CONTROL_DCC_ADDR_PROG;
+			lcc_tortoise_state.tort_output_current_idx = 0;
+			lcc_tortoise_state.allow_new_command = 0;
+			tortoise_disable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
+		}else if(diff > 2000 && (lcc_tortoise_state.button_control != BUTTON_CONTROL_NORMAL)){
+			lcc_tortoise_state.button_control = BUTTON_CONTROL_NORMAL;
+			lcc_tortoise_state.allow_new_command = 0;
+			tortoise_enable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
+			k_wakeup(blue_blink);
+			k_wakeup(gold_blink);
+			k_wakeup(green_blink);
+		}
+	}
+
+	if(lcc_tortoise_state.button_control == BUTTON_CONTROL_NORMAL){
+		// Nothing more to do here, not in configuration mode
+		return;
+	}
+
+	if(lcc_tortoise_state.blue_button_press_diff > 50 &&
+			lcc_tortoise_state.blue_button_press_diff < 2000){
+		lcc_tortoise_state.blue_button_press_diff = 0;
+		if(lcc_tortoise_state.button_control == BUTTON_CONTROL_MAX){
+			lcc_tortoise_state.button_control = BUTTON_CONTROL_DCC_ADDR_PROG;
+			lcc_tortoise_state.tort_output_current_idx = 0;
+			tortoise_disable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
+		}else{
+			if(lcc_tortoise_state.button_control == BUTTON_CONTROL_DCC_ADDR_PROG){
+				tortoise_enable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
+			}
+			lcc_tortoise_state.button_control++;
+		}
+		k_wakeup(blue_blink);
+	}
+
+	if(lcc_tortoise_state.gold_button_press_diff != 0){
+		lcc_tortoise_state.gold_button_press_diff = 0;
+		if(lcc_tortoise_state.button_control == BUTTON_CONTROL_DCC_ADDR_PROG){
+			tortoise_enable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
+			lcc_tortoise_state.tort_output_current_idx++;
+			if(lcc_tortoise_state.tort_output_current_idx > 7){
+				lcc_tortoise_state.tort_output_current_idx = 0;
+			}
+			tortoise_disable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
+		}
+	}else if(lcc_tortoise_state.gold_button_press && lcc_tortoise_state.button_control == BUTTON_CONTROL_FACTORY_RESET){
+		int diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - lcc_tortoise_state.gold_button_press);
+		if(diff > 2000){
+			lcc_tortoise_state.blue_button_press = 0;
+			lcc_tortoise_state.gold_button_press = 0;
+			// Flash the blue and gold LEDs to indicate that the factory reset was done
+			// This happens until the user releases the gold button
+			k_thread_suspend(blue_blink);
+			k_thread_suspend(gold_blink);
+
+			factory_reset(NULL);
+			while(1){
+				gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 1);
+				gpio_pin_set_dt(&lcc_tortoise_state.gold_led, 0);
+				k_sleep(K_MSEC(100));
+				gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 0);
+				gpio_pin_set_dt(&lcc_tortoise_state.gold_led, 1);
+				k_sleep(K_MSEC(100));
+				int gold_value = gpio_pin_get_dt(&lcc_tortoise_state.gold_button);
+				if(gold_value == 0){
+					break;
+				}
+			}
+
+			lcc_tortoise_state.button_control = BUTTON_CONTROL_NORMAL;
+			lcc_tortoise_state.allow_new_command = 0;
+			gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 0);
+			gpio_pin_set_dt(&lcc_tortoise_state.gold_led, 0);
+			k_wakeup(green_blink);
+			k_thread_resume(blue_blink);
+			k_thread_resume(gold_blink);
+		}
+	}
 }
 
 static void main_loop(){
@@ -686,6 +822,8 @@ static void main_loop(){
 				powerhandle_check_if_save_required();
 		    }
 		}
+
+		handle_button_press();
 	}
 }
 

@@ -112,6 +112,10 @@ static int init_button(const struct gpio_dt_spec* button){
 }
 
 int lcc_tortoise_state_init(){
+	lcc_tortoise_state.blue_button_press = 0;
+	lcc_tortoise_state.button_control = BUTTON_CONTROL_NORMAL;
+	lcc_tortoise_state.allow_new_command = 1;
+
 	if(init_led(&lcc_tortoise_state.green_led) < 0){
 		return -1;
 	}
@@ -124,9 +128,9 @@ int lcc_tortoise_state_init(){
 	if(init_button(&lcc_tortoise_state.blue_button) < 0){
 		return -1;
 	}
-//	if(init_button(&lcc_tortoise_state.gold_button) < 0){
-//		return -1;
-//	}
+	if(init_button(&lcc_tortoise_state.gold_button) < 0){
+		return -1;
+	}
 
 	lcc_tortoise_state.gpio_expander = DEVICE_DT_GET(DT_NODELABEL(gpio_expander));
 
