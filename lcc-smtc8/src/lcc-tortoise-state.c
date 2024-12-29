@@ -128,9 +128,9 @@ int lcc_tortoise_state_init(){
 	if(init_button(&lcc_tortoise_state.blue_button) < 0){
 		return -1;
 	}
-//	if(init_button(&lcc_tortoise_state.gold_button) < 0){
-//		return -1;
-//	}
+	if(init_button(&lcc_tortoise_state.gold_button) < 0){
+		return -1;
+	}
 
 	lcc_tortoise_state.gpio_expander = DEVICE_DT_GET(DT_NODELABEL(gpio_expander));
 
