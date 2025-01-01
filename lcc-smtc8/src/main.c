@@ -303,6 +303,8 @@ static int load_tortoise_settings(){
 			}else if(count_agree_reverse > count_agree_normal){
 				lcc_tortoise_state.tortoise_config[x].last_known_pos = POSITION_REVERSE;
 				printf("reverse\n");
+			}else{
+				printf("Unknown\n");
 			}
 		}
 
@@ -867,7 +869,7 @@ static void check_eeprom(){
 static void splash(){
 	printf("LCC SMTC-8\n");
 	printf("  Version: " VERSION_STR);
-	printf("  Rev: P" CONFIG_BOARD_REVISION);
+	printf("  Rev: P" CONFIG_BOARD_REVISION "\n");
 
 	struct mcuboot_img_header versions[2];
 	struct mcuboot_img_sem_ver semver[2] = {0};
