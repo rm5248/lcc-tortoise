@@ -31,6 +31,8 @@
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
 
+#define VERSION_STR "0.4"
+
 /*
  * Address Space / storage information
  * 253 = basic config space.  This is stored in RAM during run-time.
@@ -294,10 +296,13 @@ static int load_tortoise_settings(){
 				}
 			}
 
+			printf("Output %d last known pos ", x);
 			if(count_agree_normal > count_agree_reverse){
 				lcc_tortoise_state.tortoise_config[x].last_known_pos = POSITION_NORMAL;
+				printf("normal\n");
 			}else if(count_agree_reverse > count_agree_normal){
 				lcc_tortoise_state.tortoise_config[x].last_known_pos = POSITION_REVERSE;
+				printf("reverse\n");
 			}
 		}
 
@@ -831,6 +836,53 @@ static int tx_queue_size_cb(struct lcc_context*){
 	return k_msgq_num_free_get(&tx_msgq);
 }
 
+#if 0
+static void check_eeprom(){
+	const struct device* eeprom_dev = DEVICE_DT_GET(DT_NODELABEL(eeprom));
+	int ret;
+
+	for(int x = 0; x < 1; x++){
+		uint8_t byte;
+		ret = eeprom_read(eeprom_dev, x, &byte, 1);
+		if(ret != 0){
+			printf("can't read: %d\n", ret);
+			break;
+		}
+		printf("0x%02X ", byte);
+		if(x % 8 == 0){
+			printf("\n");
+		}
+	}
+
+
+	ret = eeprom_write(eeprom_dev, 0, "hi", 2);
+	if(ret < 0){
+		printf("unable to write\n");
+	}else{
+		printf("wrote\n");
+	}
+}
+#endif
+
+static void splash(){
+	printf("LCC SMTC-8\n");
+	printf("  Version: " VERSION_STR);
+	printf("  Rev: P" CONFIG_BOARD_REVISION);
+
+	struct mcuboot_img_header versions[2];
+	struct mcuboot_img_sem_ver semver[2] = {0};
+
+	if(boot_read_bank_header(FIXED_PARTITION_ID(slot0_partition), &versions[0], sizeof(struct mcuboot_img_header)) == 0){
+	  semver[0] = versions[0].h.v1.sem_ver;
+	}
+	if(boot_read_bank_header(FIXED_PARTITION_ID(slot1_partition), &versions[1], sizeof(struct mcuboot_img_header)) == 0){
+	  semver[1] = versions[1].h.v1.sem_ver;
+	}
+
+	printf("  This slot version: %d.%d.%d\n", semver[0].major, semver[0].minor, semver[0].revision);
+	printf("  Secondary slot version: %d.%d.%d\n", semver[1].major, semver[1].minor, semver[1].revision);
+}
+
 int main(void)
 {
 	int ret;
@@ -839,6 +891,8 @@ int main(void)
 	// This is probably not needed, but it shouldn't hurt.
 	// This will also give other devices on the network a chance to come up.
 	k_sleep(K_MSEC(250));
+
+	splash();
 
 	_Static_assert(sizeof(struct tortoise_config) == 32);
 
@@ -895,7 +949,7 @@ int main(void)
 			"Snowball Creek",
 			"SMTC-8",
 			"P" CONFIG_BOARD_REVISION,
-			"0.3");
+			VERSION_STR);
 
 	lcc_context_set_write_function( ctx, lcc_write_cb, tx_queue_size_cb );
 	struct lcc_event_context* evt_ctx = lcc_event_new(ctx);
@@ -938,6 +992,8 @@ int main(void)
 	gpio_add_callback(lcc_tortoise_state.gold_button.port, &gold_button_cb_data);
 	gpio_init_callback(&blue_button_cb_data, blue_button_pressed, BIT(lcc_tortoise_state.blue_button.pin));
 	gpio_add_callback(lcc_tortoise_state.blue_button.port, &blue_button_cb_data);
+
+//	check_eeprom();
 
 	main_loop();
 

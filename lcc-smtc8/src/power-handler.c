@@ -116,7 +116,9 @@ static void adc_irq_fn(void* arg)
 			if(flash_area_write(location_storage_area, 0, data_to_save, sizeof(data_to_save)) < 0){
 				return;
 			}
+			flash_area_close(location_storage_area);
 			save_required = 0;
+			printf("saved\n");
 		}
 	}
 }
