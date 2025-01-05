@@ -17,7 +17,7 @@ const char cdi[] = {
 <hardwareVersion>P" CONFIG_BOARD_REVISION "</hardwareVersion> \
 <softwareVersion>0.4.0</softwareVersion> \
 </identification> \
-<acdi/> \
+<acdi /> \
 <segment space='251'> \
 <name>Node ID</name> \
 <group> \
@@ -37,15 +37,20 @@ const char cdi[] = {
 <repname>Output</repname> \
 <eventid> \
 <name>Reversed EventID</name> \
-<description>Custom Event ID to use to set the switch to reversed.  Do not use if you are using standard EventIDs for switch control</description> \
+<description>Custom Event ID to use to set the switch to reversed. \
+Do not use if you are using standard EventIDs for switch \
+control</description> \
 </eventid> \
 <eventid> \
 <name>Normal EventID</name> \
-<description>Custom Event ID to use to set the switch to normal.  Do not use if you are using standard EventIDs for switch control</description> \
+<description>Custom Event ID to use to set the switch to normal. Do \
+not use if you are using standard EventIDs for switch \
+control</description> \
 </eventid> \
 <int size='2'> \
 <name>DCC Switch number</name> \
-<description>The DCC switch number to react to.  When using standard EventIDs, set this value.</description> \
+<description>The DCC switch number to react to. When using standard \
+EventIDs, set this value.</description> \
 <min>1</min> \
 <max>2048</max> \
 </int> \
@@ -87,54 +92,22 @@ const char cdi[] = {
 <property>3</property> \
 <value>LCC(Custom event IDs)</value> \
 </relation> \
-</map> \
-</int> \
-<!-- invisible last known pos, 1 byte --> \
-<int size='1' offset='1'> \
-<name>Output Type</name> \
-<description>How this output is changed</description> \
-<map> \
 <relation> \
-<property>0</property> \
-<value>Stall Motor(always-on)</value> \
-</relation> \
-<relation> \
-<property>1</property> \
-<value>Pulse</value> \
+<property>4</property> \
+<value>Disable Output</value> \
 </relation> \
 </map> \
 </int> \
-<int size='1'> \
-<name>Pulse Length</name> \
-<description>When output is set to pulse, how long the output is pulsed for</description> \
-<map> \
-<relation> \
-<property>0</property> \
-<value>200ms</value> \
-</relation> \
-<relation> \
-<property>1</property> \
-<value>400ms</value> \
-</relation> \
-<relation> \
-<property>2</property> \
-<value>800ms</value> \
-</relation> \
-<relation> \
-<property>3</property> \
-<value>1600ms</value> \
-</relation> \
-</map> \
-</int> \
-<!-- align to 32 bytes --> \
-<group offset='9'/> \
+<group offset='12' /> \
 </group> \
 </segment> \
 <segment space='250'> \
 <name>Global Config</name> \
 <int size='1'> \
 <name>DCC to LCC switch message</name> \
-<description>Should this node translate DCC switch messages to well-known LCC messages?(requires reboot to take effect)</description> \
+<description>Should this node translate DCC switch messages to \
+well-known LCC messages?(requires reboot to take \
+effect)</description> \
 <map> \
 <relation> \
 <property>0</property> \

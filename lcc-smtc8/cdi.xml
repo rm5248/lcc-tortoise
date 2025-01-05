@@ -78,9 +78,14 @@
 						<property>3</property>
 						<value>LCC(Custom event IDs)</value>
 					</relation>
+					<relation>
+						<property>4</property>
+						<value>Disable Output</value>
+					</relation>
 				</map>
 			</int>
 			<!-- invisible last known pos, 1 byte -->
+<!--
 			<int size='1' offset='1'>
 				<name>Output Type</name>
 				<description>How this output is changed</description>
@@ -117,8 +122,9 @@
 					</relation>
 				</map>
 			</int>
+-->
 			<!-- align to 32 bytes -->
-			<group offset='9'/>
+			<group offset='12'/>
 		</group>
 	</segment>
 

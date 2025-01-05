@@ -478,6 +478,11 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 
 	    lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
 
+	    // Re-init(or de-init) the tortoise outputs
+	    for(int x = 0; x < 8; x++){
+	    	tortoise_check_set_position(&lcc_tortoise_state.tortoises[x]);
+	    }
+
 	    // Re-init the events we consume
 	    {
 	    	struct lcc_event_context* evt_ctx = lcc_context_get_event_context(lcc_tortoise_state.lcc_context);
@@ -962,7 +967,7 @@ int main(void)
 	lcc_context_set_unique_identifer( ctx,
 			lcc_id );
 	lcc_context_set_simple_node_information(ctx,
-			"Snowball Creek",
+			"Snowball Creek Electronics",
 			"SMTC-8",
 			"P" CONFIG_BOARD_REVISION,
 			VERSION_STR);

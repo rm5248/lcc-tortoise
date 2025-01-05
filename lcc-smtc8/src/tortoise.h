@@ -35,6 +35,7 @@ enum ControlMethods{
 	CONTROL_DCC_ONLY,
 	CONTROL_LCC_DCC,
 	CONTROL_LCC_CUSTOM_EVENT_ID,
+	CONTROL_DISABLE,
 };
 
 struct tortoise_config{
@@ -99,6 +100,11 @@ int tortoise_enable_outputs(struct tortoise* tort);
  * matches the standard LCC event ID.
  */
 int tortoise_is_controlled_by_accessory(struct tortoise* tort, int accy_number);
+
+/**
+ * Check the current position of the tortoise, turning it on or disabling as appropriate.
+ */
+int tortoise_check_set_position(struct tortoise* tort);
 
 /**
  * Convert the configuration for this tortoise to big-endian, putting it in 'out'

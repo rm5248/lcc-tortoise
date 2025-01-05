@@ -127,6 +127,10 @@ static int tortoise_set_position_force(struct tortoise* tort, enum tortoise_posi
 	gpio_pin_set_dt(&tort->gpios[0], 0);
 	gpio_pin_set_dt(&tort->gpios[1], 0);
 
+	if(tort->config->control_type == CONTROL_DISABLE){
+		return 0;
+	}
+
 	if(position == POSITION_NORMAL){
 		gpio_pin_set_dt(&tort->gpios[0], 0);
 		gpio_pin_set_dt(&tort->gpios[1], 1);
@@ -208,6 +212,10 @@ int tortoise_is_controlled_by_dcc_accessory(struct tortoise* tort, int accy_numb
 	}
 
 	return 0;
+}
+
+int tortoise_check_set_position(struct tortoise* tort){
+	return tortoise_set_position_force(tort, tort->current_position);
 }
 
 //int tortoise_config_to_bigendian(struct tortoise* tort, struct tortoise_config* out){
