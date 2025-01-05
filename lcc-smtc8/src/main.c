@@ -215,7 +215,10 @@ static int lcc_write_cb(struct lcc_context*, struct lcc_can_frame* lcc_frame){
 
 static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
 	for(int x = 0; x < 8; x++){
-		tortoise_incoming_event(&lcc_tortoise_state.tortoises[x], event_id);
+		int changed = tortoise_incoming_event(&lcc_tortoise_state.tortoises[x], event_id);
+		if(changed){
+			set_tortoise_posistions_dirty();
+		}
 	}
 }
 
@@ -566,9 +569,12 @@ static void accy_cb(struct dcc_packet_parser* parser, uint16_t accy_number, enum
 	}
 
 	for(int x = 0; x < 8; x++){
-		tortoise_incoming_accy_command(&lcc_tortoise_state.tortoises[x],
+		int changed = tortoise_incoming_accy_command(&lcc_tortoise_state.tortoises[x],
 				accy_number,
 				accy_dir == ACCESSORY_NORMAL ? POSITION_NORMAL : POSITION_REVERSE);
+		if(changed){
+			set_tortoise_posistions_dirty();
+		}
 	}
 
 	if(global_config.dcc_translation.do_dcc_translation){
@@ -923,9 +929,9 @@ int main(void)
 		printf("Chip is blank, initializing to default values...\n");
 		factory_reset(NULL);
 	}
-	for(int x = 0; x < 8; x++){
-		tortoise_set_position(&lcc_tortoise_state.tortoises[x], lcc_tortoise_state.tortoises[x].current_position);
-	}
+//	for(int x = 0; x < 8; x++){
+//		tortoise_set_position(&lcc_tortoise_state.tortoises[x], lcc_tortoise_state.tortoises[x].current_position);
+//	}
 
 	if (!device_is_ready(can_dev)) {
 		printf("CAN: Device %s not ready.\n", can_dev->name);

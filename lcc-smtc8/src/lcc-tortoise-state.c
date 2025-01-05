@@ -129,9 +129,9 @@ int lcc_tortoise_state_init(){
 	if(init_button(&lcc_tortoise_state.blue_button) < 0){
 		return -1;
 	}
-	if(init_button(&lcc_tortoise_state.gold_button) < 0){
-		return -1;
-	}
+//	if(init_button(&lcc_tortoise_state.gold_button) < 0){
+//		return -1;
+//	}
 
 	lcc_tortoise_state.gpio_expander = DEVICE_DT_GET(DT_NODELABEL(gpio_expander));
 
@@ -148,6 +148,10 @@ int lcc_tortoise_state_init(){
 
 void save_tortoise_positions(){
 	if(!lcc_tortoise_state.save_tortoise_pos_on_shutdown){
+		return;
+	}
+
+	if(!lcc_tortoise_state.tortoise_pos_dirty){
 		return;
 	}
 
@@ -170,7 +174,30 @@ void save_tortoise_positions(){
 	}
 	flash_area_close(location_storage_area);
 	lcc_tortoise_state.save_tortoise_pos_on_shutdown = 0;
+	lcc_tortoise_state.tortoise_pos_dirty = 0;
 	printf("saved\n");
+}
+
+void set_tortoise_posistions_dirty(){
+	if(lcc_tortoise_state.tortoise_pos_dirty){
+		return;
+	}
+
+	lcc_tortoise_state.tortoise_pos_dirty = 1;
+
+	// Erase the flash just once.
+	const struct flash_area* location_storage_area = NULL;
+	int id = FIXED_PARTITION_ID(location_partition);
+
+	if(flash_area_open(id, &location_storage_area) < 0){
+		return;
+	}
+
+	if(flash_area_erase(location_storage_area, 0, location_storage_area->fa_size) < 0){
+
+	}
+
+	flash_area_close(location_storage_area);
 }
 
 void save_switch_tracker(){

@@ -14,6 +14,7 @@
 #include "lcc-event.h"
 
 static uint64_t events[2];
+static int tortoise_set_position_force(struct tortoise* tort, enum tortoise_position position);
 
 static void tortoise_timer_expired(struct k_timer* timer){
 	struct tortoise* tort = k_timer_user_data_get(timer);
@@ -56,6 +57,8 @@ int tortoise_init_startup_position(struct tortoise* tort){
 		tort->current_position = tort->config->last_known_pos;
 	}
 
+	tortoise_set_position_force(tort, tort->current_position);
+
 	return 0;
 }
 
@@ -64,9 +67,9 @@ static int tortoise_handle_custom_event(struct tortoise* tort, uint64_t event_id
 	uint64_t close_event_id = __builtin_bswap64(tort->config->BE_event_id_closed);
 
 	if(event_id == throw_event_id){
-		tortoise_set_position(tort, POSITION_REVERSE);
+		return tortoise_set_position(tort, POSITION_REVERSE);
 	}else if(event_id == close_event_id){
-		tortoise_set_position(tort, POSITION_NORMAL);
+		return tortoise_set_position(tort, POSITION_NORMAL);
 	}
 
 	return 0;
@@ -90,7 +93,7 @@ int tortoise_incoming_event(struct tortoise* tort, uint64_t event_id){
 	uint16_t accessory_number = __builtin_bswap16(tort->config->BE_accessory_number);
 	if(accessory_number == addr.dcc_accessory_address){
 		// This tortoise should change state
-		tortoise_set_position(tort, addr.active ? POSITION_NORMAL : POSITION_REVERSE);
+		return tortoise_set_position(tort, addr.active ? POSITION_NORMAL : POSITION_REVERSE);
 	}
 
 	return 0;
@@ -105,13 +108,21 @@ int tortoise_incoming_accy_command(struct tortoise* tort, uint16_t accy_number, 
 	uint16_t accessory_number = __builtin_bswap16(tort->config->BE_accessory_number);
 	if(accessory_number == accy_number){
 		// This tortoise should change state
-		tortoise_set_position(tort, pos);
+		return tortoise_set_position(tort, pos);
 	}
 
 	return 0;
 }
 
 int tortoise_set_position(struct tortoise* tort, enum tortoise_position position){
+	if(tort->current_position == position){
+		return 0;
+	}
+
+	return tortoise_set_position_force(tort, position);
+}
+
+static int tortoise_set_position_force(struct tortoise* tort, enum tortoise_position position){
 	tort->current_position = position;
 	gpio_pin_set_dt(&tort->gpios[0], 0);
 	gpio_pin_set_dt(&tort->gpios[1], 0);
@@ -146,7 +157,7 @@ int tortoise_set_position(struct tortoise* tort, enum tortoise_position position
 		k_timer_start(&tort->pulse_timer, K_MSEC(ms), K_NO_WAIT);
 	}
 
-	return 0;
+	return 1;
 }
 
 uint64_t* tortoise_events_consumed(struct tortoise* tort){

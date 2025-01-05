@@ -72,29 +72,12 @@ void powerhandle_init(){
 }
 
 void powerhandle_check_if_save_required(){
-	int old_save_settings = lcc_tortoise_state.save_tortoise_pos_on_shutdown;
 	int new_save_settings = 0;
 
 	for(int x = 0; x < 8; x++){
 		if(lcc_tortoise_state.tortoise_config[x].startup_control == STARTUP_LAST_POSITION){
 			new_save_settings = 1;
 		}
-	}
-
-	if(new_save_settings == 1 && old_save_settings == 0){
-		// We need to save something - let's erase the flash just once.
-		const struct flash_area* location_storage_area = NULL;
-		int id = FIXED_PARTITION_ID(location_partition);
-
-		if(flash_area_open(id, &location_storage_area) < 0){
-			return;
-		}
-
-		if(flash_area_erase(location_storage_area, 0, location_storage_area->fa_size) < 0){
-
-		}
-
-		flash_area_close(location_storage_area);
 	}
 
 	lcc_tortoise_state.save_tortoise_pos_on_shutdown = new_save_settings;

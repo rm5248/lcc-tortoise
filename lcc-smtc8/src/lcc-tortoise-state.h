@@ -57,6 +57,7 @@ struct lcc_tortoise_state{
 	uint8_t tort_output_current_idx;
 
 	uint8_t save_tortoise_pos_on_shutdown;
+	uint8_t tortoise_pos_dirty;
 
 	// Tracker for the current switch positions
 	uint8_t switch_tracker_dirty;
@@ -74,6 +75,8 @@ extern struct global_config config;
 int lcc_tortoise_state_init();
 
 void save_tortoise_positions();
+
+void set_tortoise_positions_dirty();
 
 void save_switch_tracker();
 
