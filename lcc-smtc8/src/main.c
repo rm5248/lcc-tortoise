@@ -79,7 +79,7 @@ static void blink_led_green(){
 		if(lcc_tortoise_state.button_control != BUTTON_CONTROL_NORMAL){
 			// LED should be on, wink off once every three seconds
 			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
-			k_sleep(K_MSEC(2900));
+			k_sleep(K_MSEC(3000));
 			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
 			k_sleep(K_MSEC(100));
 		}else{
@@ -94,13 +94,13 @@ static void blink_led_green(){
 				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
 				k_sleep(K_MSEC(100));
 				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
-				k_sleep(K_MSEC(700));
+				k_sleep(K_MSEC(1500));
 			}else{
 				// No DCC signal, single blink
 				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
 				k_sleep(K_MSEC(100));
 				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
-				k_sleep(K_MSEC(900));
+				k_sleep(K_MSEC(1500));
 			}
 		}
 	}
