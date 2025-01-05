@@ -4,24 +4,14 @@
  *  Created on: Dec 16, 2024
  *      Author: robert
  */
+#include <zephyr/storage/flash_map.h>
+
 #include "switch-tracker.h"
 #include "lcc-tortoise-state.h"
 
 #include "lcc.h"
 #include "lcc-common.h"
 #include "lcc-event.h"
-
-enum switch_position{
-	SWITCH_UNKNOWN,
-	SWITCH_NORMAL,
-	SWITCH_REVERSED,
-};
-
-struct switch_tracker{
-	enum switch_position current_pos;
-};
-
-static struct switch_tracker trackers[2048];
 
 static enum lcc_producer_state switch_producer_state(struct lcc_context* ctx, uint64_t event_id){
 	struct lcc_accessory_address addr = {0};
@@ -35,7 +25,7 @@ static enum lcc_producer_state switch_producer_state(struct lcc_context* ctx, ui
 		goto out;
 	}
 
-	switch(trackers[addr.dcc_accessory_address].current_pos){
+	switch(lcc_tortoise_state.trackers[addr.dcc_accessory_address].current_pos){
 	case SWITCH_UNKNOWN:
 		break;
 	case SWITCH_NORMAL:
@@ -58,7 +48,7 @@ out:
 }
 
 void switch_tracker_init(){
-	memset(trackers, 0, sizeof(trackers));
+	memset(lcc_tortoise_state.trackers, 0, sizeof(lcc_tortoise_state.trackers));
 
 	struct lcc_accessory_address address;
 	uint64_t event_id;
@@ -84,11 +74,43 @@ void switch_tracker_init(){
 	lcc_event_add_event_produced_transaction_end(evt_ctx);
 
 	lcc_event_add_event_produced_query_fn(evt_ctx, switch_producer_state);
+
+	// Load all of the saved posistions from non volatile memory
+	static uint8_t read_buffer[512];
+	const struct flash_area* switch_tracking_partition = NULL;
+	int id = FIXED_PARTITION_ID(switch_tracking_partition);
+
+	if(flash_area_open(id, &switch_tracking_partition) < 0){
+		return;
+	}
+
+	int current_switch = 0;
+	memset(read_buffer, 0, sizeof(read_buffer));
+	flash_area_read(switch_tracking_partition, 0, &read_buffer, sizeof(read_buffer));
+	for(int x = 0; x < 512; x++){
+		for(int shift = 6; shift >= 0; shift -= 2){
+			int val = read_buffer[x] & (0x3 << shift);
+			val = val >> shift;
+
+			if(val == 1){
+				lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_NORMAL;
+				printf("%d is normal\n", current_switch);
+			}else if(val == 2){
+				lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_REVERSED;
+				printf("%d is rev\n", current_switch);
+			}else{
+				lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_UNKNOWN;
+			}
+			current_switch++;
+		}
+	}
+
+	flash_area_close(switch_tracking_partition);
 }
 
 void switch_tracker_incoming_switch_command(uint16_t accy_number, enum dcc_accessory_direction accy_dir){
 	int active = 0;
-	int current = trackers[accy_number].current_pos;
+	int current = lcc_tortoise_state.trackers[accy_number].current_pos;
 
 	if(accy_number > 2048){
 		return;
@@ -96,18 +118,20 @@ void switch_tracker_incoming_switch_command(uint16_t accy_number, enum dcc_acces
 
 	if(accy_dir == ACCESSORY_NORMAL){
 		active = 1;
-		trackers[accy_number].current_pos = SWITCH_NORMAL;
+		lcc_tortoise_state.trackers[accy_number].current_pos = SWITCH_NORMAL;
 	}else if(accy_dir == ACCESSORY_REVERSE){
-		trackers[accy_number].current_pos = SWITCH_REVERSED;
+		lcc_tortoise_state.trackers[accy_number].current_pos = SWITCH_REVERSED;
 	}else{
 		return;
 	}
 
-	if(current == trackers[accy_number].current_pos){
+	if(current == lcc_tortoise_state.trackers[accy_number].current_pos){
 		// No change
 		return;
 	}
 
+	printf("switch %d dir %d\n", accy_number, accy_dir);
+	set_switch_tracker_dirty();
 	struct lcc_accessory_address address;
 	uint64_t event_id;
 	struct lcc_event_context* evt_ctx = lcc_context_get_event_context(lcc_tortoise_state.lcc_context);

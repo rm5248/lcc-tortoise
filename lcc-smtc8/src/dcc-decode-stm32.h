@@ -25,4 +25,6 @@ extern struct dcc_decoder_stm32 dcc_decode_ctx;
 
 int dcc_decoder_init(struct dcc_decoder_stm32* decoder);
 
+void dcc_decoder_disable();
+
 #endif /* LCC_TORTOISE_ZEPHYR_SRC_DCC_DECODE_H_ */

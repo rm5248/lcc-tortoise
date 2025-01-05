@@ -4,6 +4,16 @@
 
 #include "dcc-packet-parser.h"
 
+enum switch_position{
+	SWITCH_UNKNOWN,
+	SWITCH_NORMAL,
+	SWITCH_REVERSED,
+};
+
+struct switch_tracker{
+	enum switch_position current_pos;
+};
+
 /**
  * Initialize the switch tracker(tracks switches from DCC and sends out the
  * corresponding messages over LCC).

@@ -13,6 +13,7 @@
 
 #include "tortoise.h"
 #include "dcc-decode-stm32.h"
+#include "switch-tracker.h"
 
 struct lcc_context;
 struct dcc_decoder;
@@ -54,6 +55,12 @@ struct lcc_tortoise_state{
 	uint8_t allow_new_command;
 	enum ButtonControlState button_control;
 	uint8_t tort_output_current_idx;
+
+	uint8_t save_tortoise_pos_on_shutdown;
+
+	// Tracker for the current switch positions
+	uint8_t switch_tracker_dirty;
+	struct switch_tracker trackers[2048];
 };
 
 struct global_config{
@@ -66,5 +73,10 @@ extern struct global_config config;
 
 int lcc_tortoise_state_init();
 
+void save_tortoise_positions();
+
+void save_switch_tracker();
+
+void set_switch_tracker_dirty();
 
 #endif /* LCC_TORTOISE_ZEPHYR_SRC_LCC_TORTOISE_STATE_H_ */

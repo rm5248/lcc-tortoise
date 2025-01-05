@@ -180,3 +180,7 @@ int dcc_decoder_init(struct dcc_decoder_stm32* decoder){
 
 	return 0;
 }
+
+void dcc_decoder_disable(){
+	irq_disable(TIM2_IRQn);
+}

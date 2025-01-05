@@ -244,6 +244,15 @@ zephyr_udc0: &usb {
 		};
 
 		/*
+		 * 4k for the position of the decoded DCC turnouts.
+		 * Each position is 2 bits.
+		 */
+		switch_tracking_partition: partition@7D000 {
+			label = "switch_tracking";
+			reg = <0x0007D000 DT_SIZE_K(4)>;
+		};
+
+		/*
 		 * 2k reserved for app storage partition.
 		 * This is used for configuration data.
 		 */

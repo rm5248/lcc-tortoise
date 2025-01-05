@@ -14,81 +14,7 @@
 
 #include "lcc-tortoise-state.h"
 #include "tortoise.h"
-
-const static struct gpio_dt_spec volts_line = GPIO_DT_SPEC_GET(DT_NODELABEL(volts), gpios);
-//const static struct adc_dt_spec voltage_adc = ADC_DT_SPEC_GET(DT_PATH(zephyr_user));
-static struct gpio_callback volts_cb_data;
-static int save_required = 0;
-
-//static void do_adc(){
-//	k_sleep(K_MSEC(1000));
-//
-//	while(1){
-//		uint32_t count = 0;
-//		uint16_t buf;
-//		struct adc_sequence sequence = {
-//			.buffer = &buf,
-//			/* buffer size in bytes, not number of samples */
-//			.buffer_size = sizeof(buf),
-//		};
-//
-//		adc_sequence_init_dt(&voltage_adc, &sequence);
-//
-//		int err = adc_read_dt(&voltage_adc, &sequence);
-//		if (err < 0) {
-//			printk("Could not read (%d)\n", err);
-//			return;
-//		}
-//
-//		int32_t val_mv = buf;
-//		err = adc_raw_to_millivolts_dt(&voltage_adc,
-//									   &val_mv);
-//		if(err == 0){
-//			printf("millivolts adc: %d\n", val_mv);
-//
-//			// Convert the mv to input volts
-//			uint32_t vcc = val_mv *  (56000 + 15000) / 15000;
-//			printf("vcc: %dmv\n", vcc);
-//		}
-//		k_sleep(K_MSEC(1000));
-//	}
-//}
-
-//K_THREAD_DEFINE(adc_thread, 512, do_adc, NULL, NULL, NULL,
-//		7, 0, 0);
-
-static void power_lost_irq(const struct device *dev, struct gpio_callback *cb,
-		    uint32_t pins)
-{
-	const struct mcp23xxx_config* expander_config = lcc_tortoise_state.gpio_expander->config;
-	// Disable the GPIO expander in order to save power(maybe)
-	gpio_pin_toggle_dt(&expander_config->gpio_reset);
-
-	if(save_required){
-		const struct flash_area* location_storage_area = NULL;
-		int id = FIXED_PARTITION_ID(location_partition);
-		uint8_t data_to_save[8 * 4];
-		for(int x = 0; x < 8; x++){
-			data_to_save[x] = lcc_tortoise_state.tortoises[x].current_position;
-			data_to_save[x + 8] = lcc_tortoise_state.tortoises[x].current_position;
-			data_to_save[x + 16] = lcc_tortoise_state.tortoises[x].current_position;
-			data_to_save[x + 24] = lcc_tortoise_state.tortoises[x].current_position;
-		}
-
-		if(flash_area_open(id, &location_storage_area) < 0){
-			return;
-		}
-
-		if(flash_area_write(location_storage_area, 0, data_to_save, sizeof(data_to_save)) < 0){
-			return;
-		}
-	}
-
-//	while(1){
-//		printf(",");
-//		k_msleep(1);
-//	}
-}
+#include "dcc-decode-stm32.h"
 
 static void adc_irq_fn(void* arg)
 {
@@ -98,28 +24,9 @@ static void adc_irq_fn(void* arg)
 		// Disable the GPIO expander in order to save power(maybe)
 		gpio_pin_toggle_dt(&expander_config->gpio_reset);
 
-		if(save_required){
-			const struct flash_area* location_storage_area = NULL;
-			int id = FIXED_PARTITION_ID(location_partition);
-			uint8_t data_to_save[8 * 4];
-			for(int x = 0; x < 8; x++){
-				data_to_save[x] = lcc_tortoise_state.tortoises[x].current_position;
-				data_to_save[x + 8] = lcc_tortoise_state.tortoises[x].current_position;
-				data_to_save[x + 16] = lcc_tortoise_state.tortoises[x].current_position;
-				data_to_save[x + 24] = lcc_tortoise_state.tortoises[x].current_position;
-			}
-
-			if(flash_area_open(id, &location_storage_area) < 0){
-				return;
-			}
-
-			if(flash_area_write(location_storage_area, 0, data_to_save, sizeof(data_to_save)) < 0){
-				return;
-			}
-			flash_area_close(location_storage_area);
-			save_required = 0;
-			printf("saved\n");
-		}
+		dcc_decoder_disable();
+		save_tortoise_positions();
+		save_switch_tracker();
 	}
 }
 
@@ -165,7 +72,7 @@ void powerhandle_init(){
 }
 
 void powerhandle_check_if_save_required(){
-	int old_save_settings = save_required;
+	int old_save_settings = lcc_tortoise_state.save_tortoise_pos_on_shutdown;
 	int new_save_settings = 0;
 
 	for(int x = 0; x < 8; x++){
@@ -190,5 +97,5 @@ void powerhandle_check_if_save_required(){
 		flash_area_close(location_storage_area);
 	}
 
-	save_required = new_save_settings;
+	lcc_tortoise_state.save_tortoise_pos_on_shutdown = new_save_settings;
 }
