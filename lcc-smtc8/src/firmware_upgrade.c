@@ -16,6 +16,7 @@
 #include "firmware_upgrade.h"
 #include "lcc-common.h"
 #include "lcc-firmware-upgrade.h"
+#include "lcc-tortoise-state.h"
 
 static const struct flash_area* slot1 = NULL;
 
@@ -38,7 +39,6 @@ static void firmware_upgrade_incoming_data(struct lcc_firmware_upgrade_context* 
 
 	int ret = flash_area_write(slot1, starting_address, data, data_len);
 	if(ret == 0){
-		printf("write ok\n");
 		lcc_firmware_write_ok(ctx);
 	}else{
 		printf("write err: %d startring addr %d\n", ret, starting_address);
@@ -49,6 +49,8 @@ static void firmware_upgrade_incoming_data(struct lcc_firmware_upgrade_context* 
 static void firmware_upgrade_finished(struct lcc_firmware_upgrade_context* ctx){
 	printf("firmware upgrade finished\n");
 	boot_set_pending(1);
+	save_tortoise_positions();
+	save_switch_tracker();
 	// Wait for the final message to flush before we reboot
 	k_sleep(K_MSEC(50));
 	sys_reboot(SYS_REBOOT_COLD);

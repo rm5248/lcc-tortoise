@@ -505,6 +505,8 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 }
 
 static void reboot(struct lcc_memory_context* ctx){
+	save_tortoise_positions();
+	save_switch_tracker();
 	sys_reboot(SYS_REBOOT_COLD);
 }
 
