@@ -570,6 +570,12 @@ static void accy_cb(struct dcc_packet_parser* parser, uint16_t accy_number, enum
 	}
 
 	if(global_config.dcc_translation.do_dcc_translation){
+		// Only do the switch tracking if we do not control this turnout directly
+		for(int x = 0; x < 8; x++){
+			if(tortoise_is_controlled_by_dcc_accessory(&lcc_tortoise_state.tortoises[x], accy_number)){
+				return;
+			}
+		}
 		switch_tracker_incoming_switch_command(accy_number, accy_dir);
 	}
 }

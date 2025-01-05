@@ -188,6 +188,17 @@ int tortoise_enable_outputs(struct tortoise* tort){
 	}
 }
 
+int tortoise_is_controlled_by_dcc_accessory(struct tortoise* tort, int accy_number){
+	if(tort->config->control_type != CONTROL_LCC_CUSTOM_EVENT_ID ){
+		int tortoise_accy_number = __builtin_bswap16(tort->config->BE_accessory_number);
+		if(accy_number == tortoise_accy_number){
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 //int tortoise_config_to_bigendian(struct tortoise* tort, struct tortoise_config* out){
 //	if(tort == NULL || out == NULL){
 //		return -1;

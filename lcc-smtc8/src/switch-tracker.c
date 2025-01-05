@@ -94,10 +94,8 @@ void switch_tracker_init(){
 
 			if(val == 1){
 				lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_NORMAL;
-				printf("%d is normal\n", current_switch);
 			}else if(val == 2){
 				lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_REVERSED;
-				printf("%d is rev\n", current_switch);
 			}else{
 				lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_UNKNOWN;
 			}
@@ -130,7 +128,6 @@ void switch_tracker_incoming_switch_command(uint16_t accy_number, enum dcc_acces
 		return;
 	}
 
-	printf("switch %d dir %d\n", accy_number, accy_dir);
 	set_switch_tracker_dirty();
 	struct lcc_accessory_address address;
 	uint64_t event_id;

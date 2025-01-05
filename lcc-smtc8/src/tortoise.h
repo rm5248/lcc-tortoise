@@ -83,6 +83,14 @@ int tortoise_disable_outputs(struct tortoise* tort);
 int tortoise_enable_outputs(struct tortoise* tort);
 
 /**
+ * Check to see if this tortoise is controlled by the given DCC accessory number.
+ * This function takes into account LCC events as well, so that even if the tortoise
+ * is controlled only over LCC it will return 'true' if the givenn accessory number
+ * matches the standard LCC event ID.
+ */
+int tortoise_is_controlled_by_accessory(struct tortoise* tort, int accy_number);
+
+/**
  * Convert the configuration for this tortoise to big-endian, putting it in 'out'
  */
 //int tortoise_config_to_bigendian(struct tortoise* tort, struct tortoise_config* out);
