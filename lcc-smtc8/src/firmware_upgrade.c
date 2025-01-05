@@ -41,7 +41,7 @@ static void firmware_upgrade_incoming_data(struct lcc_firmware_upgrade_context* 
 	if(ret == 0){
 		lcc_firmware_write_ok(ctx);
 	}else{
-		printf("write err: %d startring addr %d\n", ret, starting_address);
+		printf("write err: %d starting addr 0x%08X.  Tried to write %d bytes\n", ret, starting_address, data_len);
 		lcc_firmware_write_error(ctx, LCC_ERRCODE_PERMANENT, NULL);
 	}
 }
