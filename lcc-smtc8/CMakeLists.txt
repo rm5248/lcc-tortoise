@@ -30,6 +30,7 @@ target_sources(app PRIVATE
 	src/power-handler.c
 	src/firmware_upgrade.c
 	src/switch-tracker.c
+	src/birthing.c
 	${lcc-sources}
 )
 target_include_directories(app PRIVATE

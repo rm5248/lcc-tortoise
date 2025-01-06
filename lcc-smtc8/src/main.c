@@ -22,6 +22,7 @@
 #include "power-handler.h"
 #include "firmware_upgrade.h"
 #include "switch-tracker.h"
+#include "birthing.h"
 
 #include "lcc.h"
 #include "lcc-common.h"
@@ -599,6 +600,7 @@ static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_byte
 
 static uint64_t load_lcc_id(){
 	uint64_t ret = 0;
+	int do_reboot = 0;
 
 	const struct flash_area* lcc_storage_area = NULL;
 	int id = FIXED_PARTITION_ID(lcc_partition);
@@ -621,13 +623,21 @@ static uint64_t load_lcc_id(){
 		int valid = 0;
 
 		console_getline_init();
+		k_thread_suspend(gold_blink);
+		k_thread_suspend(blue_blink);
+		k_thread_suspend(green_blink);
+
+		// Do our birthing checks to validate that the outputs and inputs are working
+		smtc8_birthing();
 
 		while(!valid){
-			printf("LCC ID blank!  Please input LCC ID as a single hex string followed by enter:\n");
+			printf("LCC ID blank!  Please input lower 2 bytes of LCC ID as a single hex string followed by enter:\n");
 			char id_buffer[32];
 			char* console_data = console_getline();
 			printf("console line: %s\n", console_data);
 			new_id = strtoull(console_data, NULL, 16);
+			new_id = new_id & 0xFFFF;
+			new_id = new_id | (0x02020201 << 16);
 			lcc_node_id_to_dotted_format(new_id, id_buffer, sizeof(id_buffer));
 
 			printf("New node ID will be %s.  Type 'y'<ENTER> to accept\n", id_buffer);
@@ -644,10 +654,17 @@ static uint64_t load_lcc_id(){
 		global_config.base_event_id = ret << 16;
 		// Do a 'factory reset' to make sure everything is initialized
 		factory_reset(NULL);
+		do_reboot = 1;
 	}
 
 out:
 	flash_area_close(lcc_storage_area);
+
+	if(do_reboot){
+		printf("Birthing complete, rebooting...\n");
+		sys_reboot(SYS_REBOOT_COLD);
+	}
+
 	return ret;
 }
 
