@@ -37,7 +37,21 @@ static void firmware_upgrade_incoming_data(struct lcc_firmware_upgrade_context* 
 		return;
 	}
 
-	int ret = flash_area_write(slot1, starting_address, data, data_len);
+	// Make sure that the memory is aligned
+	uint32_t alignment = flash_area_align(slot1);
+	void* data_to_write = data;
+	uint8_t data_aligned[60];
+	if(data_len % alignment){
+		// The data is not aligned
+		memset(data_aligned, 0, sizeof(data_aligned));
+		memcpy(data_aligned, data, data_len);
+		while(data_len % alignment){
+			data_len++;
+		}
+		data_to_write = data_aligned;
+	}
+
+	int ret = flash_area_write(slot1, starting_address, data_to_write, data_len);
 	if(ret == 0){
 		lcc_firmware_write_ok(ctx);
 	}else{
