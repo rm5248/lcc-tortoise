@@ -637,7 +637,7 @@ static uint64_t load_lcc_id(){
 			printf("console line: %s\n", console_data);
 			new_id = strtoull(console_data, NULL, 16);
 			new_id = new_id & 0xFFFF;
-			new_id = new_id | (0x02020201 << 16);
+			new_id = new_id | (0x02020201ull << 16);
 			lcc_node_id_to_dotted_format(new_id, id_buffer, sizeof(id_buffer));
 
 			printf("New node ID will be %s.  Type 'y'<ENTER> to accept\n", id_buffer);
