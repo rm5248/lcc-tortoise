@@ -6,38 +6,14 @@
  */
 
 #include <zephyr/drivers/gpio.h>
+#include <stm32g0xx_ll_adc.h>
+#include <stm32g0xx_ll_gpio.h>
 
 #include "lcc-tortoise-state.h"
 #include "birthing.h"
 #include "tortoise.h"
 
-static int init_led(const struct gpio_dt_spec* led){
-	if (!gpio_is_ready_dt(led)) {
-		return -1;
-	}
-
-	if(gpio_pin_configure_dt(led, GPIO_OUTPUT_INACTIVE) < 0){
-		return -1;
-	}
-
-	return 0;
-}
-
-static int init_button(const struct gpio_dt_spec* button){
-	if (!gpio_is_ready_dt(button)) {
-		return -1;
-	}
-
-	if(gpio_pin_configure_dt(button, GPIO_INPUT) < 0){
-		return -1;
-	}
-
-	if(gpio_pin_interrupt_configure_dt(button, GPIO_INT_EDGE_BOTH) < 0){
-		return -1;
-	}
-
-	return 0;
-}
+static uint32_t vrefint;
 
 static void panic(){
 	printf("Unable to init GPIO!\n");
@@ -71,22 +47,62 @@ static void do_tortoise_state(int state){
 	}
 }
 
+static void init_adc(){
+	__HAL_RCC_ADC_CLK_ENABLE();
+
+	LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_1, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_0, LL_GPIO_MODE_ANALOG);
+
+    /* Enable ADC internal voltage regulator */
+	LL_ADC_EnableInternalRegulator(ADC1);
+	while (LL_ADC_IsCalibrationOnGoing(ADC1) != 0U){
+		k_sleep(K_USEC(2));
+	}
+
+	LL_ADC_SetClock(ADC1, LL_ADC_CLOCK_SYNC_PCLK_DIV2);
+	LL_ADC_REG_SetOverrun(ADC1, LL_ADC_REG_OVR_DATA_OVERWRITTEN);
+	LL_ADC_REG_SetContinuousMode(ADC1, LL_ADC_REG_CONV_SINGLE);
+	LL_ADC_SetResolution(ADC1, LL_ADC_RESOLUTION_12B);
+
+	LL_ADC_SetSamplingTimeCommonChannels(ADC1, LL_ADC_SAMPLINGTIME_COMMON_1, LL_ADC_SAMPLINGTIME_39CYCLES_5);
+//	LL_ADC_REG_SetSequencerChannels(ADC1, (LL_ADC_CHANNEL_0 |
+//			LL_ADC_CHANNEL_1 |
+//			LL_ADC_CHANNEL_VREFINT));
+
+	// Sampling time
+	LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_0, LL_ADC_SAMPLINGTIME_COMMON_1);
+	LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_1, LL_ADC_SAMPLINGTIME_COMMON_1);
+
+	// Now let's enable it and start the ADC running
+	LL_ADC_Enable(ADC1);
+}
+
+static int adc_value(int channel){
+	LL_ADC_REG_SetSequencerChannels(ADC1, channel);
+	LL_ADC_REG_StartConversion(ADC1);
+
+	while(!LL_ADC_IsActiveFlag_EOC(ADC1)){}
+	int reading = LL_ADC_REG_ReadConversionData32(ADC1);
+	while(!LL_ADC_IsActiveFlag_EOS(ADC1)){}
+
+	return reading;
+}
+
+static uint32_t calc_voltage_divider(int r1, int r2, int counts_in){
+	// Vchannelx = vref/full_scale * adc_data
+	// see section 15.9 in the refence manual
+	uint32_t voltage_mv = counts_in * 3300 / 4095;
+	uint32_t analog_ref_voltage = __LL_ADC_CALC_VREFANALOG_VOLTAGE(vrefint, LL_ADC_RESOLUTION_12B);
+	uint32_t voltage_mv2 = __LL_ADC_CALC_DATA_TO_VOLTAGE(analog_ref_voltage, counts_in, LL_ADC_RESOLUTION_12B);
+
+	// the analog_ref_voltage seems to always be way too high for some reason, so the readings are all invalid.
+//	printf("vrefint: %d vref: %d one: %d two: %d\n", vrefint, analog_ref_voltage, voltage_mv, voltage_mv2);
+
+	return ((r1 + r2) * voltage_mv) / r2;
+}
+
 void smtc8_birthing(){
-	if(init_led(&lcc_tortoise_state.green_led) < 0){
-		panic();
-	}
-	if(init_led(&lcc_tortoise_state.gold_led) < 0){
-		panic();
-	}
-	if(init_led(&lcc_tortoise_state.blue_led) < 0){
-		panic();
-	}
-	if(init_button(&lcc_tortoise_state.blue_button) < 0){
-		panic();
-	}
-	if(init_button(&lcc_tortoise_state.gold_button) < 0){
-		panic();
-	}
+	init_adc();
 
 	for(int x = 0; x < 8; x++){
 		int ret;
@@ -113,7 +129,13 @@ void smtc8_birthing(){
 			if(state > 3){
 				state = 0;
 			}
-			printf("State: %d\n", state);
+			vrefint = adc_value(LL_ADC_CHANNEL_VREFINT);
+			int volts = adc_value(LL_ADC_CHANNEL_0);
+			int vin = adc_value(LL_ADC_CHANNEL_1);
+			printf("State: %d Volts: %d(%dmv) VIN: %d(%dmv)\n",
+					state,
+					volts, calc_voltage_divider(10000, 1900, volts),
+					vin, calc_voltage_divider(56000, 15000, vin));
 			gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
 			gpio_pin_toggle_dt(&lcc_tortoise_state.gold_led);
 			gpio_pin_toggle_dt(&lcc_tortoise_state.green_led);
