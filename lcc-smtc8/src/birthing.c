@@ -134,8 +134,8 @@ void smtc8_birthing(){
 			int vin = adc_value(LL_ADC_CHANNEL_1);
 			printf("State: %d Volts: %d(%dmv) VIN: %d(%dmv)\n",
 					state,
-					volts, calc_voltage_divider(10000, 1900, volts),
-					vin, calc_voltage_divider(56000, 15000, vin));
+					volts, (int)(volts * 1000 / 274.5),
+					vin, vin * 1000 / 271);
 			gpio_pin_toggle_dt(&lcc_tortoise_state.blue_led);
 			gpio_pin_toggle_dt(&lcc_tortoise_state.gold_led);
 			gpio_pin_toggle_dt(&lcc_tortoise_state.green_led);
