@@ -69,8 +69,22 @@ struct global_config{
 	uint8_t config_version;
 };
 
+struct dcc_address_translation_config{
+#define DCC_TRANSLATION_ENABLE 1
+#define DCC_TRANSLATION_ENABLE_AND_SAVE 2
+	int do_dcc_translation;
+};
+
+struct global_config_data {
+	char node_name[64];
+	char node_description[64];
+	uint64_t base_event_id;
+	struct dcc_address_translation_config dcc_translation;
+};
+
 extern struct lcc_tortoise_state lcc_tortoise_state;
 extern struct global_config config;
+extern struct global_config_data global_config;
 
 int lcc_tortoise_state_init();
 

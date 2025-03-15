@@ -18,7 +18,7 @@ struct switch_tracker{
  * Initialize the switch tracker(tracks switches from DCC and sends out the
  * corresponding messages over LCC).
  */
-void switch_tracker_init();
+void switch_tracker_init(int save_upon_shutdown);
 
 void switch_tracker_incoming_switch_command(uint16_t accy_number, enum dcc_accessory_direction accy_dir);
 

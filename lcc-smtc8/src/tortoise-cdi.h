@@ -105,9 +105,7 @@ EventIDs, set this value.</description> \
 <name>Global Config</name> \
 <int size='1'> \
 <name>DCC to LCC switch message</name> \
-<description>Should this node translate DCC switch messages to \
-well-known LCC messages?(requires reboot to take \
-effect)</description> \
+<description>Should this node translate DCC switch messages to well-known LCC messages?(requires reboot to take effect)</description> \
 <map> \
 <relation> \
 <property>0</property> \
@@ -116,6 +114,10 @@ effect)</description> \
 <relation> \
 <property>1</property> \
 <value>Enabled</value> \
+</relation> \
+<relation> \
+<property>2</property> \
+<value>Enabled(Save last known state upon shutdown)</value> \
 </relation> \
 </map> \
 </int> \

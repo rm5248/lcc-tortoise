@@ -51,20 +51,9 @@
  * the eventIDs need to not repeat.
  */
 
-struct dcc_address_translation_config{
-	int do_dcc_translation;
-};
-
-struct global_config_data {
-	char node_name[64];
-	char node_description[64];
-	uint64_t base_event_id;
-	struct dcc_address_translation_config dcc_translation;
-};
-
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
 static struct lcc_can_frame lcc_rx;
-static struct global_config_data global_config;
+struct global_config_data global_config;
 
 static struct gpio_callback blue_button_cb_data;
 static struct gpio_callback gold_button_cb_data;
@@ -1022,7 +1011,7 @@ int main(void)
 	dcc_packet_parser_set_accessory_cb(dcc_decode_ctx.packet_parser, accy_cb);
 
 	if(global_config.dcc_translation.do_dcc_translation){
-		switch_tracker_init();
+		switch_tracker_init(global_config.dcc_translation.do_dcc_translation == DCC_TRANSLATION_ENABLE_AND_SAVE);
 	}
 
 	// Init our callbacks

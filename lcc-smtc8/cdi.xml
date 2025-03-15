@@ -142,6 +142,10 @@
 					<property>1</property>
 					<value>Enabled</value>
 				</relation>
+				<relation>
+					<property>2</property>
+					<value>Enabled(Save last known state upon shutdown)</value>
+				</relation>
 			</map>
 		</int>
 	</segment>

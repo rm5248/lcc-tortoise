@@ -47,7 +47,7 @@ out:
 	return ret;
 }
 
-void switch_tracker_init(){
+void switch_tracker_init(int save_state_upon_shutdown){
 	memset(lcc_tortoise_state.trackers, 0, sizeof(lcc_tortoise_state.trackers));
 
 	struct lcc_accessory_address address;
@@ -75,35 +75,37 @@ void switch_tracker_init(){
 
 	lcc_event_add_event_produced_query_fn(evt_ctx, switch_producer_state);
 
-	// Load all of the saved posistions from non volatile memory
-	static uint8_t read_buffer[512];
-	const struct flash_area* switch_tracking_partition = NULL;
-	int id = FIXED_PARTITION_ID(switch_tracking_partition);
+	if(save_state_upon_shutdown){
+		// Load all of the saved posistions from non volatile memory
+		static uint8_t read_buffer[512];
+		const struct flash_area* switch_tracking_partition = NULL;
+		int id = FIXED_PARTITION_ID(switch_tracking_partition);
 
-	if(flash_area_open(id, &switch_tracking_partition) < 0){
-		return;
-	}
-
-	int current_switch = 0;
-	memset(read_buffer, 0, sizeof(read_buffer));
-	flash_area_read(switch_tracking_partition, 0, &read_buffer, sizeof(read_buffer));
-	for(int x = 0; x < 512; x++){
-		for(int shift = 6; shift >= 0; shift -= 2){
-			int val = read_buffer[x] & (0x3 << shift);
-			val = val >> shift;
-
-			if(val == 1){
-				lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_NORMAL;
-			}else if(val == 2){
-				lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_REVERSED;
-			}else{
-				lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_UNKNOWN;
-			}
-			current_switch++;
+		if(flash_area_open(id, &switch_tracking_partition) < 0){
+			return;
 		}
-	}
 
-	flash_area_close(switch_tracking_partition);
+		int current_switch = 0;
+		memset(read_buffer, 0, sizeof(read_buffer));
+		flash_area_read(switch_tracking_partition, 0, &read_buffer, sizeof(read_buffer));
+		for(int x = 0; x < 512; x++){
+			for(int shift = 6; shift >= 0; shift -= 2){
+				int val = read_buffer[x] & (0x3 << shift);
+				val = val >> shift;
+
+				if(val == 1){
+					lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_NORMAL;
+				}else if(val == 2){
+					lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_REVERSED;
+				}else{
+					lcc_tortoise_state.trackers[current_switch].current_pos = SWITCH_UNKNOWN;
+				}
+				current_switch++;
+			}
+		}
+
+		flash_area_close(switch_tracking_partition);
+	}
 }
 
 void switch_tracker_incoming_switch_command(uint16_t accy_number, enum dcc_accessory_direction accy_dir){

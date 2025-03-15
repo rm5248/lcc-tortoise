@@ -175,7 +175,6 @@ void save_tortoise_positions(){
 	flash_area_close(location_storage_area);
 	lcc_tortoise_state.save_tortoise_pos_on_shutdown = 0;
 	lcc_tortoise_state.tortoise_pos_dirty = 0;
-	printf("saved\n");
 }
 
 void set_tortoise_posistions_dirty(){
@@ -203,6 +202,10 @@ void set_tortoise_posistions_dirty(){
 void save_switch_tracker(){
 	// We store 4 outputs per byte, so our buffer only needs to be 512 long
 	static uint8_t save_buffer[512];
+
+	if(global_config.dcc_translation.do_dcc_translation != DCC_TRANSLATION_ENABLE_AND_SAVE){
+		return;
+	}
 
 	if(!lcc_tortoise_state.switch_tracker_dirty){
 		return;
@@ -243,12 +246,15 @@ void save_switch_tracker(){
 	}
 
 	flash_area_close(switch_tracking_partition);
-	printf("loc_S\n");
 	lcc_tortoise_state.switch_tracker_dirty = 0;
 }
 
 void set_switch_tracker_dirty(){
 	if(lcc_tortoise_state.switch_tracker_dirty){
+		return;
+	}
+
+	if(global_config.dcc_translation.do_dcc_translation != DCC_TRANSLATION_ENABLE_AND_SAVE){
 		return;
 	}
 
@@ -263,6 +269,5 @@ void set_switch_tracker_dirty(){
 		return;
 	}
 	flash_area_close(switch_tracking_partition);
-	printf("+");
 	lcc_tortoise_state.switch_tracker_dirty = 1;
 }
