@@ -5,7 +5,7 @@
 		<manufacturer>Snowball Creek</manufacturer>
 		<model>SMTC-8</model>
 		<hardwareVersion>P4</hardwareVersion>
-		<softwareVersion>0.4.0</softwareVersion>
+		<softwareVersion>1.0.0</softwareVersion>
 	</identification>
 	<acdi/>
 	<segment space='251'>
