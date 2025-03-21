@@ -894,7 +894,7 @@ static void check_eeprom(){
 static void splash(){
 	printf("LCC SMTC-8\n");
 	printf("  Version: " VERSION_STR);
-	printf("  Rev: P" CONFIG_BOARD_REVISION "\n");
+	printf("  Rev: R" CONFIG_BOARD_REVISION "\n");
 
 	struct mcuboot_img_header versions[2];
 	struct mcuboot_img_sem_ver semver[2] = {0};
