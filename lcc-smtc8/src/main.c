@@ -975,7 +975,7 @@ int main(void)
 	lcc_context_set_simple_node_information(ctx,
 			"Snowball Creek Electronics",
 			"SMTC-8",
-			"P" CONFIG_BOARD_REVISION,
+			"R" CONFIG_BOARD_REVISION,
 			VERSION_STR);
 
 	lcc_context_set_write_function( ctx, lcc_write_cb, tx_queue_size_cb );
