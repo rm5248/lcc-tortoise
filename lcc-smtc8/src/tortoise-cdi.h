@@ -12,9 +12,9 @@ const char cdi[] = {
 "<?xml version='1.0'?> \
 <cdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/schema/cdi/1/1/cdi.xsd'> \
 <identification> \
-<manufacturer>Snowball Creek</manufacturer> \
+<manufacturer>Snowball Creek Electronics</manufacturer> \
 <model>SMTC-8</model> \
-<hardwareVersion>P" CONFIG_BOARD_REVISION "</hardwareVersion> \
+<hardwareVersion>R" CONFIG_BOARD_REVISION "</hardwareVersion> \
 <softwareVersion>1.0.0</softwareVersion> \
 </identification> \
 <acdi /> \
