@@ -64,7 +64,7 @@ rm artifacts/* || true
 
 cp lcc-tortoise/build/lcc-smtc8/zephyr/lcc-smtc8.signed.bin artifacts/lcc-smtc8.bin
 cp lcc-tortoise/build/mcuboot/zephyr/lcc-smtc8-bootloader.bin artifacts/lcc-smtc8-bootloader.bin
-cp flash-lcc-smtc8.sh artifacts
+cp lcc-tortoise/flash-lcc-smtc8.sh artifacts
 '''
 
 				zip archive: true, defaultExcludes: false, dir: 'artifacts', exclude: '', glob: 'lcc-smtc8*,flash-lcc-smtc8.sh', overwrite: true, zipFile: 'lcc-smtc8.zip'
