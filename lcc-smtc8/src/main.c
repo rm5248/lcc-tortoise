@@ -32,7 +32,7 @@
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
 
-#define VERSION_STR "1.0.0"
+#define VERSION_STR "1.1.0"
 
 /*
  * Address Space / storage information
@@ -516,7 +516,7 @@ static void factory_reset(struct lcc_memory_context* ctx){
 
 	for(int x = 0; x < 8; x++){
 		lcc_tortoise_state.tortoise_config[x].BE_accessory_number = __builtin_bswap16(x + 1);
-		lcc_tortoise_state.tortoise_config[x].startup_control = STARTUP_NORMAL;
+		lcc_tortoise_state.tortoise_config[x].startup_control = STARTUP_LAST_POSITION;
 		lcc_tortoise_state.tortoise_config[x].BE_event_id_closed = __builtin_bswap64(new_base_eventid++);
 		lcc_tortoise_state.tortoise_config[x].BE_event_id_thrown = __builtin_bswap64(new_base_eventid++);
 	}
