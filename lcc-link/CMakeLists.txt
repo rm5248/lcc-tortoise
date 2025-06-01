@@ -26,6 +26,8 @@ target_sources(app PRIVATE
 	src/main.c 
 	src/computer_to_can.c
 	src/can_to_computer.c
+	src/dcc_to_computer.c
+	src/dcc-decode-stm32.c
 	${lcc-sources}
 )
 target_include_directories(app PRIVATE
