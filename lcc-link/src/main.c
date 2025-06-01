@@ -25,12 +25,13 @@ const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
 const struct device *const can_usb_dev = DEVICE_DT_GET(DT_NODELABEL(cdc_acm_can));
 const struct device *const dcc_usb_dev = DEVICE_DT_GET(DT_NODELABEL(cdc_acm_dcc));
 const struct device *const console_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
-
+const struct gpio_dt_spec load_button  = GPIO_DT_SPEC_GET(DT_NODELABEL(load_switch), gpios);
 
 static struct computer_to_can computer_to_can;
 static struct can_to_computer can_to_computer;
 static struct dcc_to_computer dcc_to_computer;
 static uint32_t last_rx_dcc_msg;
+static struct gpio_callback load_button_cb_data;
 
 // VID:PID
 // 0483:5740
@@ -160,6 +161,20 @@ static int do_usb_init(){
 	return 0;
 }
 
+static void load_button_pressed(const struct device *dev, struct gpio_callback *cb,
+		    uint32_t pins)
+{
+	printf("load button %d\n", k_cycle_get_32());
+//	int gold_value = gpio_pin_get_dt(&lcc_tortoise_state.gold_button);
+//
+//	if(gold_value){
+//		lcc_tortoise_state.gold_button_press = k_cycle_get_32();
+//	}else{
+//		lcc_tortoise_state.gold_button_press_diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - lcc_tortoise_state.gold_button_press);
+//		lcc_tortoise_state.gold_button_press = 0;
+//	}
+}
+
 static void splash(){
 	printf("LCC-Link starting up\n");
 }
@@ -169,6 +184,23 @@ static void init_dcc(){
 	dcc_decoder_init(&dcc_decode_ctx);
 	dcc_decoder_set_packet_callback(dcc_decode_ctx.dcc_decoder, incoming_dcc);
 	uart_irq_callback_set(can_usb_dev, irq_handler_dcc_usb);
+}
+
+static void init_load_button(){
+	if (!gpio_is_ready_dt(&load_button)) {
+		return -1;
+	}
+
+	if(gpio_pin_configure_dt(&load_button, GPIO_INPUT) < 0){
+		return -1;
+	}
+
+	if(gpio_pin_interrupt_configure_dt(&load_button, GPIO_INT_EDGE_BOTH) < 0){
+		return -1;
+	}
+
+	gpio_init_callback(&load_button_cb_data, load_button_pressed, BIT(load_button.pin));
+	gpio_add_callback(load_button.port, &load_button_cb_data);
 }
 
 int main(void)
@@ -213,6 +245,8 @@ int main(void)
 	uart_irq_rx_enable(can_usb_dev);
 
 	init_dcc();
+//	init_load_button();
+	k_sleep(K_MSEC(2000));
 
 	while (1) {
 		uint64_t diff = k_cycle_get_32() - last_rx_dcc_msg;

@@ -15,14 +15,14 @@ west update
 3. Build and run:
 ```
 cd lcc-tortoise
-west build -b lcc_tortoise lcc-tortoise
+west build -b lcc_smtc8 lcc-smtc8
 west flash
 ```
 
 ## Mcuboot(P3 and above revisions)
 
 ```
-west build -b lcc_tortoise --sysbuild lcc-tortoise
+west build -b lcc_smtc8 --sysbuild lcc-smtc8
 ```
 
 ## Bootloader(OBSOLETE)
