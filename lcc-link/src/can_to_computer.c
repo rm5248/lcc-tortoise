@@ -30,6 +30,7 @@ static void can_frame_receive_thread(void *arg1, void *unused2, void *unused3)
 			}
 
 			ring_buf_put(&can_to_computer->ringbuf_outgoing, gridconnect_out_buffer, strlen(gridconnect_out_buffer));
+			ring_buf_put(&can_to_computer->ringbuf_outgoing, "\r\n", 2);
 			uart_irq_tx_enable(can_to_computer->computer_uart);
 		}
 	}
@@ -52,13 +53,13 @@ void can_to_computer_init(struct can_to_computer* can_to_computer, const struct 
 	filter_id = can_add_rx_filter_msgq(can_dev, &can_to_computer->rx_msgq, &filter);
 	printf("Filter ID: %d\n", filter_id);
 
-	can_to_computer->tx_thread_tid = k_thread_create(&can_to_computer->tx_thread_data,
+	can_to_computer->rx_thread_tid = k_thread_create(&can_to_computer->rx_thread_data,
 			can_rx_stack,
 			K_THREAD_STACK_SIZEOF(can_rx_stack),
 			can_frame_receive_thread, can_to_computer, NULL, NULL,
 			0, 0,
 			K_NO_WAIT);
-	if (!can_to_computer->tx_thread_tid) {
-		printf("ERROR spawning tx to computer thread\n");
+	if (!can_to_computer->rx_thread_tid) {
+		printf("ERROR spawning rx thread\n");
 	}
 }

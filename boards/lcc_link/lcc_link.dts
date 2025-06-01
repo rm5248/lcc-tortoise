@@ -11,19 +11,22 @@
 #include <zephyr/dt-bindings/pinctrl/stm32-pinctrl.h>
 #include <zephyr/dt-bindings/pinctrl/stm32-pinctrl-common.h>
 
-/* CPU: STM32G0B1CB
- * FLASH: 128k
+/* CPU: STM32G0B1KE
+ * FLASH: 512k
  * SRAM: 128(parity-protected)/144(not parity-protected)
  */
 
 / {
 	model = "Snowball Creek LCC Link";
-	compatible = "st,stm32g0b1cb-lcc-link";
+	compatible = "st,stm32g0b1ke-lcc-link";
 
 	chosen {
-		zephyr,console = &cdc_acm_console;
+		zephyr,console = &usart2;
 		zephyr,shell-uart = &usart2;
 		zephyr,uart-mcumgr = &usart2;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
 		zephyr,canbus = &fdcan2;
 	};
 
@@ -32,9 +35,21 @@
 
 	leds: leds {
 		compatible = "gpio-leds";
-		status_led: status_led {
-			gpios = <&gpiob 13 GPIO_ACTIVE_HIGH>;
-			label = "Status LED";
+		status_led: led_1 {
+			gpios = <&gpioc 6 GPIO_ACTIVE_HIGH>;
+			label = "status_led";
+		};
+		led2: led_2 {
+			gpios = <&gpiob 2 GPIO_ACTIVE_HIGH>;
+			label = "LED2";
+		};
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		load_switch: button_load {
+			label = "load_switch";
+			gpios = <&gpioa 14 (GPIO_ACTIVE_HIGH)>;
 		};
 	};
 };
@@ -56,6 +71,7 @@
 
 &clk_hse {
 	status = "okay";
+	hse-bypass;
 	clock-frequency = <DT_FREQ_M(8)>;
 };
 
@@ -64,7 +80,7 @@
 	mul-n = <12>;
 	div-p = <2>;
 	div-q = <2>;
-	div-r = <2>;
+	div-r = <3>;
 	clocks = <&clk_hse>;
 	status = "okay";
 };
@@ -72,7 +88,7 @@
 
 &rcc {
 	clocks = <&pll>;
-	clock-frequency = <DT_FREQ_M(48)>;
+	clock-frequency = <DT_FREQ_M(32)>;
 	ahb-prescaler = <1>;
 	apb1-prescaler = <1>;
 };
@@ -87,9 +103,11 @@ zephyr_udc0: &usb {
 	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00002000>,
 		<&rcc STM32_SRC_PLL_Q USB_SEL(2)>;
 
+/*
 	cdc_acm_console: cdc_acm_console {
 		compatible = "zephyr,cdc-acm-uart";
 	};
+*/
 	cdc_acm_can: cdc_acm_can {
 		compatible = "zephyr,cdc-acm-uart";
 	};
@@ -120,6 +138,7 @@ zephyr_udc0: &usb {
 };
 */
 
+/*
 &spi1 {
 	pinctrl-0 = <&spi1_sck_pb3
 		     &spi1_miso_pb4 &spi1_mosi_pb5>;
@@ -138,6 +157,7 @@ zephyr_udc0: &usb {
 		reset-gpios = <&gpioa 8 GPIO_ACTIVE_LOW>;
 	};
 };
+*/
 
 &usart2 {
 	pinctrl-0 = <&usart2_tx_pa2 &usart2_rx_pa3>;
@@ -146,6 +166,13 @@ zephyr_udc0: &usb {
 	status = "okay";
 };
 
+&fdcan2 {
+	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00001000>,
+		 <&rcc STM32_SRC_PLL_Q FDCAN_SEL(1)>;
+	pinctrl-0 = <&fdcan2_rx_pb0 &fdcan2_tx_pb1>;
+	pinctrl-names = "default";
+	status = "okay";
+};
 
 &flash0 {
 	partitions {
@@ -153,50 +180,19 @@ zephyr_udc0: &usb {
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+		/* We have 512k of flash, so let's not worry too much about space */
 		boot_partition: partition@0 {
 			label = "bootloader";
-			reg = <0x00000000 DT_SIZE_K(32)>;
+			reg = <0x00000000 DT_SIZE_K(48)>;
 			read-only;
 		};
-		slot0_partition: partition@8000 {
+		slot0_partition: partition@C000 {
 			label = "image-0";
-			reg = <0x00008000 DT_SIZE_K(128)>;
+			reg = <0x0000C000 DT_SIZE_K(192)>;
 		};
-		slot1_partition: partition@28000 {
+		slot1_partition: partition@3C000 {
 			label = "image-1";
-			reg = <0x00028000 DT_SIZE_K(128)>;
-		};
-
-		/*
-		 * 2k reserved for app storage partition.
-		 * This is used for configuration data.
-		 */
-		config_partition: partition@48000 {
-			label = "config";
-			reg = <0x00048000 DT_SIZE_K(2)>;
-		};
-		/*
-		 * 2k for data that needs to be saved on shutdown.
-		 * This is used for the current tortoise position.
-		 */
-		location_partition: partition@48800 {
-			label = "location-partition";
-			reg = <0x00048800 DT_SIZE_K(2)>;
-		};
-		/*
-		 * 2k for LCC ID data
-		 */
-		lcc_partition: partition@49000 {
-			label = "lcc-partition";
-			reg = <0x00049000 DT_SIZE_K(2)>;
+			reg = <0x0003C000 DT_SIZE_K(192)>;
 		};
 	};
-};
-
-&fdcan2 {
-	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00001000>,
-		 <&rcc STM32_SRC_PLL_Q FDCAN_SEL(1)>;
-	pinctrl-0 = <&fdcan2_rx_pb5 &fdcan2_tx_pb6>;
-	pinctrl-names = "default";
-	status = "okay";
 };

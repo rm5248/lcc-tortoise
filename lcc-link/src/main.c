@@ -65,17 +65,22 @@ static void irq_handler_can_usb(const struct device *dev, void *user_data){
 				printf("Drop %d bytes\n", rb_len - send_len);
 			}
 
-//			printf("ringbuf -> tty fifo %d bytes", send_len);
+//			printf("ringbuf -> tty fifo %d bytes\n", send_len);
 		}
 	}
 }
 
-static int do_console_init(){
+static int do_usb_init(){
 	int ret = 0;
 	const struct gpio_dt_spec status_led = GPIO_DT_SPEC_GET(DT_NODELABEL(status_led), gpios);
 
 	if (!device_is_ready(can_usb_dev)) {
-//		LOG_ERR("CDC ACM device not ready");
+		printf("CDC ACM device not ready\n");
+		return -1;
+	}
+
+	if (!device_is_ready(dcc_usb_dev)) {
+		printf("CDC ACM device not ready\n");
 		return -1;
 	}
 
@@ -87,29 +92,35 @@ static int do_console_init(){
 		k_msleep(200);
 	}
 
-	while (true) {
-		uint32_t dtr = 0U;
-
-		uart_line_ctrl_get(console_dev, UART_LINE_CTRL_DTR, &dtr);
-		if (dtr) {
-			break;
-		} else {
-			/* Give CPU resources to low priority threads. */
-			k_sleep(K_MSEC(50));
-		}
-		gpio_pin_set_dt(&status_led, 1);
-	}
-
-	gpio_pin_set_dt(&status_led, 0);
-	printf("Console init done\n");
+//	while (true) {
+//		uint32_t dtr = 0U;
+//
+//		uart_line_ctrl_get(console_dev, UART_LINE_CTRL_DTR, &dtr);
+//		if (dtr) {
+//			break;
+//		} else {
+//			/* Give CPU resources to low priority threads. */
+//			k_sleep(K_MSEC(50));
+//		}
+//		gpio_pin_set_dt(&status_led, 1);
+//	}
+//
+//	gpio_pin_set_dt(&status_led, 0);
+//	printf("Console init done\n");
 
 	return 0;
+}
+
+static void splash(){
+	printf("LCC-Link starting up\n");
 }
 
 int main(void)
 {
 	int ret;
 	const struct gpio_dt_spec status_led = GPIO_DT_SPEC_GET(DT_NODELABEL(status_led), gpios);
+
+	splash();
 
 	if (!gpio_is_ready_dt(&status_led)) {
 		return -1;
@@ -119,12 +130,12 @@ int main(void)
 		return -1;
 	}
 
-	if(do_console_init() < 0){
+	if(do_usb_init() < 0){
 		while(1){
 			gpio_pin_set_dt(&status_led, 1);
 			k_msleep(50);
 			gpio_pin_set_dt(&status_led, 0);
-			k_msleep(50);
+			k_msleep(250);
 		}
 	}
 
@@ -136,10 +147,6 @@ int main(void)
 	ret = can_start(can_dev);
 	if(ret != 0){
 		printf("Can't start CAN\n");
-		return 0;
-	}
-
-	if (!device_is_ready(dcc_usb_dev)) {
 		return 0;
 	}
 

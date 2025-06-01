@@ -12,8 +12,8 @@
 #include <zephyr/sys/ring_buffer.h>
 
 struct can_to_computer{
-	k_tid_t tx_thread_tid;
-	struct k_thread tx_thread_data;
+	k_tid_t rx_thread_tid;
+	struct k_thread rx_thread_data;
 	uint8_t ring_buffer_outgoing[1024];
 	struct ring_buf ringbuf_outgoing;
 	const struct device* computer_uart;
