@@ -87,7 +87,7 @@ fi
 cd lcc-tortoise
 west update
 echo "SB_CONFIG_BOOT_SIGNATURE_KEY_FILE=\\"/var/lib/signing-keys/lcc-link.pem\\"" >> lcc-link/sysbuild.conf
-west build --build-dir build-lcclink -b lcc_link lcc-link
+west build --build-dir build-lcclink -b lcc_link --sysbuild lcc-link
 '''
 			}
 		} /* stage build lcc link */
