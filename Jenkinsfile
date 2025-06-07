@@ -86,6 +86,7 @@ fi
 
 cd lcc-tortoise
 west update
+echo "SB_CONFIG_BOOT_SIGNATURE_KEY_FILE=\\"/var/lib/signing-keys/lcc-link.pem\\"" >> lcc-link/sysbuild.conf
 west build --build-dir build-lcclink -b lcc_link lcc-link
 '''
 			}
@@ -94,11 +95,16 @@ west build --build-dir build-lcclink -b lcc_link lcc-link
 		stage("Archive LCC Link"){
 			steps{
 				sh '''#!/bin/bash
+mkdir -p artifacts
+rm artifacts/* || true
 
-cp lcc-tortoise/build-lcclink/zephyr/zephyr.bin artifacts/lcc-link.bin
+cp lcc-tortoise/build/lcc-link/zephyr/lcc-link.signed.bin artifacts/lcc-link.bin
+cp lcc-tortoise/build/mcuboot/zephyr/lcc-link-bootloader.bin artifacts/lcc-link-bootloader.bin
+cp lcc-tortoise/flash-lcc-link.sh artifacts
 '''
 
-				archiveArtifacts artifacts:'artifacts/lcc-link.bin'
+				zip archive: true, defaultExcludes: false, dir: 'artifacts', exclude: '', glob: 'lcc-link*,flash-lcc-link.sh', overwrite: true, zipFile: 'lcc-link.zip'
+				archiveArtifacts artifacts:'artifacts/lcc-link.bin,artifacts/lcc-link-bootloader.bin'
 			}
 		} /* stage archive */
 
