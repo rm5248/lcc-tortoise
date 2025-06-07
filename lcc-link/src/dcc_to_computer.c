@@ -18,7 +18,7 @@ static void dcc_process(void *arg1, void *unused2, void *unused3) {
 	uint32_t timediff;
 
 	while(k_msgq_get(&dcc_decode_ctx.readings, &timediff, K_NO_WAIT) == 0){
-		printf(".");
+//		printf(".");
 		if(dcc_decoder_polarity_changed(dcc_decode_ctx.dcc_decoder, timediff) == 1){
 			dcc_decoder_pump_packet(dcc_decode_ctx.dcc_decoder);
 		}

@@ -36,6 +36,15 @@ static uint32_t load_button_press = 0;
 static uint32_t load_button_diff = 0;
 static int in_bootloader_mode = 0;
 static uint32_t last_rx_can_msg = 0;
+static uint32_t last_tx_can_msg = 0;
+struct lcc_context* lcc_ctx = NULL;
+
+static void blink_status_led();
+static void blink_activity_led();
+K_THREAD_DEFINE(status_blink, 512, blink_status_led, NULL, NULL, NULL,
+		7, 0, 0);
+K_THREAD_DEFINE(activity_blink, 512, blink_activity_led, NULL, NULL, NULL,
+		7, 0, 0);
 
 // VID:PID
 // 0483:5740
@@ -116,6 +125,68 @@ static void irq_handler_dcc_usb(const struct device *dev, void *user_data){
 		}
 }
 
+static void blink_status_led(){
+	const struct gpio_dt_spec status_led = GPIO_DT_SPEC_GET(DT_NODELABEL(status_led), gpios);
+
+	while(1){
+		if(in_bootloader_mode){
+			// LED should be on, wink off once every three seconds
+			gpio_pin_set_dt(&status_led, 1);
+			k_sleep(K_MSEC(3000));
+			gpio_pin_set_dt(&status_led, 0);
+			k_sleep(K_MSEC(100));
+		}else{
+			uint64_t diff = k_cycle_get_32() - last_rx_dcc_msg;
+
+			if(k_cyc_to_ms_ceil32(diff) < 500){
+				// Receiving DCC signal, double blink
+				gpio_pin_set_dt(&status_led, 1);
+				k_sleep(K_MSEC(100));
+				gpio_pin_set_dt(&status_led, 0);
+				k_sleep(K_MSEC(100));
+				gpio_pin_set_dt(&status_led, 1);
+				k_sleep(K_MSEC(100));
+				gpio_pin_set_dt(&status_led, 0);
+				k_sleep(K_MSEC(1500));
+			}else{
+				// No DCC signal, single blink
+				gpio_pin_set_dt(&status_led, 1);
+				k_sleep(K_MSEC(100));
+				gpio_pin_set_dt(&status_led, 0);
+				k_sleep(K_MSEC(1500));
+			}
+		}
+	}
+}
+
+static void blink_activity_led(){
+	const struct gpio_dt_spec activity_led = GPIO_DT_SPEC_GET(DT_NODELABEL(led2), gpios);
+
+	if (!gpio_is_ready_dt(&activity_led)) {
+		return;
+	}
+
+	if(gpio_pin_configure_dt(&activity_led, GPIO_OUTPUT_INACTIVE) < 0){
+		return;
+	}
+
+	while(1){
+		uint64_t diff_tx = k_cycle_get_32() - last_tx_can_msg;
+		uint64_t diff_rx = k_cycle_get_32() - last_rx_can_msg;
+
+		if(k_cyc_to_ms_ceil32(diff_tx) < 25){
+			gpio_pin_set_dt(&activity_led, 1);
+			k_sleep(K_MSEC(50));
+			gpio_pin_set_dt(&activity_led, 0);
+		}else if(k_cyc_to_ms_ceil32(diff_rx) < 25){
+			gpio_pin_set_dt(&activity_led, 1);
+			k_sleep(K_MSEC(50));
+			gpio_pin_set_dt(&activity_led, 0);
+		}
+		k_sleep(K_MSEC(10));
+	}
+}
+
 static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_bytes, int len){
 	last_rx_dcc_msg = k_cycle_get_32();
 
@@ -176,7 +247,7 @@ static void load_button_pressed(const struct device *dev, struct gpio_callback *
 	}
 }
 
-static void handle_button(){
+static void handle_button(struct computer_to_can* computer_to_can, struct can_to_computer* can_to_computer){
 	if(load_button_press == 0){
 		return;
 	}
@@ -187,7 +258,7 @@ static void handle_button(){
 		// User has held load button for at least two seconds, go into bootloader mode
 		printf("Going into bootloader mode\n");
 		in_bootloader_mode = 1;
-		firmware_load(&computer_to_can, can_dev);
+		lcc_ctx = firmware_load(computer_to_can, can_to_computer);
 	}
 }
 
@@ -204,15 +275,15 @@ static void init_dcc(){
 
 static void init_load_button(){
 	if (!gpio_is_ready_dt(&load_button)) {
-		return -1;
+		return;
 	}
 
 	if(gpio_pin_configure_dt(&load_button, GPIO_INPUT) < 0){
-		return -1;
+		return;
 	}
 
 	if(gpio_pin_interrupt_configure_dt(&load_button, GPIO_INT_EDGE_BOTH) < 0){
-		return -1;
+		return;
 	}
 
 	gpio_init_callback(&load_button_cb_data, load_button_pressed, BIT(load_button.pin));
@@ -231,7 +302,7 @@ static void parse_from_computer(struct computer_to_can* computer_to_can){
 			lcc_rx.can_len = rx_frame.dlc;
 			memcpy(lcc_rx.data, rx_frame.data, 8);
 
-//			lcc_context_incoming_frame(ctx, &lcc_rx);
+			lcc_context_incoming_frame(lcc_ctx, &lcc_rx);
 		}else{
 			// Send out to CAN
 			computer_to_can_tx_frame(computer_to_can, &rx_frame);
@@ -262,6 +333,7 @@ static void main_loop(struct computer_to_can* computer_to_can, struct can_to_com
 			// A frame has been received from the CAN bus
 			static struct can_frame rx_frame;
 			while(k_msgq_get(can_to_computer_msgq(can_to_computer), &rx_frame, K_NO_WAIT) == 0){
+				// If we are in bootloader mode, drop it like it's hot
 				if(!in_bootloader_mode){
 					can_to_computer_send_frame(can_to_computer, &rx_frame);
 				}
@@ -274,6 +346,8 @@ static void main_loop(struct computer_to_can* computer_to_can, struct can_to_com
 //			}
 			poll_data[1].state = K_POLL_STATE_NOT_READY;
 		}
+
+		handle_button(computer_to_can, can_to_computer);
 	}
 }
 
@@ -319,47 +393,11 @@ int main(void)
 	uart_irq_rx_enable(can_usb_dev);
 
 //	init_dcc();
-//	init_load_button();
+	init_load_button();
 	load_button_press = 0;
+	printf("new firmware yo\n");
 
 	main_loop(&computer_to_can, &can_to_computer);
-
-	while (1) {
-//		int have_frame_from_computer = computer_to_can_parse(&computer_to_can, &rx_frame);
-//		if(have_frame_from_computer == 1){
-//			if(!in_bootloader_mode){
-//				printf("tx frame\n");
-//				computer_to_can_tx_frame(&computer_to_can, &rx_frame);
-//			}else{
-//				// Send data to LibLCC
-//			}
-//		}
-
-//		uint64_t diff = k_cycle_get_32() - last_rx_dcc_msg;
-//
-//		if(k_cyc_to_ms_ceil32(diff) < 500){
-//			// Receiving DCC signal, double blink
-//			gpio_pin_set_dt(&status_led, 1);
-//			k_sleep(K_MSEC(100));
-//			gpio_pin_set_dt(&status_led, 0);
-//			k_sleep(K_MSEC(100));
-//			gpio_pin_set_dt(&status_led, 1);
-//			k_sleep(K_MSEC(100));
-//			gpio_pin_set_dt(&status_led, 0);
-//			k_sleep(K_MSEC(1500));
-//		}else{
-//			// No DCC signal, single blink
-//			gpio_pin_set_dt(&status_led, 1);
-//			k_sleep(K_MSEC(100));
-//			gpio_pin_set_dt(&status_led, 0);
-//			k_sleep(K_MSEC(1500));
-//		}
-
-		k_sleep(K_MSEC(2));
-
-
-//		handle_button();
-	}
 
 	return 0;
 }

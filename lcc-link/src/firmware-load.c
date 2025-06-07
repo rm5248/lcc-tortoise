@@ -61,7 +61,6 @@ static void firmware_upgrade_incoming_data(struct lcc_firmware_upgrade_context* 
 		lcc_firmware_write_ok(ctx);
 	}else{
 		printf("write err: %d starting addr 0x%08X.  Tried to write %d bytes\n", ret, starting_address, data_len);
-		printf("12");
 		lcc_firmware_write_error(ctx, LCC_ERRCODE_PERMANENT, NULL);
 	}
 }
@@ -86,13 +85,32 @@ static int lcc_write_cb(struct lcc_context* ctx, struct lcc_can_frame* lcc_frame
 	ring_buf_put(&can_to_computer->ringbuf_outgoing, "\r\n", 2);
 	uart_irq_tx_enable(can_to_computer->computer_uart);
 
+//	printf("lcc write cb\n");
+
 	return LCC_OK;
 }
 
-void firmware_load(struct computer_to_can* computer_to_can, struct can_to_computer* can_to_computer, const struct device *const can_dev){
+static void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space){
+	// This memory space does not exist: return an error
+	lcc_memory_respond_information_query(ctx, alias, 0, address_space, 0, 0, 0);
+}
+
+static void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, uint8_t read_count){
+	lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
+}
+
+void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, void* data, int data_len){
+	lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
+}
+
+static void reboot(struct lcc_memory_context* ctx){
+	sys_reboot(SYS_REBOOT_COLD);
+}
+
+struct lcc_context* firmware_load(struct computer_to_can* computer_to_can, struct can_to_computer* can_to_computer){
 	// Disable the CAN and DCC so we don't do anything with those subsystems
-	can_stop(can_dev);
-	dcc_decoder_disable();
+//	can_stop(can_dev);
+//	dcc_decoder_disable();
 
 	const uint64_t lcc_id = 0x020202000000;
 
@@ -110,14 +128,15 @@ void firmware_load(struct computer_to_can* computer_to_can, struct can_to_comput
 	lcc_context_set_write_function( ctx, lcc_write_cb, NULL );
 
 	lcc_datagram_context_new(ctx);
-//	struct lcc_memory_context* mem_ctx = lcc_memory_new(ctx);
-//	lcc_memory_set_cdi(mem_ctx, cdi, sizeof(cdi), 0);
-//	lcc_memory_set_memory_functions(mem_ctx,
-//	    mem_address_space_information_query,
-//	    mem_address_space_read,
-//	    mem_address_space_write);
-//	lcc_memory_set_reboot_function(mem_ctx, reboot);
-//	lcc_memory_set_factory_reset_function(mem_ctx, factory_reset);
+	struct lcc_memory_context* mem_ctx = lcc_memory_new(ctx);
+	// NOTE: currently bug in liblcc where CDI is required to exist otherwise firmware loading won't work
+	const char* cdi = "<cdi></cdi>";
+	lcc_memory_set_cdi(mem_ctx, cdi, strlen(cdi), 0);
+	lcc_memory_set_memory_functions(mem_ctx,
+	    mem_address_space_information_query,
+	    mem_address_space_read,
+	    mem_address_space_write);
+	lcc_memory_set_reboot_function(mem_ctx, reboot);
 
 	struct lcc_firmware_upgrade_context* fwu_ctx = lcc_firmware_upgrade_new(ctx);
 
@@ -136,5 +155,8 @@ void firmware_load(struct computer_to_can* computer_to_can, struct can_to_comput
 	int stat = lcc_context_generate_alias( ctx );
 	lcc_context_claim_alias(ctx);
 
-	// Now at this point, we just need to block until we have gotten the data.
+	// Now at this point, we just process packets that come in.
+	// The pushing of packets is done in the main loop of the application
+
+	return ctx;
 }
