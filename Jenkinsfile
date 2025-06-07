@@ -98,8 +98,8 @@ west build --build-dir build-lcclink -b lcc_link --sysbuild lcc-link
 mkdir -p artifacts
 rm artifacts/* || true
 
-cp lcc-tortoise/build/lcc-link/zephyr/lcc-link.signed.bin artifacts/lcc-link.bin
-cp lcc-tortoise/build/mcuboot/zephyr/lcc-link-bootloader.bin artifacts/lcc-link-bootloader.bin
+cp lcc-tortoise/build-lcclink/lcc-link/zephyr/lcc-link.signed.bin artifacts/lcc-link.bin
+cp lcc-tortoise/build-lcclink/mcuboot/zephyr/lcc-link-bootloader.bin artifacts/lcc-link-bootloader.bin
 cp lcc-tortoise/flash-lcc-link.sh artifacts
 '''
 
