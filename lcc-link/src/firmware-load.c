@@ -10,6 +10,7 @@
 #include <zephyr/drivers/can.h>
 #include <zephyr/drivers/eeprom.h>
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/drivers/uart.h>
 
 #include "firmware-load.h"
 #include "lcc.h"
@@ -18,7 +19,9 @@
 #include "lcc-memory.h"
 #include "lcc-firmware-upgrade.h"
 #include "computer_to_can.h"
+#include "can_to_computer.h"
 #include "dcc-decode-stm32.h"
+#include "lcc-gridconnect.h"
 
 static const struct flash_area* slot1 = NULL;
 
@@ -72,23 +75,21 @@ static void firmware_upgrade_finished(struct lcc_firmware_upgrade_context* ctx){
 }
 
 static int lcc_write_cb(struct lcc_context* ctx, struct lcc_can_frame* lcc_frame){
-	struct computer_to_can* computer_to_can = lcc_context_user_data(ctx);
+	struct can_to_computer* can_to_computer = lcc_context_user_data(ctx);
+	char gridconnect_out_buffer[64];
 
-	static struct can_frame zephyr_can_frame_tx;
-	memset(&zephyr_can_frame_tx, 0, sizeof(zephyr_can_frame_tx));
-	zephyr_can_frame_tx.id = lcc_frame->can_id;
-	zephyr_can_frame_tx.dlc = lcc_frame->can_len;
-	zephyr_can_frame_tx.flags = CAN_FRAME_IDE;
-	memcpy(zephyr_can_frame_tx.data, lcc_frame->data, 8);
-
-	if(k_msgq_put(&computer_to_can->tx_msgq, &zephyr_can_frame_tx, K_NO_WAIT) < 0){
-		return LCC_ERROR_TX;
+	if(lcc_canframe_to_gridconnect(lcc_frame, gridconnect_out_buffer, sizeof(gridconnect_out_buffer)) != LCC_OK){
+		return -1;
 	}
+
+	ring_buf_put(&can_to_computer->ringbuf_outgoing, gridconnect_out_buffer, strlen(gridconnect_out_buffer));
+	ring_buf_put(&can_to_computer->ringbuf_outgoing, "\r\n", 2);
+	uart_irq_tx_enable(can_to_computer->computer_uart);
 
 	return LCC_OK;
 }
 
-void firmware_load(struct computer_to_can* computer_to_can, const struct device *const can_dev){
+void firmware_load(struct computer_to_can* computer_to_can, struct can_to_computer* can_to_computer, const struct device *const can_dev){
 	// Disable the CAN and DCC so we don't do anything with those subsystems
 	can_stop(can_dev);
 	dcc_decoder_disable();
@@ -104,7 +105,7 @@ void firmware_load(struct computer_to_can* computer_to_can, const struct device 
 			"R" CONFIG_BOARD_REVISION,
 			"1");
 
-	lcc_context_set_userdata(ctx, computer_to_can);
+	lcc_context_set_userdata(ctx, can_to_computer);
 
 	lcc_context_set_write_function( ctx, lcc_write_cb, NULL );
 
@@ -134,4 +135,6 @@ void firmware_load(struct computer_to_can* computer_to_can, const struct device 
 	// that there shouldn't be an alias collision
 	int stat = lcc_context_generate_alias( ctx );
 	lcc_context_claim_alias(ctx);
+
+	// Now at this point, we just need to block until we have gotten the data.
 }

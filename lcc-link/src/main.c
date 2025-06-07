@@ -32,6 +32,10 @@ static struct can_to_computer can_to_computer;
 static struct dcc_to_computer dcc_to_computer;
 static uint32_t last_rx_dcc_msg;
 static struct gpio_callback load_button_cb_data;
+static uint32_t load_button_press = 0;
+static uint32_t load_button_diff = 0;
+static int in_bootloader_mode = 0;
+static uint32_t last_rx_can_msg = 0;
 
 // VID:PID
 // 0483:5740
@@ -48,13 +52,11 @@ static void irq_handler_can_usb(const struct device *dev, void *user_data){
 					recv_len = 0;
 				};
 
-				rb_len = ring_buf_put(&computer_to_can.ringbuf_incoming, buffer, recv_len);
+				rb_len = computer_to_can_append_data(&computer_to_can, buffer, recv_len);
 				if (rb_len < recv_len) {
 					printf("Drop %u bytes", recv_len - rb_len);
 				}
-				k_sem_give(&computer_to_can.parse_semaphore);
 		}
-
 
 		if (uart_irq_tx_ready(dev)) {
 			uint8_t buffer[64];
@@ -164,15 +166,29 @@ static int do_usb_init(){
 static void load_button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
-	printf("load button %d\n", k_cycle_get_32());
-//	int gold_value = gpio_pin_get_dt(&lcc_tortoise_state.gold_button);
-//
-//	if(gold_value){
-//		lcc_tortoise_state.gold_button_press = k_cycle_get_32();
-//	}else{
-//		lcc_tortoise_state.gold_button_press_diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - lcc_tortoise_state.gold_button_press);
-//		lcc_tortoise_state.gold_button_press = 0;
-//	}
+	int load_value = gpio_pin_get_dt(&load_button);
+
+	if(load_value){
+		load_button_press = k_cycle_get_32();
+	}else{
+		load_button_diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - load_button_press);
+		load_button_press = 0;
+	}
+}
+
+static void handle_button(){
+	if(load_button_press == 0){
+		return;
+	}
+
+	uint32_t load_button_curr_diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - load_button_press);
+
+	if(load_button_curr_diff > 2000 && !in_bootloader_mode){
+		// User has held load button for at least two seconds, go into bootloader mode
+		printf("Going into bootloader mode\n");
+		in_bootloader_mode = 1;
+		firmware_load(&computer_to_can, can_dev);
+	}
 }
 
 static void splash(){
@@ -183,7 +199,7 @@ static void init_dcc(){
 	dcc_to_computer_init(&dcc_to_computer, dcc_usb_dev);
 	dcc_decoder_init(&dcc_decode_ctx);
 	dcc_decoder_set_packet_callback(dcc_decode_ctx.dcc_decoder, incoming_dcc);
-	uart_irq_callback_set(can_usb_dev, irq_handler_dcc_usb);
+	uart_irq_callback_set(dcc_usb_dev, irq_handler_dcc_usb);
 }
 
 static void init_load_button(){
@@ -201,6 +217,64 @@ static void init_load_button(){
 
 	gpio_init_callback(&load_button_cb_data, load_button_pressed, BIT(load_button.pin));
 	gpio_add_callback(load_button.port, &load_button_cb_data);
+}
+
+static void parse_from_computer(struct computer_to_can* computer_to_can){
+	static struct can_frame rx_frame;
+	static struct lcc_can_frame lcc_rx;
+
+	while(k_msgq_get(computer_to_can_parsed_queue(computer_to_can), &rx_frame, K_NO_WAIT) == 0){
+		if(in_bootloader_mode){
+			// Convert to LCC CAN frame and push to liblcc
+			memset(&lcc_rx, 0, sizeof(lcc_rx));
+			lcc_rx.can_id = rx_frame.id;
+			lcc_rx.can_len = rx_frame.dlc;
+			memcpy(lcc_rx.data, rx_frame.data, 8);
+
+//			lcc_context_incoming_frame(ctx, &lcc_rx);
+		}else{
+			// Send out to CAN
+			computer_to_can_tx_frame(computer_to_can, &rx_frame);
+		}
+	}
+}
+
+static void main_loop(struct computer_to_can* computer_to_can, struct can_to_computer* can_to_computer){
+	struct k_poll_event poll_data[2];
+
+	k_poll_event_init(&poll_data[0],
+			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
+			K_POLL_MODE_NOTIFY_ONLY,
+			computer_to_can_parsed_queue(computer_to_can));
+	k_poll_event_init(&poll_data[1],
+			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
+			K_POLL_MODE_NOTIFY_ONLY,
+			can_to_computer_msgq(can_to_computer));
+
+	while (1) {
+		int rc = k_poll(poll_data, ARRAY_SIZE(poll_data), K_MSEC(250));
+		if(poll_data[0].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
+			// A frame has been parsed from the computer
+			parse_from_computer(computer_to_can);
+			poll_data[0].state = K_POLL_STATE_NOT_READY;
+			last_rx_can_msg = k_cycle_get_32();
+		}else if(poll_data[1].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
+			// A frame has been received from the CAN bus
+			static struct can_frame rx_frame;
+			while(k_msgq_get(can_to_computer_msgq(can_to_computer), &rx_frame, K_NO_WAIT) == 0){
+				if(!in_bootloader_mode){
+					can_to_computer_send_frame(can_to_computer, &rx_frame);
+				}
+			}
+//			uint32_t timediff;
+//			while(k_msgq_get(&dcc_decode_ctx.readings, &timediff, K_NO_WAIT) == 0){
+//				if(dcc_decoder_polarity_changed(dcc_decode_ctx.dcc_decoder, timediff) == 1){
+//					dcc_decoder_pump_packet(dcc_decode_ctx.dcc_decoder);
+//				}
+//			}
+			poll_data[1].state = K_POLL_STATE_NOT_READY;
+		}
+	}
 }
 
 int main(void)
@@ -244,30 +318,47 @@ int main(void)
 	uart_irq_callback_set(can_usb_dev, irq_handler_can_usb);
 	uart_irq_rx_enable(can_usb_dev);
 
-	init_dcc();
+//	init_dcc();
 //	init_load_button();
-	k_sleep(K_MSEC(2000));
+	load_button_press = 0;
+
+	main_loop(&computer_to_can, &can_to_computer);
 
 	while (1) {
-		uint64_t diff = k_cycle_get_32() - last_rx_dcc_msg;
+//		int have_frame_from_computer = computer_to_can_parse(&computer_to_can, &rx_frame);
+//		if(have_frame_from_computer == 1){
+//			if(!in_bootloader_mode){
+//				printf("tx frame\n");
+//				computer_to_can_tx_frame(&computer_to_can, &rx_frame);
+//			}else{
+//				// Send data to LibLCC
+//			}
+//		}
 
-		if(k_cyc_to_ms_ceil32(diff) < 500){
-			// Receiving DCC signal, double blink
-			gpio_pin_set_dt(&status_led, 1);
-			k_sleep(K_MSEC(100));
-			gpio_pin_set_dt(&status_led, 0);
-			k_sleep(K_MSEC(100));
-			gpio_pin_set_dt(&status_led, 1);
-			k_sleep(K_MSEC(100));
-			gpio_pin_set_dt(&status_led, 0);
-			k_sleep(K_MSEC(1500));
-		}else{
-			// No DCC signal, single blink
-			gpio_pin_set_dt(&status_led, 1);
-			k_sleep(K_MSEC(100));
-			gpio_pin_set_dt(&status_led, 0);
-			k_sleep(K_MSEC(1500));
-		}
+//		uint64_t diff = k_cycle_get_32() - last_rx_dcc_msg;
+//
+//		if(k_cyc_to_ms_ceil32(diff) < 500){
+//			// Receiving DCC signal, double blink
+//			gpio_pin_set_dt(&status_led, 1);
+//			k_sleep(K_MSEC(100));
+//			gpio_pin_set_dt(&status_led, 0);
+//			k_sleep(K_MSEC(100));
+//			gpio_pin_set_dt(&status_led, 1);
+//			k_sleep(K_MSEC(100));
+//			gpio_pin_set_dt(&status_led, 0);
+//			k_sleep(K_MSEC(1500));
+//		}else{
+//			// No DCC signal, single blink
+//			gpio_pin_set_dt(&status_led, 1);
+//			k_sleep(K_MSEC(100));
+//			gpio_pin_set_dt(&status_led, 0);
+//			k_sleep(K_MSEC(1500));
+//		}
+
+		k_sleep(K_MSEC(2));
+
+
+//		handle_button();
 	}
 
 	return 0;

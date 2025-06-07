@@ -2,7 +2,9 @@
 #include "lcc-gridconnect.h"
 
 K_THREAD_STACK_DEFINE(tx_stack, 512);
-K_THREAD_STACK_DEFINE(rx_stack, 512);
+K_THREAD_STACK_DEFINE(parse_stack, 512);
+
+static int computer_to_can_parse(struct computer_to_can* comp_to_can, struct can_frame* frame);
 
 static void can_frame_send_thread(void *arg1, void *unused2, void *unused3)
 {
@@ -32,59 +34,21 @@ static void can_frame_send_thread(void *arg1, void *unused2, void *unused3)
 	}
 }
 
-static void computer_to_can_parse_data(struct computer_to_can* computer_to_can){
-	static struct can_frame zephyr_can_frame_tx;
-	static struct lcc_can_frame lcc_rx;
-	char byte;
-
-	// Rather stupid, but we will read bytes 1-by-1 until we have a full packet, discarding bytes
-	// that are invalid.
-	while(!ring_buf_is_empty(&computer_to_can->ringbuf_incoming)){
-		ring_buf_get(&computer_to_can->ringbuf_incoming, &byte, 1);
-		if(byte == ':'){
-			computer_to_can->gridconnect_in_pos = 0;
-		}
-
-		computer_to_can->gridconnect_in[computer_to_can->gridconnect_in_pos] = byte;
-		computer_to_can->gridconnect_in_pos++;
-
-	    if(computer_to_can->gridconnect_in_pos > sizeof(computer_to_can->gridconnect_in)){
-	    	computer_to_can->gridconnect_in_pos = 0;
-	    }
-
-		if(byte == ';' && computer_to_can->gridconnect_in_pos > 0){
-			// We have a full frame.  Parse and send out to the CAN bus
-			int stat = lcc_gridconnect_to_canframe(computer_to_can->gridconnect_in, &lcc_rx);
-			computer_to_can->gridconnect_in_pos = 0;
-			if(stat == LCC_OK){
-				// Push out to the CAN bus
-				memset(&zephyr_can_frame_tx, 0, sizeof(zephyr_can_frame_tx));
-				zephyr_can_frame_tx.id = lcc_rx.can_id;
-				zephyr_can_frame_tx.dlc = lcc_rx.can_len;
-				zephyr_can_frame_tx.flags = CAN_FRAME_IDE;
-				memcpy(zephyr_can_frame_tx.data, lcc_rx.data, 8);
-
-				k_msgq_put(&computer_to_can->tx_msgq, &zephyr_can_frame_tx, K_NO_WAIT);
-			}
-		}else if(byte == ';'){
-			computer_to_can->gridconnect_in_pos = 0;
-		}
-	}
-}
-
-static void gridconnect_frame_parse_thread(void *arg1, void *unused2, void *unused3)
-{
+static void computer_to_can_parse_thread(void *arg1, void *unused2, void *unused3){
 	struct computer_to_can* computer_to_can = arg1;
+	struct can_frame frame;
 
-	// Continually try to parse frames that have come over USB
 	while(1){
-		if(k_sem_take(&computer_to_can->parse_semaphore, K_FOREVER) != 0){
-			printf("Can't take sem??\n");
-			continue;
+		k_sem_take(&computer_to_can->parse_sem, K_FOREVER);
+		int parsed = computer_to_can_parse(computer_to_can, &frame);
+		if(parsed){
+			if(k_msgq_put(&computer_to_can->parsed_msgq, &frame, K_NO_WAIT) < 0){
+				printf("Overflow parsed message queue!\n");
+			}
+			// Give the semaphore back so that we try to parse a frame again.
+			// If we can't parse a full frame, we effectively don't do anything.
+			k_sem_give(&computer_to_can->parse_sem);
 		}
-
-		// Parse everything in our buffer
-		computer_to_can_parse_data(computer_to_can);
 	}
 }
 
@@ -96,7 +60,6 @@ void computer_to_can_init(struct computer_to_can* computer_to_can, const struct 
 	ring_buf_init(&computer_to_can->ringbuf_incoming,
 			sizeof(computer_to_can->ring_buffer_incoming),
 			computer_to_can->ring_buffer_incoming);
-	k_sem_init(&computer_to_can->parse_semaphore, 0, 1);
 	k_msgq_init(&computer_to_can->tx_msgq, computer_to_can->tx_msgq_data, sizeof(struct can_frame), 55);
 
 	computer_to_can->tx_thread_tid = k_thread_create(&computer_to_can->tx_thread_data,
@@ -109,13 +72,74 @@ void computer_to_can_init(struct computer_to_can* computer_to_can, const struct 
 		printf("ERROR spawning tx thread\n");
 	}
 
-	computer_to_can->rx_thread_tid = k_thread_create(&computer_to_can->rx_thread_data,
-			rx_stack,
-			K_THREAD_STACK_SIZEOF(rx_stack),
-			gridconnect_frame_parse_thread, computer_to_can, NULL, NULL,
+	k_msgq_init(&computer_to_can->parsed_msgq, computer_to_can->parsed_frames, sizeof(struct can_frame), 12);
+	k_sem_init(&computer_to_can->parse_sem, 0, 1);
+	computer_to_can->parse_thread_tid = k_thread_create(&computer_to_can->parse_thread_data,
+			parse_stack,
+			K_THREAD_STACK_SIZEOF(parse_stack),
+			computer_to_can_parse_thread, computer_to_can, NULL, NULL,
 			0, 0,
 			K_NO_WAIT);
-	if (!computer_to_can->rx_thread_tid) {
-		printf("ERROR spawning rx thread\n");
+	if (!computer_to_can->parse_thread_tid) {
+		printf("ERROR spawning parse thread\n");
 	}
+}
+
+int computer_to_can_append_data(struct computer_to_can* comp_to_can, void* data, int len){
+	int rb_len;
+
+	rb_len = ring_buf_put(&comp_to_can->ringbuf_incoming, data, len);
+
+	k_sem_give(&comp_to_can->parse_sem);
+
+	return rb_len;
+}
+
+int computer_to_can_parse(struct computer_to_can* computer_to_can, struct can_frame* frame){
+	char byte;
+	static struct lcc_can_frame lcc_rx;
+
+	// Rather stupid, but we will read bytes 1-by-1 until we have a full packet, discarding bytes
+	// that are invalid.
+	while(!ring_buf_is_empty(&computer_to_can->ringbuf_incoming)){
+		ring_buf_get(&computer_to_can->ringbuf_incoming, &byte, 1);
+		if(byte == ':'){
+			computer_to_can->gridconnect_in_pos = 0;
+		}
+
+		computer_to_can->gridconnect_in[computer_to_can->gridconnect_in_pos] = byte;
+		computer_to_can->gridconnect_in_pos++;
+
+		if(computer_to_can->gridconnect_in_pos > sizeof(computer_to_can->gridconnect_in)){
+			computer_to_can->gridconnect_in_pos = 0;
+		}
+
+		if(byte == ';' && computer_to_can->gridconnect_in_pos > 0){
+			// We have a full frame.  Parse and return the value
+			int stat = lcc_gridconnect_to_canframe(computer_to_can->gridconnect_in, &lcc_rx);
+			computer_to_can->gridconnect_in_pos = 0;
+			if(stat == LCC_OK){
+				// Convert into a zephyr CAN frame
+				memset(frame, 0, sizeof(struct can_frame));
+				frame->id = lcc_rx.can_id;
+				frame->dlc = lcc_rx.can_len;
+				frame->flags = CAN_FRAME_IDE;
+				memcpy(frame->data, lcc_rx.data, 8);
+				return 1;
+			}
+			return -1;
+		}else if(byte == ';'){
+			computer_to_can->gridconnect_in_pos = 0;
+		}
+	}
+
+	return 0;
+}
+
+void computer_to_can_tx_frame(struct computer_to_can* comp_to_can, struct can_frame* frame){
+	k_msgq_put(&comp_to_can->tx_msgq, frame, K_NO_WAIT);
+}
+
+struct k_msgq* computer_to_can_parsed_queue(struct computer_to_can* comp_to_can){
+	return &comp_to_can->parsed_msgq;
 }
