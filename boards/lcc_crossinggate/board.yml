@@ -1,0 +1,10 @@
+board:
+  name: lcc_crossinggate
+  vendor: snowball_creek
+  socs:
+    - name: stm32g0b1xx
+  revision:
+    format: number
+    default: "1"
+    revisions:
+    - name: "1"
