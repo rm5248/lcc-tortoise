@@ -43,6 +43,9 @@
 			gpios = <&gpioa 4 GPIO_ACTIVE_HIGH>;
 			label = "LED2";
 		};
+		green_led: led_3 {
+			gpios = <&gpioc 6 GPIO_ACTIVE_HIGH>;
+		};
 
 		sound_enable: sound_en {
 			gpios = <&gpioa 7 GPIO_ACTIVE_HIGH>;
@@ -54,13 +57,13 @@
 		};
 
 		// TODO these LEDs might need to be controlled by the timer instead of as GPIO so we can PWM them
-		led_out1: led_3 {
+		led_out1: led_4 {
 			gpios = <&gpioa 8 GPIO_ACTIVE_LOW>;
 		};
-		led_out2: led_4 {
+		led_out2: led_5 {
 			gpios = <&gpioa 9 GPIO_ACTIVE_LOW>;
 		};
-		led_out3: led_5 {
+		led_out3: led_6 {
 			gpios = <&gpioa 5 GPIO_ACTIVE_LOW>;
 		};
 	};

@@ -46,40 +46,23 @@ static uint32_t last_tx_can_msg = 0;
 static uint32_t last_rx_can_msg = 0;
 const struct gpio_dt_spec blue_led = GPIO_DT_SPEC_GET(DT_NODELABEL(blue_led), gpios);
 const struct gpio_dt_spec gold_led = GPIO_DT_SPEC_GET(DT_NODELABEL(gold_led), gpios);
+const struct gpio_dt_spec green_led = GPIO_DT_SPEC_GET(DT_NODELABEL(green_led), gpios);
 
-#if 0
 static void blink_led_green(){
+	int x = 0;
 	while(1){
-		if(lcc_tortoise_state.button_control != BUTTON_CONTROL_NORMAL){
-			// LED should be on, wink off once every three seconds
-			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
-			k_sleep(K_MSEC(3000));
-			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
-			k_sleep(K_MSEC(100));
-		}else{
-			uint64_t diff = k_cycle_get_32() - lcc_tortoise_state.last_rx_dcc_msg;
+		gpio_pin_set_dt(&green_led, 1);
+		k_sleep(K_MSEC(100));
+		gpio_pin_set_dt(&green_led, 0);
+		k_sleep(K_MSEC(1500));
 
-			if(k_cyc_to_ms_ceil32(diff) < 500){
-				// Receiving DCC signal, double blink
-				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
-				k_sleep(K_MSEC(100));
-				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
-				k_sleep(K_MSEC(100));
-				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
-				k_sleep(K_MSEC(100));
-				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
-				k_sleep(K_MSEC(1500));
-			}else{
-				// No DCC signal, single blink
-				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
-				k_sleep(K_MSEC(100));
-				gpio_pin_set_dt(&lcc_tortoise_state.green_led, 0);
-				k_sleep(K_MSEC(1500));
-			}
+		if(x++ % 2){
+			crossing_gate_raise_arms();
+		}else{
+			crossing_gate_lower_arms();
 		}
 	}
 }
-#endif
 
 static void blink_led_blue(){
 	while(1){
@@ -107,11 +90,11 @@ static void blink_led_gold(){
 	}
 }
 
-//K_THREAD_DEFINE(green_blink, 512, blink_led_green, NULL, NULL, NULL,
-//		7, 0, 0);
-K_THREAD_DEFINE(blue_blink, 512, blink_led_blue, NULL, NULL, NULL,
+K_THREAD_DEFINE(green_blink, 256, blink_led_green, NULL, NULL, NULL,
 		7, 0, 0);
-K_THREAD_DEFINE(gold_blink, 512, blink_led_gold, NULL, NULL, NULL,
+K_THREAD_DEFINE(blue_blink, 256, blink_led_blue, NULL, NULL, NULL,
+		7, 0, 0);
+K_THREAD_DEFINE(gold_blink, 256, blink_led_gold, NULL, NULL, NULL,
 		7, 0, 0);
 
 char *state_to_str(enum can_state state)
@@ -608,13 +591,17 @@ static void splash(){
 	printf("  Secondary slot version: %d.%d.%d\n", semver[1].major, semver[1].minor, semver[1].revision);
 }
 
-//static void in0_change(const struct device *dev, struct gpio_callback *cb,
-//		    uint32_t pins)
-//{
-//	int load_value = gpio_pin_get_dt(&in0);
-//
-//	printf("value is %d\n", load_value);
-//}
+static int init_led(const struct gpio_dt_spec* led){
+	if (!gpio_is_ready_dt(led)) {
+		return -1;
+	}
+
+	if(gpio_pin_configure_dt(led, GPIO_OUTPUT_INACTIVE) < 0){
+		return -1;
+	}
+
+	return 0;
+}
 
 int main(void)
 {
@@ -626,6 +613,9 @@ int main(void)
 	k_sleep(K_MSEC(250));
 
 	splash();
+	init_led(&green_led);
+	init_led(&blue_led);
+	init_led(&gold_led);
 
 	if (!device_is_ready(can_dev)) {
 		printf("CAN: Device %s not ready.\n", can_dev->name);
