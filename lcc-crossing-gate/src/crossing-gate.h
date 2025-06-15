@@ -67,6 +67,8 @@ void crossing_gate_update();
  */
 void crossing_gate_incoming_event(uint64_t event_id);
 
-//void
+void crossing_gate_raise_arms();
+
+void crossing_gate_lower_arms();
 
 #endif /* LCC_CROSSING_GATE_SRC_CROSSING_GATE_H_ */

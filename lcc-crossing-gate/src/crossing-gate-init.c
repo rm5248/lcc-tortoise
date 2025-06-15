@@ -107,11 +107,13 @@ void crossing_gate_init(){
 	for(int x = 0; x < 2; x++){
 		init_tortoise(&crossing_gate_state.tortoise_control[x]);
 	}
+	crossing_gate_raise_arms();
 
 	// Now let's enable the bell and the power
 	gpio_pin_configure_dt(&crossing_gate_state.bell.enable, GPIO_OUTPUT);
 	gpio_pin_configure_dt(&crossing_gate_state.bell.power, GPIO_OUTPUT);
 
+	// Configure our PWM LED outputs
 	gpio_pin_configure_dt(&crossing_gate_state.led[0], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
 	gpio_pin_configure_dt(&crossing_gate_state.led[1], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
 	gpio_pin_configure_dt(&crossing_gate_state.led[2], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
