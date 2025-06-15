@@ -31,15 +31,15 @@ void dcc_to_computer_init(struct dcc_to_computer* dcc, const struct device* comp
 				dcc->ring_buffer_outgoing);
 	dcc->computer_uart = computer_uart;
 
-	dcc->process_thread_tid = k_thread_create(&dcc->process_thread_data,
-			dcc_process_stack,
-				K_THREAD_STACK_SIZEOF(dcc_process_stack),
-				dcc_process, NULL, NULL, NULL,
-				0, 0,
-				K_NO_WAIT);
-	if (!dcc->process_thread_tid) {
-		printf("ERROR spawning dcc process thread\n");
-	}
+//	dcc->process_thread_tid = k_thread_create(&dcc->process_thread_data,
+//			dcc_process_stack,
+//				K_THREAD_STACK_SIZEOF(dcc_process_stack),
+//				dcc_process, NULL, NULL, NULL,
+//				0, 0,
+//				K_NO_WAIT);
+//	if (!dcc->process_thread_tid) {
+//		printf("ERROR spawning dcc process thread\n");
+//	}
 }
 
 void dcc_to_computer_add_packet(struct dcc_to_computer* dcc, const uint8_t* packet_bytes, int len){
@@ -48,12 +48,14 @@ void dcc_to_computer_add_packet(struct dcc_to_computer* dcc, const uint8_t* pack
 	memcpy(packet.data, packet_bytes, len);
 
 	uint32_t dtr = 0U;
-
 	uart_line_ctrl_get(dcc->computer_uart, UART_LINE_CTRL_DTR, &dtr);
 	if (!dtr) {
 		return;
 	}
 
-	ring_buf_put(&dcc->ringbuf_outgoing, &packet, sizeof(packet));
+	int put = ring_buf_put(&dcc->ringbuf_outgoing, &packet, sizeof(packet));
+	if(put != sizeof(packet)){
+		printf("Only put %d bytes", put);
+	}
 	uart_irq_tx_enable(dcc->computer_uart);
 }

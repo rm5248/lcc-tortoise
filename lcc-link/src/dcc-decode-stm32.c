@@ -97,7 +97,6 @@ ISR_DIRECT_DECLARE(tim2_irq_fn)
 		}
 
 		k_msgq_put(&dcc_decode_ctx.readings, &value, K_NO_WAIT);
-		printf(":");
 
 		// We don't need to reschedule on every bit change, but we do need to do
 		// it on a somewhat regular schedule.

@@ -108,7 +108,7 @@ static void irq_handler_dcc_usb(const struct device *dev, void *user_data){
 				uint8_t buffer[64];
 				int rb_len, send_len;
 
-				rb_len = ring_buf_get(&can_to_computer.ringbuf_outgoing, buffer, sizeof(buffer));
+				rb_len = ring_buf_get(&dcc_to_computer.ringbuf_outgoing, buffer, sizeof(buffer));
 				if (!rb_len) {
 	//				printf("Ring buffer empty, disable TX IRQ");
 					uart_irq_tx_disable(dev);
@@ -311,7 +311,7 @@ static void parse_from_computer(struct computer_to_can* computer_to_can){
 }
 
 static void main_loop(struct computer_to_can* computer_to_can, struct can_to_computer* can_to_computer){
-	struct k_poll_event poll_data[2];
+	struct k_poll_event poll_data[3];
 
 	k_poll_event_init(&poll_data[0],
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
@@ -321,6 +321,10 @@ static void main_loop(struct computer_to_can* computer_to_can, struct can_to_com
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
 			K_POLL_MODE_NOTIFY_ONLY,
 			can_to_computer_msgq(can_to_computer));
+	k_poll_event_init(&poll_data[2],
+			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
+			K_POLL_MODE_NOTIFY_ONLY,
+			&dcc_decode_ctx.readings);
 
 	while (1) {
 		int rc = k_poll(poll_data, ARRAY_SIZE(poll_data), K_MSEC(250));
@@ -338,13 +342,15 @@ static void main_loop(struct computer_to_can* computer_to_can, struct can_to_com
 					can_to_computer_send_frame(can_to_computer, &rx_frame);
 				}
 			}
-//			uint32_t timediff;
-//			while(k_msgq_get(&dcc_decode_ctx.readings, &timediff, K_NO_WAIT) == 0){
-//				if(dcc_decoder_polarity_changed(dcc_decode_ctx.dcc_decoder, timediff) == 1){
-//					dcc_decoder_pump_packet(dcc_decode_ctx.dcc_decoder);
-//				}
-//			}
 			poll_data[1].state = K_POLL_STATE_NOT_READY;
+		}else if(poll_data[2].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
+			uint32_t timediff;
+			while(k_msgq_get(&dcc_decode_ctx.readings, &timediff, K_NO_WAIT) == 0){
+				if(dcc_decoder_polarity_changed(dcc_decode_ctx.dcc_decoder, timediff) == 1){
+					dcc_decoder_pump_packet(dcc_decode_ctx.dcc_decoder);
+				}
+			}
+			poll_data[2].state = K_POLL_STATE_NOT_READY;
 		}
 
 		handle_button(computer_to_can, can_to_computer);
@@ -392,10 +398,9 @@ int main(void)
 	uart_irq_callback_set(can_usb_dev, irq_handler_can_usb);
 	uart_irq_rx_enable(can_usb_dev);
 
-//	init_dcc();
+	init_dcc();
 	init_load_button();
 	load_button_press = 0;
-	printf("new firmware yo\n");
 
 	main_loop(&computer_to_can, &can_to_computer);
 
