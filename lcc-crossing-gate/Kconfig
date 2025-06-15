@@ -1,0 +1,9 @@
+mainmenu "LCC Crossing Gate"
+
+source "Kconfig.zephyr"
+config LCC_TORTOISE
+	default y
+	bool
+	select USE_STM32_HAL_TIM
+	select USE_STM32_HAL_TIM_EX
+	select USE_STM32_HAL_GPIO
