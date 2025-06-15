@@ -136,12 +136,12 @@ west build --build-dir build-lcc-crossing-gate -b lcc_crossinggate --sysbuild lc
 mkdir -p artifacts
 rm artifacts/* || true
 
-cp lcc-tortoise/build-lcc-crossing-gate/lcc-link/zephyr/lcc-crossing-gate.signed.bin artifacts/lcc-crossing-gate.bin
+cp lcc-tortoise/build-lcc-crossing-gate/lcc-crossing-gate/zephyr/lcc-crossing-gate.signed.bin artifacts/lcc-crossing-gate.bin
 cp lcc-tortoise/build-lcc-crossing-gate/mcuboot/zephyr/lcc-crossing-gate-bootloader.bin artifacts/lcc-crossing-gate-bootloader.bin
 #cp lcc-tortoise/flash-lcc-link.sh artifacts
 '''
 
-				zip archive: true, defaultExcludes: false, dir: 'artifacts', exclude: '', glob: 'lcc-crossing-gate*', overwrite: true, zipFile: 'lcc-link.zip'
+				zip archive: true, defaultExcludes: false, dir: 'artifacts', exclude: '', glob: 'lcc-crossing-gate*', overwrite: true, zipFile: 'lcc-crossing-gate.zip'
 				archiveArtifacts artifacts:'artifacts/lcc-crossing-gate.bin,artifacts/lcc-crossing-gate-bootloader.bin'
 			}
 		} /* stage archive */
