@@ -1,0 +1,251 @@
+/*
+ * Copyright (c) 2024 Robert Middleton
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <st/g0/stm32g0b1Xe.dtsi>
+#include <st/g0/stm32g0b1k(b-c-e)tx-pinctrl.dtsi>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/pinctrl/stm32-pinctrl.h>
+#include <zephyr/dt-bindings/pinctrl/stm32-pinctrl-common.h>
+
+/* CPU: STM32G0B1KE
+ * FLASH: 512k
+ * SRAM: 128(parity-protected)/144(not parity-protected)
+ */
+
+/ {
+	model = "Snowball Creek LCC Crossing Gate";
+	compatible = "st,stm32g0b1ke-lcc-crossing-gate";
+
+	chosen {
+		zephyr,console = &usart3;
+		zephyr,shell-uart = &usart3;
+		zephyr,uart-mcumgr = &usart3;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,canbus = &fdcan2;
+	};
+
+	aliases {
+	};
+
+	leds: leds {
+		compatible = "gpio-leds";
+		gold_led: led_1 {
+			gpios = <&gpioa 6 GPIO_ACTIVE_HIGH>;
+			label = "LED1";
+		};
+		blue_led: led_2 {
+			gpios = <&gpioa 4 GPIO_ACTIVE_HIGH>;
+			label = "LED2";
+		};
+
+		sound_enable: sound_en {
+			gpios = <&gpioa 7 GPIO_ACTIVE_HIGH>;
+			label = "sound_enable";
+		};
+		sound_power: sound_pwr {
+			gpios = <&gpioa 12 GPIO_ACTIVE_HIGH>;
+			label = "sound_power";
+		};
+
+		// TODO these LEDs might need to be controlled by the timer instead of as GPIO so we can PWM them
+		led_out1: led_3 {
+			gpios = <&gpioa 8 GPIO_ACTIVE_LOW>;
+		};
+		led_out2: led_4 {
+			gpios = <&gpioa 9 GPIO_ACTIVE_LOW>;
+		};
+		led_out3: led_5 {
+			gpios = <&gpioa 5 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		blue_switch: button_blue {
+			label = "blue_switch";
+			gpios = <&gpioa 13 (GPIO_ACTIVE_LOW)>;
+		};
+		gold_switch: button_gold {
+			label = "gold_switch";
+			gpios = <&gpioa 14 (GPIO_ACTIVE_HIGH)>;
+		};
+
+	};
+
+	inputs {
+		compatible = "gpio-keys";
+		debounce-interval-ms = <0>;
+
+		in0: input0 {
+			label = "in0";
+			gpios = <&gpio_expander 0 GPIO_ACTIVE_LOW>;
+		};
+		in1: input1 {
+			label = "in1";
+			gpios = <&gpio_expander 1 GPIO_ACTIVE_LOW>;
+		};
+		in2: input2 {
+			label = "in2";
+			gpios = <&gpio_expander 2 GPIO_ACTIVE_LOW>;
+		};
+		in3: input3 {
+			label = "in3";
+			gpios = <&gpio_expander 3 GPIO_ACTIVE_LOW>;
+		};
+		in4: input4 {
+			label = "in4";
+			gpios = <&gpio_expander 4 GPIO_ACTIVE_LOW>;
+		};
+		in5: input5 {
+			label = "in5";
+			gpios = <&gpio_expander 5 GPIO_ACTIVE_LOW>;
+		};
+		in6: input6 {
+			label = "in6";
+			gpios = <&gpio_expander 6 GPIO_ACTIVE_LOW>;
+		};
+		in7: input7 {
+			label = "in7";
+			gpios = <&gpio_expander 7 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+/*
+&clk_lsi {
+	status = "okay";
+};
+
+&clk_hsi {
+	status = "okay";
+};
+
+&clk_hsi48 {
+	status = "okay";
+	crs-usb-sof;
+};
+*/
+
+&clk_hse {
+	status = "okay";
+	hse-bypass;
+	clock-frequency = <DT_FREQ_M(8)>;
+};
+
+&pll {
+	div-m = <1>;
+	mul-n = <12>;
+	div-p = <2>;
+	div-q = <2>;
+	div-r = <3>;
+	clocks = <&clk_hse>;
+	status = "okay";
+};
+
+
+&rcc {
+	clocks = <&pll>;
+	clock-frequency = <DT_FREQ_M(32)>;
+	ahb-prescaler = <1>;
+	apb1-prescaler = <1>;
+};
+
+&usart3 {
+	pinctrl-0 = <&usart3_tx_pb8 &usart3_rx_pb9>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+};
+
+
+/*
+&rtc {
+	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00000400>,
+		 <&rcc STM32_SRC_LSI RTC_SEL(2)>;
+	status = "okay";
+};
+
+&iwdg {
+	status = "okay";
+};
+*/
+
+&spi1 {
+	pinctrl-0 = <&spi1_sck_pb3
+		     &spi1_miso_pb4 &spi1_mosi_pb5>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	cs-gpios = <&gpiob 7 GPIO_ACTIVE_LOW>;
+
+	gpio_expander: mcp23s08@0 {
+		compatible = "microchip,mcp23s08";
+		spi-max-frequency = <1000000>;
+		reg = <0x0>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <8>;
+		reset-gpios = <&gpioa 1 GPIO_ACTIVE_LOW>;
+		int-gpios = <&gpioa 15 GPIO_ACTIVE_LOW>;
+	};
+};
+
+&fdcan2 {
+	clocks = <&rcc STM32_CLOCK_BUS_APB1 0x00001000>,
+		 <&rcc STM32_SRC_PLL_Q FDCAN_SEL(1)>;
+	pinctrl-0 = <&fdcan2_rx_pb0 &fdcan2_tx_pb1>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		/* We have 512k of flash, so let's not worry too much about space */
+		boot_partition: partition@0 {
+			label = "bootloader";
+			reg = <0x00000000 DT_SIZE_K(48)>;
+			read-only;
+		};
+		slot0_partition: partition@C000 {
+			label = "image-0";
+			reg = <0x0000C000 DT_SIZE_K(192)>;
+		};
+		slot1_partition: partition@3C000 {
+			label = "image-1";
+			reg = <0x0003C000 DT_SIZE_K(192)>;
+		};
+
+		/*
+		 * 2k for LCC ID data
+		 */
+		lcc_partition: partition@7F000 {
+			label = "lcc-partition";
+			reg = <0x0007F000 DT_SIZE_K(2)>;
+		};
+	};
+};
+
+/ {
+	tortoise0: tort0 {
+		compatible = "tortoise-output";
+		gpios = <&gpioa 2 GPIO_ACTIVE_HIGH>,
+		        <&gpioa 10 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise1: tort1 {
+		compatible = "tortoise-output";
+		gpios = <&gpioa 3 GPIO_ACTIVE_HIGH>,
+		        <&gpioa 11 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+};

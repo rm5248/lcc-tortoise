@@ -72,6 +72,7 @@ cp lcc-tortoise/flash-lcc-smtc8.sh artifacts
 			}
 		} /* stage archive */
 
+		/****************************** LCC-Link ********************************************/
 		stage("Build LCC-Link"){
 			steps{
 				sh '''#!/bin/bash
@@ -105,6 +106,43 @@ cp lcc-tortoise/flash-lcc-link.sh artifacts
 
 				zip archive: true, defaultExcludes: false, dir: 'artifacts', exclude: '', glob: 'lcc-link*,flash-lcc-link.sh', overwrite: true, zipFile: 'lcc-link.zip'
 				archiveArtifacts artifacts:'artifacts/lcc-link.bin,artifacts/lcc-link-bootloader.bin'
+			}
+		} /* stage archive */
+
+		/****************************** LCC-CrossingGate ********************************************/
+		stage("Build LCC-Crossing Gate"){
+			steps{
+				sh '''#!/bin/bash
+source venv/bin/activate
+if [ ! -e .west ]
+then
+	west init -l lcc-tortoise
+	west update
+	west zephyr-export
+	pip3 install -r zephyr/scripts/requirements.txt
+fi
+
+cd lcc-tortoise
+west update
+echo "SB_CONFIG_BOOT_SIGNATURE_KEY_FILE=\\"/var/lib/signing-keys/lcc-crossing-gate.pem\\"" >> lcc-crossing-gate/sysbuild.conf
+west build --build-dir build-lcc-crossing-gate -b lcc_crossinggate --sysbuild lcc-crossing-gate
+'''
+			}
+		} /* stage build lcc link */
+
+		stage("Archive LCC Crossing Gate"){
+			steps{
+				sh '''#!/bin/bash
+mkdir -p artifacts
+rm artifacts/* || true
+
+cp lcc-tortoise/build-lcc-crossing-gate/lcc-link/zephyr/lcc-crossing-gate.signed.bin artifacts/lcc-crossing-gate.bin
+cp lcc-tortoise/build-lcc-crossing-gate/mcuboot/zephyr/lcc-crossing-gate-bootloader.bin artifacts/lcc-crossing-gate-bootloader.bin
+#cp lcc-tortoise/flash-lcc-link.sh artifacts
+'''
+
+				zip archive: true, defaultExcludes: false, dir: 'artifacts', exclude: '', glob: 'lcc-crossing-gate*', overwrite: true, zipFile: 'lcc-link.zip'
+				archiveArtifacts artifacts:'artifacts/lcc-crossing-gate.bin,artifacts/lcc-crossing-gate-bootloader.bin'
 			}
 		} /* stage archive */
 
