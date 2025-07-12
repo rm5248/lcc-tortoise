@@ -12,12 +12,12 @@
 static void blink_gates(){
 	k_sleep(K_MSEC(20));
 
-	while(1){
-		gpio_pin_toggle_dt(&crossing_gate_state.led[0]);
-		gpio_pin_toggle_dt(&crossing_gate_state.led[1]);
-		gpio_pin_toggle_dt(&crossing_gate_state.led[2]);
-		k_sleep(K_MSEC(500));
-	}
+//	while(1){
+//		gpio_pin_toggle_dt(&crossing_gate_state.led[0]);
+//		gpio_pin_toggle_dt(&crossing_gate_state.led[1]);
+//		gpio_pin_toggle_dt(&crossing_gate_state.led[2]);
+//		k_sleep(K_MSEC(500));
+//	}
 }
 
 K_THREAD_DEFINE(gate_blink, 512, blink_gates, NULL, NULL, NULL,
@@ -186,6 +186,7 @@ static void crossing_gate_flash(){
 
 		if(crossing_gate_state.gate_flash_state == FLASH_ON){
 			printf("Flash on\n");
+			crossing_gate_lower_arms();
 			// Lower the gates
 			gpio_pin_set_dt(&crossing_gate_state.led[0], 0);
 			gpio_pin_set_dt(&crossing_gate_state.led[1], 1);
@@ -208,13 +209,17 @@ void crossing_gate_incoming_event(uint64_t event_id){
 }
 
 void crossing_gate_raise_arms(){
-	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[0], 0);
+	printf("raise arms\n");
+	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[0], 1);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[1], 1);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[0], 0);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[1], 1);
+
+	crossing_gate_lower_arms();
 }
 
 void crossing_gate_lower_arms(){
+	printf("lower arms\n");
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[0], 1);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[1], 0);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[0], 1);
