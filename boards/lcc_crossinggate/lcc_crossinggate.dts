@@ -56,16 +56,25 @@
 			label = "sound_power";
 		};
 
-		// TODO these LEDs might need to be controlled by the timer instead of as GPIO so we can PWM them
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+		status = "okay";
+
 		led_out1: led_4 {
-			gpios = <&gpioa 8 GPIO_ACTIVE_LOW>;
+			pwms = <&pwm1 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
 		};
 		led_out2: led_5 {
-			gpios = <&gpioa 9 GPIO_ACTIVE_LOW>;
+			pwms = <&pwm1 2 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
 		};
-		led_out3: led_6 {
-			gpios = <&gpioa 5 GPIO_ACTIVE_LOW>;
-		};
+	};
+
+	servo: servo {
+		compatible = "pwm-servo";
+		pwms = <&pwm2 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+		min-pulse = <PWM_USEC(700)>;
+		max-pulse = <PWM_USEC(2500)>;
 	};
 
 	gpio_keys {
@@ -252,3 +261,26 @@
 		status = "okay";
         };
 };
+
+&timers1 {
+	st,prescaler = <10000>;
+	status = "okay";
+
+	pwm1: pwm {
+		status = "okay";
+		pinctrl-0 = <&tim1_ch1_pa8 &tim1_ch2_pa9>;
+		pinctrl-names = "default";
+	};
+};
+
+&timers2 {
+	st,prescaler = <10000>;
+	status = "okay";
+
+	pwm2: pwm {
+		status = "okay";
+		pinctrl-0 = <&tim2_ch1_pa5>;
+		pinctrl-names = "default";
+	};
+};
+
