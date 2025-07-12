@@ -9,6 +9,8 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/can.h>
 #include <zephyr/drivers/eeprom.h>
+#include <zephyr/drivers/led.h>
+#include <zephyr/drivers/pwm.h>
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/device.h>
 #include <zephyr/sys/reboot.h>
@@ -56,11 +58,11 @@ static void blink_led_green(){
 		gpio_pin_set_dt(&green_led, 0);
 		k_sleep(K_MSEC(1500));
 
-		if(x++ % 2){
-			crossing_gate_raise_arms();
-		}else{
-			crossing_gate_lower_arms();
-		}
+//		if(x++ % 2){
+//			crossing_gate_raise_arms();
+//		}else{
+//			crossing_gate_lower_arms();
+//		}
 	}
 }
 
@@ -603,6 +605,109 @@ static int init_led(const struct gpio_dt_spec* led){
 	return 0;
 }
 
+// node 63
+#define LED_PWM_NODE_ID DT_COMPAT_GET_ANY_STATUS_OKAY(pwm_leds)
+// node 64
+#define LED_PWM_FOO DT_ALIAS(gate_led1)
+// node 64
+#define LED_PWM_FOO2 DT_NODELABEL(out_led1)
+
+void pwm_foobar(){
+	const struct device* led_pwm;
+	led_pwm = DEVICE_DT_GET(LED_PWM_NODE_ID);
+//	printf("node path: %s\n", DT_NODE_PATH(LED_PWM_NODE_ID));
+//	printf("node path2: %s\n", DT_NODE_PATH(LED_PWM_FOO2));
+//	const struct pwm_dt_spec spec = PWM_DT_SPEC_GET(DT_NODELABEL(led_out1));
+//	const struct device* led_pwm = spec.dev;
+
+	if(!led_pwm){
+		printf("bad led pwm!\n");
+		return;
+	}
+
+	if(!device_is_ready(led_pwm)){
+		printf("device not ready\n");
+	}
+
+	led_on(led_pwm, 0);
+	k_sleep(K_MSEC(1000));
+	led_off(led_pwm, 0);
+
+	int bright_val = 0;
+	int dir = 1;
+	while(true){
+		led_set_brightness(led_pwm, 0, bright_val);
+		led_set_brightness(led_pwm, 1, 100 - bright_val);
+		led_set_brightness(led_pwm, 2, bright_val);
+
+		if(dir){
+			bright_val++;
+			if(bright_val >= 100){
+				dir = 0;
+			}
+		}else{
+			bright_val--;
+			if(bright_val <= 0){
+				dir = 1;
+			}
+		}
+
+		k_sleep(K_MSEC(5));
+	}
+}
+
+void do_servo(){
+	static const struct pwm_dt_spec servo = PWM_DT_SPEC_GET(DT_NODELABEL(servo));
+	static const uint32_t min_pulse = DT_PROP(DT_NODELABEL(servo), min_pulse);
+	static const uint32_t max_pulse = DT_PROP(DT_NODELABEL(servo), max_pulse);
+
+	#define STEP PWM_USEC(100)
+
+	enum direction {
+		DOWN,
+		UP,
+	};
+
+	uint32_t pulse_width = min_pulse;
+		enum direction dir = UP;
+		int ret;
+
+		printf("Servomotor control\n");
+
+		if (!pwm_is_ready_dt(&servo)) {
+			printk("Error: PWM device %s is not ready\n", servo.dev->name);
+			return;
+		}
+
+		while (1) {
+			printf("set pulse width %dns\n", pulse_width/10/00);
+			ret = pwm_set_pulse_dt(&servo, pulse_width);
+			if (ret < 0) {
+				printk("Error %d: failed to set pulse width\n", ret);
+				return;
+			}
+
+			if (dir == DOWN) {
+				if (pulse_width <= min_pulse) {
+					dir = UP;
+					pulse_width = min_pulse;
+				} else {
+					pulse_width -= STEP;
+				}
+			} else {
+				pulse_width += STEP;
+
+				if (pulse_width >= max_pulse) {
+					dir = DOWN;
+					pulse_width = max_pulse;
+				}
+			}
+
+			k_sleep(K_SECONDS(1));
+//			k_sleep(K_MSEC(500));
+		}
+}
+
 int main(void)
 {
 	int ret;
@@ -616,6 +721,9 @@ int main(void)
 	init_led(&green_led);
 	init_led(&blue_led);
 	init_led(&gold_led);
+
+//	pwm_foobar();
+//	do_servo();
 
 	if (!device_is_ready(can_dev)) {
 		printf("CAN: Device %s not ready.\n", can_dev->name);

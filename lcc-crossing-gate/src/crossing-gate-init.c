@@ -48,9 +48,9 @@ struct crossing_gate crossing_gate_state = {
 				.ring_type = BELL_RING_NONE,
 		},
 		.led = {
-				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out1), gpios),
-				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out2), gpios),
-				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out3), gpios),
+//				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out1), gpios),
+//				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out2), gpios),
+//				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out3), gpios),
 		},
 };
 
@@ -59,6 +59,7 @@ static struct gpio_callback cb_data[8];
 static void input_change(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
+	printf("input change\n");
 	crossing_gate_update();
 }
 
@@ -114,9 +115,9 @@ void crossing_gate_init(){
 	gpio_pin_configure_dt(&crossing_gate_state.bell.power, GPIO_OUTPUT);
 
 	// Configure our PWM LED outputs
-	gpio_pin_configure_dt(&crossing_gate_state.led[0], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
-	gpio_pin_configure_dt(&crossing_gate_state.led[1], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
-	gpio_pin_configure_dt(&crossing_gate_state.led[2], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
+//	gpio_pin_configure_dt(&crossing_gate_state.led[0], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
+//	gpio_pin_configure_dt(&crossing_gate_state.led[1], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
+//	gpio_pin_configure_dt(&crossing_gate_state.led[2], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
 
 	// statically configure a route for testing purposes
 	crossing_gate_state.crossing_routes[0].inputs[0].sensor_gpio = &crossing_gate_state.inputs[0];
