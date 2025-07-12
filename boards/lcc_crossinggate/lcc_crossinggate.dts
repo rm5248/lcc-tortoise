@@ -251,12 +251,12 @@
 	tortoise0: tort0 {
 		compatible = "tortoise-output";
 		gpios = <&gpioa 2 GPIO_ACTIVE_HIGH>,
-		        <&gpioa 10 GPIO_ACTIVE_HIGH>;
+		        <&gpioa 3 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
 	tortoise1: tort1 {
 		compatible = "tortoise-output";
-		gpios = <&gpioa 3 GPIO_ACTIVE_HIGH>,
+		gpios = <&gpioa 10 GPIO_ACTIVE_HIGH>,
 		        <&gpioa 11 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
@@ -284,3 +284,6 @@
 	};
 };
 
+&usart1 {
+	status = "disabled";
+};
