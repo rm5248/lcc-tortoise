@@ -210,11 +210,12 @@ void crossing_gate_incoming_event(uint64_t event_id){
 
 void crossing_gate_raise_arms(){
 	printf("raise arms\n");
-	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[0], 1);
+	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[0], 0);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[1], 1);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[0], 0);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[1], 1);
 
+	k_sleep(K_MSEC(5000));
 	crossing_gate_lower_arms();
 }
 
