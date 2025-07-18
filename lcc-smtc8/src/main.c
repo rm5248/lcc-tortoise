@@ -32,7 +32,7 @@
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
 
-#define VERSION_STR "1.1.0"
+#define VERSION_STR "1.2.0"
 
 /*
  * Address Space / storage information
@@ -41,6 +41,7 @@
  * 251 = node name/description.  This is stored in the global_partition
  * 250 = DCC translation configuration.  Stored in the global_partition, but handled separately over LCC
  * 249 = firmware version header information
+ * 248 = voltage information
  *
  * LCC ID is stored in the lcc_partition.  This partition is effectively readonly,
  * it should never be overwritten as it is possible that writing to it might occur
@@ -333,9 +334,12 @@ void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_
 	}else if(address_space == 250){
 		// Global config
 		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 1, 0, 0);
-	}else if(address_space = 249){
+	}else if(address_space == 249){
 		// Firmware versions
 		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 16, 0, 0);
+	}else if(address_space == 248){
+		// voltage info
+		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 8, 0, 0);
 	}else{
 		// This memory space does not exist: return an error
 		lcc_memory_respond_information_query(ctx, alias, 0, address_space, 0, 0, 0);
@@ -394,6 +398,21 @@ void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint
 			}
 
 		  uint8_t* buffer = ((uint8_t*)&semver) + starting_address;
+			lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, buffer, read_count);
+	  }else if(address_space == 248){
+		  struct adc_readings readings;
+		  powerhandle_current_volts_mv(&readings);
+
+		  readings.vin_mv = __builtin_bswap32(readings.vin_mv);
+		  readings.volts_mv = __builtin_bswap32(readings.volts_mv);
+
+		  if(starting_address + read_count > sizeof(readings)){
+				// trying to read too much memory
+				lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
+				return;
+			}
+
+		  uint8_t* buffer = ((uint8_t*)&readings) + starting_address;
 			lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, buffer, read_count);
 	  }
 }

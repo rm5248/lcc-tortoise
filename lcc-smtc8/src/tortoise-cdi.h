@@ -15,7 +15,7 @@ const char cdi[] = {
 <manufacturer>Snowball Creek Electronics</manufacturer> \
 <model>SMTC-8</model> \
 <hardwareVersion>R" CONFIG_BOARD_REVISION "</hardwareVersion> \
-<softwareVersion>1.1.0</softwareVersion> \
+<softwareVersion>1.2.0</softwareVersion> \
 </identification> \
 <acdi/> \
 <segment space='251'> \
@@ -153,6 +153,15 @@ const char cdi[] = {
 <name>Build Number</name> \
 </int> \
 </group> \
+</segment> \
+<segment space='248'> \
+<name>Voltages</name> \
+<int size='4'> \
+<name>Output Voltage(mv)</name> \
+</int> \
+<int size='4'> \
+<name>Input Voltage(mv)</name> \
+</int> \
 </segment> \
 </cdi>"
 };
