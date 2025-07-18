@@ -68,10 +68,6 @@
 			label = "gold_switch";
 			gpios = <&gpioa 14 (GPIO_ACTIVE_HIGH)>;
 		};
-		volts: volts_0 {
-			label = "volts";
-			gpios = <&gpioa 0 (GPIO_ACTIVE_LOW)>;
-		};
 	};
 };
 

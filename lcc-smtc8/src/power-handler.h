@@ -8,6 +8,11 @@
 #ifndef LCC_TORTOISE_SRC_POWER_HANDLER_H_
 #define LCC_TORTOISE_SRC_POWER_HANDLER_H_
 
+struct adc_readings{
+	int volts_mv;
+	int vin_mv;
+};
+
 void powerhandle_init();
 
 /**
@@ -15,5 +20,7 @@ void powerhandle_init();
  * This is needed so that we don't write to the flash if we don't need to.
  */
 void powerhandle_check_if_save_required();
+
+void powerhandle_current_volts_mv(struct adc_readings*);
 
 #endif /* LCC_TORTOISE_SRC_POWER_HANDLER_H_ */

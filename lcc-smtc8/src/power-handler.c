@@ -15,6 +15,7 @@
 #include "lcc-tortoise-state.h"
 #include "tortoise.h"
 #include "dcc-decode-stm32.h"
+#include "power-handler.h"
 
 static void adc_irq_fn(void* arg)
 {
@@ -34,6 +35,7 @@ void powerhandle_init(){
 	__HAL_RCC_ADC_CLK_ENABLE();
 
 	LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_1, LL_GPIO_MODE_ANALOG);
+	LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_0, LL_GPIO_MODE_ANALOG);
 
 	// Install our interrupt handler for the ADC
 	IRQ_CONNECT(ADC1_COMP_IRQn, 0, adc_irq_fn, NULL, 0);
@@ -50,7 +52,7 @@ void powerhandle_init(){
 	LL_ADC_REG_SetContinuousMode(ADC1, LL_ADC_REG_CONV_CONTINUOUS);
 
 	LL_ADC_SetSamplingTimeCommonChannels(ADC1, LL_ADC_SAMPLINGTIME_COMMON_1, LL_ADC_SAMPLINGTIME_39CYCLES_5);
-	LL_ADC_REG_SetSequencerChannels(ADC1, LL_ADC_CHANNEL_1);
+	LL_ADC_REG_SetSequencerChannels(ADC1, LL_ADC_CHANNEL_1 | LL_ADC_CHANNEL_0);
 
 	// Configure analog watchdog 1
 	LL_ADC_SetAnalogWDMonitChannels(ADC1, LL_ADC_AWD1, LL_ADC_AWD_CHANNEL_1_REG);
@@ -60,6 +62,7 @@ void powerhandle_init(){
 
 	// Sampling time
 	LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_1, LL_ADC_SAMPLINGTIME_COMMON_1);
+	LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_0, LL_ADC_SAMPLINGTIME_COMMON_1);
 
 	// Now let's enable it and start the ADC running
 	LL_ADC_Enable(ADC1);
@@ -81,4 +84,31 @@ void powerhandle_check_if_save_required(){
 	}
 
 	lcc_tortoise_state.save_tortoise_pos_on_shutdown = new_save_settings;
+}
+
+static int adc_value(int channel){
+	LL_ADC_REG_SetSequencerChannels(ADC1, channel);
+	LL_ADC_ClearFlag_EOC(ADC1);
+	LL_ADC_REG_StartConversion(ADC1);
+
+	while(!LL_ADC_IsActiveFlag_EOC(ADC1)){}
+	int reading = LL_ADC_REG_ReadConversionData32(ADC1);
+	while(!LL_ADC_IsActiveFlag_EOS(ADC1)){}
+
+	return reading;
+}
+
+void powerhandle_current_volts_mv(struct adc_readings* readings){
+	LL_ADC_REG_StopConversion(ADC1);
+	while(LL_ADC_REG_IsConversionOngoing(ADC1)){}
+
+	LL_ADC_REG_SetContinuousMode(ADC1, LL_ADC_REG_CONV_SINGLE);
+	int volts_count = adc_value(LL_ADC_CHANNEL_0);
+	int vin_count = adc_value(LL_ADC_CHANNEL_1);
+
+	LL_ADC_REG_SetContinuousMode(ADC1, LL_ADC_REG_CONV_CONTINUOUS);
+	LL_ADC_REG_StartConversion(ADC1);
+
+	readings->volts_mv = (int)(volts_count * 1000 / 274.5);
+	readings->vin_mv = vin_count * 1000 / 271;
 }

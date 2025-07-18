@@ -134,11 +134,23 @@ static void blink_led_gold(){
 	}
 }
 
+static void print_voltage_readings(){
+	struct adc_readings readings;
+
+	while(1){
+		powerhandle_current_volts_mv(&readings);
+		printf("Current volts: %dmv vin: %dmv\n", readings.volts_mv, readings.vin_mv);
+		k_sleep(K_MSEC(250));
+	}
+}
+
 K_THREAD_DEFINE(green_blink, 512, blink_led_green, NULL, NULL, NULL,
 		7, 0, 0);
 K_THREAD_DEFINE(blue_blink, 512, blink_led_blue, NULL, NULL, NULL,
 		7, 0, 0);
 K_THREAD_DEFINE(gold_blink, 512, blink_led_gold, NULL, NULL, NULL,
+		7, 0, 0);
+K_THREAD_DEFINE(voltage_readings, 512, print_voltage_readings, NULL, NULL, NULL,
 		7, 0, 0);
 
 char *state_to_str(enum can_state state)
@@ -913,6 +925,8 @@ static void splash(){
 int main(void)
 {
 	int ret;
+
+//	k_thread_suspend(voltage_readings);
 
 	// Sleep for a bit before we start to allow power to become stable.
 	// This is probably not needed, but it shouldn't hurt.

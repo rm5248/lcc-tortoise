@@ -17,7 +17,7 @@ const char cdi[] = {
 <hardwareVersion>R" CONFIG_BOARD_REVISION "</hardwareVersion> \
 <softwareVersion>1.1.0</softwareVersion> \
 </identification> \
-<acdi /> \
+<acdi/> \
 <segment space='251'> \
 <name>Node ID</name> \
 <group> \
@@ -37,20 +37,15 @@ const char cdi[] = {
 <repname>Output</repname> \
 <eventid> \
 <name>Reversed EventID</name> \
-<description>Custom Event ID to use to set the switch to reversed. \
-Do not use if you are using standard EventIDs for switch \
-control</description> \
+<description>Custom Event ID to use to set the switch to reversed.  Do not use if you are using standard EventIDs for switch control</description> \
 </eventid> \
 <eventid> \
 <name>Normal EventID</name> \
-<description>Custom Event ID to use to set the switch to normal. Do \
-not use if you are using standard EventIDs for switch \
-control</description> \
+<description>Custom Event ID to use to set the switch to normal.  Do not use if you are using standard EventIDs for switch control</description> \
 </eventid> \
 <int size='2'> \
 <name>DCC Switch number</name> \
-<description>The DCC switch number to react to. When using standard \
-EventIDs, set this value.</description> \
+<description>The DCC switch number to react to.  When using standard EventIDs, set this value.</description> \
 <min>1</min> \
 <max>2048</max> \
 </int> \
@@ -96,9 +91,13 @@ EventIDs, set this value.</description> \
 <property>4</property> \
 <value>Disable Output</value> \
 </relation> \
+<relation> \
+<property>5</property> \
+<value>Always on</value> \
+</relation> \
 </map> \
 </int> \
-<group offset='12' /> \
+<group offset='12'/> \
 </group> \
 </segment> \
 <segment space='250'> \
