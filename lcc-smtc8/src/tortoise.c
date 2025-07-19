@@ -131,6 +131,12 @@ static int tortoise_set_position_force(struct tortoise* tort, enum tortoise_posi
 		return 0;
 	}
 
+	if(tort->config->control_type == CONTROL_ALWAYS_ON){
+		gpio_pin_set_dt(&tort->gpios[0], 0);
+		gpio_pin_set_dt(&tort->gpios[1], 1);
+		return 0;
+	}
+
 	if(position == POSITION_NORMAL){
 		gpio_pin_set_dt(&tort->gpios[0], 0);
 		gpio_pin_set_dt(&tort->gpios[1], 1);

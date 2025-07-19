@@ -2,10 +2,10 @@
 <cdi 
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://openlcb.org/schema/cdi/1/1/cdi.xsd">
 	<identification>
-		<manufacturer>Snowball Creek</manufacturer>
+		<manufacturer>Snowball Creek Electronics</manufacturer>
 		<model>SMTC-8</model>
 		<hardwareVersion>P4</hardwareVersion>
-		<softwareVersion>1.1.0</softwareVersion>
+		<softwareVersion>1.2.0</softwareVersion>
 	</identification>
 	<acdi/>
 	<segment space='251'>
@@ -81,6 +81,10 @@
 					<relation>
 						<property>4</property>
 						<value>Disable Output</value>
+					</relation>
+					<relation>
+						<property>5</property>
+						<value>Always on</value>
 					</relation>
 				</map>
 			</int>
@@ -182,5 +186,15 @@
 				<name>Build Number</name>
 			</int>
 		</group>
+	</segment>
+
+	<segment space='248'>
+		<name>Voltages</name>
+		<int size='4'>
+			<name>Output Voltage(mv)</name>
+		</int>
+		<int size='4'>
+			<name>Input Voltage(mv)</name>
+		</int>
 	</segment>
 </cdi>
