@@ -188,9 +188,9 @@ static void crossing_gate_flash(){
 			printf("Flash on\n");
 			crossing_gate_lower_arms();
 			// Lower the gates
-			gpio_pin_set_dt(&crossing_gate_state.led[0], 0);
-			gpio_pin_set_dt(&crossing_gate_state.led[1], 1);
-			gpio_pin_set_dt(&crossing_gate_state.led[2], 0);
+//			gpio_pin_set_dt(&crossing_gate_state.led[0], 0);
+//			gpio_pin_set_dt(&crossing_gate_state.led[1], 1);
+//			gpio_pin_set_dt(&crossing_gate_state.led[2], 0);
 			k_thread_resume(gate_blink);
 		}
 	}
