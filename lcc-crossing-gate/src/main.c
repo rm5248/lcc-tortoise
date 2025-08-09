@@ -680,7 +680,7 @@ void do_servo(){
 		}
 
 		while (1) {
-			printf("set pulse width %dns\n", pulse_width/10/00);
+			printf("set pulse width %dns\n", pulse_width/1000);
 			ret = pwm_set_pulse_dt(&servo, pulse_width);
 			if (ret < 0) {
 				printk("Error %d: failed to set pulse width\n", ret);
@@ -723,7 +723,7 @@ int main(void)
 	init_led(&gold_led);
 
 //	pwm_foobar();
-//	do_servo();
+	do_servo();
 
 	if (!device_is_ready(can_dev)) {
 		printf("CAN: Device %s not ready.\n", can_dev->name);
