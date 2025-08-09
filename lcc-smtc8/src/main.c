@@ -945,7 +945,7 @@ int main(void)
 {
 	int ret;
 
-//	k_thread_suspend(voltage_readings);
+	k_thread_suspend(voltage_readings);
 
 	// Sleep for a bit before we start to allow power to become stable.
 	// This is probably not needed, but it shouldn't hurt.
