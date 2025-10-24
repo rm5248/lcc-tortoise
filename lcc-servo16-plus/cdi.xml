@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<cdi 
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://openlcb.org/schema/cdi/1/1/cdi.xsd">
+	<identification>
+		<manufacturer>Snowball Creek Electronics</manufacturer>
+		<model>Servo 16 Plus</model>
+		<hardwareVersion>0</hardwareVersion>
+		<softwareVersion>0</softwareVersion>
+	</identification>
+	<acdi/>
+<!--
+	<segment space='251'>
+		<name>Node ID</name>
+		<group>
+			<name>Your name and description for this node</name>
+			<string size='63'>
+				<name>Node Name</name>
+			</string>
+			<string size='64' offset='1'>
+				<name>Node Description</name>
+			</string>
+		</group>	
+	</segment>
+-->
+
+	<segment space='253'>
+		<name>Outputs</name>
+		<group replication='16'>
+			<name>OUT</name>
+			<repname>Output</repname>
+			<string size='32'>
+				<name>Output Name</name>
+			</string>
+			<int size='2'>
+				<name>Servo min pulse time(us)</name>
+				<description>The minimum servo pulse time.  By convention, this is 1ms(1000us).  Other servos may use a different value.</description>
+				<min>700</min>
+				<max>1500</max>
+			</int>
+			<int size='2'>
+				<name>Servo max pulse time(us)</name>
+				<description>The maximum servo pulse time.  By convention, this is 2ms(2000us).  Other servos may use a different value.</description>
+				<min>1500</min>
+				<max>2500</max>
+			</int>
+			<!-- 12 reserved bytes -->
+			<group offset='12'/>
+			<group replication='6'>
+				<name>Event Inputs</name>
+				<eventid>
+					<name>EventID</name>
+					<description>Event ID that will set output to the given value</description>
+				</eventid>
+				<int size='1'>
+					<name>Percentage</name>
+				</int>
+				<group offset='7'/>
+			</group>
+		</group>
+	</segment>
+
+<!--
+	<segment space='250'>
+		<name>Global Config</name>
+	</segment>
+
+	<segment space='249'>
+		<name>Firmware Versions</name>
+		<group>
+			<name>Primary version</name>
+			<int size='1'>
+				<name>Major</name>
+			</int>
+			<int size='1'>
+				<name>Minor</name>
+			</int>
+			<int size='2'>
+				<name>Revision</name>
+			</int>
+			<int size='4'>
+				<name>Build Number</name>
+			</int>
+		</group>
+		<group>
+			<name>Secondary version</name>
+			<int size='1'>
+				<name>Major</name>
+			</int>
+			<int size='1'>
+				<name>Minor</name>
+			</int>
+			<int size='2'>
+				<name>Revision</name>
+			</int>
+			<int size='4'>
+				<name>Build Number</name>
+			</int>
+		</group>
+	</segment>
+
+	<segment space='248'>
+		<name>Voltages</name>
+		<int size='4'>
+			<name>Output Voltage(mv)</name>
+		</int>
+		<int size='4'>
+			<name>Input Voltage(mv)</name>
+		</int>
+	</segment>
+-->
+</cdi>
