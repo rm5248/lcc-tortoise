@@ -23,6 +23,7 @@
 #include "lcc-memory.h"
 #include "servo16-config.h"
 #include "cdi.h"
+#include "pca9685_board.h"
 
 #define VERSION_STR "0"
 
@@ -384,10 +385,17 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 		memcpy(buffer_u8 + starting_address, data, data_len);
 
 		// Write out to non-volatile memory
-//		save_configs_to_flash();
+		save_config_to_flash();
 
 		lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
+
+		// re-init events consumed
+		add_all_events_consumed(lcc_context_get_event_context(lcc_ctx));
 	}
+}
+
+static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
+	pca9685_board_handle_event(&servo16_state.boards[0], event_id);
 }
 
 int main(void)
@@ -428,6 +436,8 @@ int main(void)
 	lcc_context_set_write_function( ctx, lcc_write_cb, tx_queue_size_cb );
 	struct lcc_event_context* evt_ctx = lcc_event_new(ctx);
 
+	lcc_event_set_incoming_event_function(evt_ctx, incoming_event);
+
 	lcc_datagram_context_new(ctx);
 	struct lcc_memory_context* mem_ctx = lcc_memory_new(ctx);
 	lcc_memory_set_cdi(mem_ctx, cdi, sizeof(cdi), 0);
@@ -456,6 +466,13 @@ int main(void)
 
 	// Turn on the outputs for the servo
 	output_enable();
+
+	// Load all of our configs
+	if(load_config_from_flash() == 2){
+		// flash is empty, write out basic data
+		save_config_to_flash();
+	}
+	add_all_events_consumed(evt_ctx);
 
 	printf("servooutput: %d\n", sizeof(struct ServoOutput));
 	printf("servoevent: %d\n", sizeof(struct ServoEvent));
