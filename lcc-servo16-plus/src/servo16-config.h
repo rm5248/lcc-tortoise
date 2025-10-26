@@ -12,6 +12,8 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/pwm.h>
 
+struct lcc_event_context;
+
 struct ServoEvent{
 	uint64_t BE_event_id;
 	uint8_t position;
@@ -51,5 +53,9 @@ extern struct Servo16PlusState servo16_state;
 int init_state(uint64_t board_id);
 
 void output_enable(void);
+
+int save_config_to_flash();
+int load_config_from_flash();
+void add_all_events_consumed(struct lcc_event_context* ctx);
 
 #endif /* LCC_SERVO16_PLUS_SRC_SERVO16_CONFIG_H_ */
