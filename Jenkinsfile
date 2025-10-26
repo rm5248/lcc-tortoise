@@ -108,5 +108,41 @@ cp lcc-tortoise/flash-lcc-link.sh artifacts
 			}
 		} /* stage archive */
 
+		stage("Build Servo16Plus"){
+			steps{
+				sh '''#!/bin/bash
+source venv/bin/activate
+if [ ! -e .west ]
+then
+	west init -l lcc-tortoise
+	west update
+	west zephyr-export
+	pip3 install -r zephyr/scripts/requirements.txt
+fi
+
+cd lcc-tortoise
+west update
+echo "SB_CONFIG_BOOT_SIGNATURE_KEY_FILE=\\"/var/lib/signing-keys/lcc-servo16plus.pem\\"" >> lcc-servo16-plus/sysbuild.conf
+west build --build-dir build-lccservo16 -b servo-tc16 --sysbuild lcc-servo16-plus
+'''
+			}
+		} /* stage build lcc servo 16 plus */
+
+		stage("Archive LCC servo 16 plus"){
+			steps{
+				sh '''#!/bin/bash
+mkdir -p artifacts
+rm artifacts/* || true
+
+cp lcc-tortoise/build-lccservo16/lcc-servo16-plus/zephyr/lcc-servo16-plus.signed.bin artifacts/lcc-servo16-plus.bin
+cp lcc-tortoise/build-lccservo16/mcuboot/zephyr/lcc-servo16-plus-bootloader.bin artifacts/lcc-servo16-plus-bootloader.bin
+cp lcc-tortoise/flash-lcc-servo16-plus.sh artifacts
+'''
+
+				zip archive: true, defaultExcludes: false, dir: 'artifacts', exclude: '', glob: 'lcc-servo*,flash-lcc-servo16-plus.sh', overwrite: true, zipFile: 'lcc-servo.zip'
+				archiveArtifacts artifacts:'artifacts/lcc-servo16-plus.bin,artifacts/lcc-servo16-plus-bootloader.bin'
+			}
+		} /* stage archive */
+
 	} /* end stages */
 }
