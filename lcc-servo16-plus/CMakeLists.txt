@@ -25,6 +25,7 @@ file(GLOB lcc-sources
 target_sources(app PRIVATE 
 	src/main.c 
 	src/servo16-state.c
+	src/pca9685_board.c
 	${lcc-sources}
 	../common/firmware_upgrade.h
 	../common/firmware_upgrade.c

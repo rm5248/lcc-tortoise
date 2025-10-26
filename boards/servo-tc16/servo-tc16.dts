@@ -169,12 +169,12 @@ zephyr_udc0: &usb {
 		};
 
 		/*
-		 * 2k reserved for app storage partition.
+		 * 12k reserved for app storage partition.
 		 * This is used for configuration data.
 		 */
-		config_partition: partition@7E000 {
+		config_partition: partition@6C000 {
 			label = "config";
-			reg = <0x0007E000 DT_SIZE_K(2)>;
+			reg = <0x0006C000 DT_SIZE_K(12)>;
 		};
 		/*
 		 * 2k for LCC ID data
@@ -231,22 +231,22 @@ zephyr_udc0: &usb {
 		compatible = "pwm-leds";
 
 		builtin: node0 {
-			pwms = <&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
-				<&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+			pwms = <&pca9685_builtin 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+			        <&pca9685_builtin 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 2 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 3 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 4 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 5 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 6 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 7 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 8 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 9 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 10 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 11 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 12 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 13 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 14 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_builtin 15 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
 		};
 	};
 };

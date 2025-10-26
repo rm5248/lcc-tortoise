@@ -6,6 +6,9 @@
  */
 
 #include "servo16-config.h"
+#include "lcc-event.h"
+
+#include <zephyr/storage/flash_map.h>
 
 struct Servo16PlusState servo16_state = {
 		.boards = {
@@ -78,4 +81,83 @@ int init_state(uint64_t board_id){
 
 void output_enable(){
 	gpio_pin_set_dt(&servo16_state.oe_pin, 1);
+}
+
+int save_config_to_flash(){
+	int ret = 0;
+	const struct flash_area* storage_area = NULL;
+	int id = FIXED_PARTITION_ID(config_partition);
+
+	if(flash_area_open(id, &storage_area) < 0){
+		return 1;
+	}
+
+	ret = flash_area_erase(storage_area, 0, sizeof(servo16_state.pwm_boards_config));
+	if(ret){
+		goto out;
+	}
+
+	int err = flash_area_write(storage_area, 0, servo16_state.pwm_boards_config, sizeof(servo16_state.pwm_boards_config));
+	if( err < 0){
+		ret = -1;
+	}
+
+out:
+	if(ret){
+		printf("Unable to save configs to flash: %d\n", err);
+	}
+	flash_area_close(storage_area);
+
+//	powerhandle_check_if_save_required();
+	return ret;
+}
+
+int load_config_from_flash(){
+	int ret = 0;
+	const struct flash_area* storage_area = NULL;
+	uint8_t buffer[8];
+	int id = FIXED_PARTITION_ID(config_partition);
+
+	if(flash_area_open(id, &storage_area) < 0){
+		return 1;
+	}
+
+	if(flash_area_read(storage_area, 0, buffer, sizeof(buffer)) < 0){
+		ret = -1;
+		goto out;
+	}
+
+	// Check to see if the first 8 bytes are 0xFF.  If so, we assume the data is uninitialized
+	const uint8_t mem[8] = {
+			0xFF, 0xFF, 0xFF, 0xFF,
+			0xFF, 0xFF, 0xFF, 0xFF
+	};
+	if(memcmp(buffer, mem, 8) == 0){
+		ret = 2;
+		goto out;
+	}
+
+	if(flash_area_read(storage_area, 0, servo16_state.pwm_boards_config, sizeof(servo16_state.pwm_boards_config)) < 0){
+		goto out;
+	}
+
+out:
+	flash_area_close(storage_area);
+	return ret;
+}
+
+void add_all_events_consumed(struct lcc_event_context* evt_ctx){
+	lcc_event_clear_events(evt_ctx, LCC_EVENT_CONTEXT_CLEAR_EVENTS_CONSUMED);
+	lcc_event_add_event_consumed_transaction_start(evt_ctx);
+
+	for(int x = 0; x < 4; x++){
+		for(int y = 0; y < 16; y++){
+			for(int z = 0; z < 6; z++){
+				uint64_t event_id = __builtin_bswap64(servo16_state.pwm_boards_config[x].outputs[y].events[z].BE_event_id);
+				lcc_event_add_event_consumed(evt_ctx, event_id);
+			}
+		}
+	}
+
+	lcc_event_add_event_consumed_transaction_end(evt_ctx);
 }
