@@ -63,7 +63,7 @@ K_THREAD_STACK_DEFINE(tx_stack, 512);
 struct k_thread tx_thread_data;
 k_tid_t tx_thread_tid;
 CAN_MSGQ_DEFINE(rx_msgq, 55);
-CAN_MSGQ_DEFINE(tx_msgq, 12);
+CAN_MSGQ_DEFINE(tx_msgq, 24);
 
 static void blink_led_green(){
 	while(1){
@@ -483,6 +483,10 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 		  uint8_t* global_config_raw = &global_config;
 		  memcpy(global_config_raw + starting_address, data, data_len);
 		  save_global_config();
+
+		lcc_context_set_simple_node_name_description(lcc_memory_parent_context(ctx),
+				global_config.node_name,
+				global_config.node_description);
 
 		  lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
 	  }else if(address_space == 253){
@@ -1010,6 +1014,9 @@ int main(void)
 			"SMTC-8",
 			"R" CONFIG_BOARD_REVISION,
 			VERSION_STR);
+	lcc_context_set_simple_node_name_description(ctx,
+			global_config.node_name,
+			global_config.node_description);
 
 	lcc_context_set_write_function( ctx, lcc_write_cb, tx_queue_size_cb );
 	struct lcc_event_context* evt_ctx = lcc_event_new(ctx);
