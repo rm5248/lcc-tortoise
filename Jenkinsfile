@@ -139,7 +139,7 @@ cp lcc-tortoise/build-lccservo16/mcuboot/zephyr/lcc-servo16-plus-bootloader.bin 
 cp lcc-tortoise/flash-lcc-servo16-plus.sh artifacts
 '''
 
-				zip archive: true, defaultExcludes: false, dir: 'artifacts', exclude: '', glob: 'lcc-servo*,flash-lcc-servo16-plus.sh', overwrite: true, zipFile: 'lcc-servo.zip'
+				zip archive: true, defaultExcludes: false, dir: 'artifacts', exclude: '', glob: 'lcc-servo*,flash-lcc-servo16-plus.sh', overwrite: true, zipFile: 'lcc-servo16plus.zip'
 				archiveArtifacts artifacts:'artifacts/lcc-servo16-plus.bin,artifacts/lcc-servo16-plus-bootloader.bin'
 			}
 		} /* stage archive */
