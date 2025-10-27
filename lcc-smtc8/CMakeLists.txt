@@ -31,6 +31,7 @@ target_sources(app PRIVATE
 	src/firmware_upgrade.c
 	src/switch-tracker.c
 	src/birthing.c
+	src/tortoise-cdi.c
 	${lcc-sources}
 )
 target_include_directories(app PRIVATE
