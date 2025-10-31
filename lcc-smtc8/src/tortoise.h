@@ -22,6 +22,7 @@
 enum tortoise_position{
 	POSITION_NORMAL,
 	POSITION_REVERSE,
+	POSITION_UNKNOWN,
 };
 
 enum StartupControl{
@@ -54,8 +55,10 @@ struct tortoise_config{
 struct tortoise {
 	const struct gpio_dt_spec gpios[2];
 	enum tortoise_position current_position;
+	enum tortoise_position desired_position;
 	struct tortoise_config* config;
 	struct k_timer pulse_timer;
+	uint32_t start_moving_time;
 };
 
 /**
@@ -106,6 +109,22 @@ int tortoise_is_controlled_by_accessory(struct tortoise* tort, int accy_number);
  * Check the current position of the tortoise, turning it on or disabling as appropriate.
  */
 int tortoise_check_set_position(struct tortoise* tort);
+
+/**
+ * Check to see if this tortoise needs to move or not(current state != requested state)
+ */
+int tortoise_needs_to_move(struct tortoise* tort);
+
+/**
+ * Tell this tortoise to set its outputs appropriately.  does nothing if tortoise
+ * does not need to change state.
+ */
+int tortoise_perform_move(struct tortoise* tort);
+
+/**
+ * Check to see if this tortoise is moving or not.
+ */
+int tortoise_is_moving(struct tortoise* tort);
 
 /**
  * Convert the configuration for this tortoise to big-endian, putting it in 'out'
