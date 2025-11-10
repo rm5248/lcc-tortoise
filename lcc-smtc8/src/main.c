@@ -32,7 +32,7 @@
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
 
-#define VERSION_STR "1.2.0"
+#define VERSION_STR "1.2.0+0"
 
 /*
  * Address Space / storage information
@@ -706,8 +706,8 @@ static void load_global_config(){
 	}
 
 	if(global_config.max_turnouts_at_once < 1 || global_config.max_turnouts_at_once > 8){
-		global_config.max_turnouts_at_once = 8;
-		printf("set max turnouts at once 8\n");
+		global_config.max_turnouts_at_once = 4;
+		printf("set max turnouts at once 4\n");
 	}
 
 out:
@@ -832,9 +832,48 @@ static void handle_button_press(){
 	}
 }
 
+static void check_for_high_voltage(){
+	struct adc_readings readings;
+	int voltage_in_range = 0;
+
+	powerhandle_current_volts_mv(&readings);
+
+	if(readings.volts_mv < 11600 &&
+			readings.volts_mv > 10000){
+		voltage_in_range = 1;
+	}
+
+	if(!voltage_in_range && lcc_tortoise_state.disable_outputs_voltage_out_of_range == 0){
+		printf("Voltage not in range: %d mv\n", readings.volts_mv);
+	}else if(voltage_in_range && lcc_tortoise_state.disable_outputs_voltage_out_of_range == 1){
+		printf("Voltage back in range\n");
+	}
+
+	if(voltage_in_range){
+		if(lcc_tortoise_state.disable_outputs_voltage_out_of_range){
+			// Voltage is back below acceptable value - re-enable tortoises
+			for(int x = 0; x < 8; x++){
+				tortoise_enable_outputs(&lcc_tortoise_state.tortoises[x]);
+			}
+		}
+		lcc_tortoise_state.disable_outputs_voltage_out_of_range = 0;
+		return;
+	}else{
+		lcc_tortoise_state.disable_outputs_voltage_out_of_range = 1;
+		for(int x = 0; x < 8; x++){
+			tortoise_disable_outputs(&lcc_tortoise_state.tortoises[x]);
+		}
+	}
+}
+
 static void check_for_turnout_changes(){
 	int num_turnouts_changing = 0;
 	int num_turnouts_that_need_to_change = 0;
+
+	if(lcc_tortoise_state.disable_outputs_voltage_out_of_range){
+		// Voltage is too high - outputs have been disabled - don't move anything
+		return;
+	}
 
 	for(int x = 0; x < 8; x++){
 		if(tortoise_is_moving(&lcc_tortoise_state.tortoises[x])){
@@ -949,6 +988,10 @@ static void main_loop(){
 		if(k_timer_status_get(&output_check_timer) > 0){
 			check_for_turnout_changes();
 			k_timer_start(&output_check_timer, K_MSEC(250), K_NO_WAIT);
+
+			// Periodically also check for high voltage - if the voltage is too high,
+			// disable the outputs
+			check_for_high_voltage();
 		}
 	}
 }

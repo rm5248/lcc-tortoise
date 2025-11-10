@@ -62,6 +62,9 @@ struct lcc_tortoise_state{
 	// Tracker for the current switch positions
 	uint8_t switch_tracker_dirty;
 	struct switch_tracker trackers[2048];
+
+	// should we disable all commands to the outputs?
+	uint8_t disable_outputs_voltage_out_of_range;
 };
 
 struct global_config{
