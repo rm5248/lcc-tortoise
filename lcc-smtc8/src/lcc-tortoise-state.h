@@ -65,6 +65,7 @@ struct lcc_tortoise_state{
 
 	// should we disable all commands to the outputs?
 	uint8_t disable_outputs_voltage_out_of_range;
+	uint32_t disable_outputs_start_time;
 };
 
 struct global_config{

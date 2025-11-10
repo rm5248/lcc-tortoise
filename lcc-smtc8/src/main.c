@@ -843,25 +843,24 @@ static void check_for_high_voltage(){
 		voltage_in_range = 1;
 	}
 
+	uint32_t diff = k_cycle_get_32() - lcc_tortoise_state.disable_outputs_start_time;
+
 	if(!voltage_in_range && lcc_tortoise_state.disable_outputs_voltage_out_of_range == 0){
 		printf("Voltage not in range: %d mv\n", readings.volts_mv);
-	}else if(voltage_in_range && lcc_tortoise_state.disable_outputs_voltage_out_of_range == 1){
-		printf("Voltage back in range\n");
-	}
-
-	if(voltage_in_range){
-		if(lcc_tortoise_state.disable_outputs_voltage_out_of_range){
-			// Voltage is back below acceptable value - re-enable tortoises
-			for(int x = 0; x < 8; x++){
-				tortoise_enable_outputs(&lcc_tortoise_state.tortoises[x]);
-			}
-		}
-		lcc_tortoise_state.disable_outputs_voltage_out_of_range = 0;
-		return;
-	}else{
+		lcc_tortoise_state.disable_outputs_start_time = k_cycle_get_32();
 		lcc_tortoise_state.disable_outputs_voltage_out_of_range = 1;
+
 		for(int x = 0; x < 8; x++){
 			tortoise_disable_outputs(&lcc_tortoise_state.tortoises[x]);
+		}
+	}else if(voltage_in_range &&
+			lcc_tortoise_state.disable_outputs_voltage_out_of_range == 1 &&
+			k_cyc_to_ms_ceil32(diff) > 5000){
+		printf("Voltage back in range\n");
+		lcc_tortoise_state.disable_outputs_voltage_out_of_range = 0;
+
+		for(int x = 0; x < 8; x++){
+			tortoise_enable_outputs(&lcc_tortoise_state.tortoises[x]);
 		}
 	}
 }
