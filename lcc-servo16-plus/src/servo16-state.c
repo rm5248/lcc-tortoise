@@ -65,10 +65,10 @@ int init_state(uint64_t board_id){
 		}
 	}
 
-	servo16_state.boards[1].config = &servo16_state.pwm_boards_config[1];
-	servo16_state.boards[2].config = &servo16_state.pwm_boards_config[2];
-	servo16_state.boards[3].config = &servo16_state.pwm_boards_config[3];
-
+	servo16_state.pwm_boards_config[0].address = 0x40;
+	servo16_state.pwm_boards_config[1].address = 0x41;
+	servo16_state.pwm_boards_config[2].address = 0x42;
+	servo16_state.pwm_boards_config[3].address = 0x43;
 
 	gpio_pin_configure_dt(&servo16_state.oe_pin, GPIO_OUTPUT_INACTIVE);
 
