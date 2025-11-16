@@ -474,12 +474,15 @@ int main(void)
 	}
 	add_all_events_consumed(evt_ctx);
 
-	printf("servooutput: %d\n", sizeof(struct ServoOutput));
-	printf("servoevent: %d\n", sizeof(struct ServoEvent));
-	printf("minpulse offset: %d\n", offsetof(struct ServoOutput, BE_min_pulse));
-	printf("maxpulse offset: %d\n", offsetof(struct ServoOutput, BE_max_pulse));
-	printf("events offset: %d\n", offsetof(struct ServoOutput, events));
-	printf("events size: %d\n", sizeof(servo16_state.pwm_boards_config[0].outputs[0].events));
+	printf("board 0 type: %d\n", servo16_state.boards[0].config->board_type);
+
+//	printf("servooutput: %d\n", sizeof(struct BoardOutput));
+//	printf("servoevent: %d\n", sizeof(struct BoardEvent));
+//	printf("minpulse offset: %d\n", offsetof(struct BoardOutput, BE_min_pulse));
+//	printf("maxpulse offset: %d\n", offsetof(struct BoardOutput, BE_max_pulse));
+//	printf("events offset: %d\n", offsetof(struct BoardOutput, events));
+//	printf("events size: %d\n", sizeof(servo16_state.pwm_boards_config[0].outputs[0].events));
+//	printf("outputs offset:%d\n", offsetof(struct BoardConfig, outputs));
 
 	main_loop();
 //	test_servo();
