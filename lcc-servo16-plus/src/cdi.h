@@ -33,12 +33,34 @@ const char* cdi = "<?xml version='1.0'?> \
 --> \
 <segment space='253'> \
 <name>Outputs</name> \
+<group replication='4'> \
+<repname>Board</repname> \
+<int size='1'> \
+<name>Board address</name> \
+</int> \
+<int size='1'> \
+<name>Board Type</name> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Servo Control</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>LED Control</value> \
+</relation> \
+</map> \
+</int> \
+<!-- six bytes of buffer --> \
+<group offset='6'/> \
 <group replication='16'> \
 <name>OUT</name> \
-<repname>Output</repname> \
+<repname>Output </repname> \
 <string size='32'> \
 <name>Output Name</name> \
 </string> \
+<group> \
+<name>Servo Settings</name> \
 <int size='2'> \
 <name>Servo min pulse time(us)</name> \
 <description>The minimum servo pulse time.  By convention, this is 1ms(1000us).  Other servos may use a different value.</description> \
@@ -51,18 +73,57 @@ const char* cdi = "<?xml version='1.0'?> \
 <min>1500</min> \
 <max>2500</max> \
 </int> \
-<!-- 12 reserved bytes --> \
-<group offset='12'/> \
+<int size='1'> \
+<name>Servo Speed</name> \
+</int> \
+<int size='1'> \
+<name>Powerup Setting</name> \
+</int> \
+</group> \
+<group> \
+<name>LED Settings</name> \
+<int size='1'> \
+<name>Default LED state</name> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Off</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Steady on</value> \
+</relation> \
+</map> \
+</int> \
+</group> \
+<!-- 9 reserved bytes --> \
+<group offset='9'/> \
 <group replication='6'> \
-<name>Event Inputs</name> \
+<name>Event Inputs(Consumers)</name> \
+<repname>Input </repname> \
 <eventid> \
 <name>EventID</name> \
-<description>Event ID that will set output to the given value</description> \
+<description>Event ID that will be consumed to set output to the given value</description> \
 </eventid> \
 <int size='1'> \
 <name>Percentage</name> \
+<description>When board is used as servo, sets percentage of movement that servo is set to.  When set to LED, determines brightness</description> \
 </int> \
-<group offset='7'/> \
+<int size='1'> \
+<name>LED state</name> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Off</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Steady on</value> \
+</relation> \
+</map> \
+</int> \
+<group offset='6'/> \
+</group> \
 </group> \
 </group> \
 </segment> \

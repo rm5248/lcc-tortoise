@@ -38,7 +38,7 @@ target_include_directories(app PRIVATE
 	${TRAINUTILS_DIR}/DCC
 	../common/
 )
-
+set_property(TARGET app PROPERTY C_STANDARD 11)
 
 string(REPLACE "." ";" VERSION_LIST ${LIBLCC_VERSION})
 list(GET VERSION_LIST 0 LCC_VERSION_MAJOR)
