@@ -839,7 +839,7 @@ static void check_for_high_voltage(){
 	powerhandle_current_volts_mv(&readings);
 
 	if(readings.volts_mv < 11600 &&
-			readings.volts_mv > 10000){
+			readings.volts_mv > 8000){
 		voltage_in_range = 1;
 	}
 
