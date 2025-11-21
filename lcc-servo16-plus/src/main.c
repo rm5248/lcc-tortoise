@@ -24,6 +24,7 @@
 #include "servo16-config.h"
 #include "cdi.h"
 #include "pca9685_board.h"
+#include "servo16-output-state.h"
 
 #define VERSION_STR "0"
 
@@ -395,7 +396,15 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 }
 
 static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
-	pca9685_board_handle_event(&servo16_state.boards[0], event_id);
+//	pca9685_board_handle_event(&servo16_state.boards[0], event_id);
+	for(int idx = 0; idx < 4; idx++){
+		struct Board* board = &servo16_state.boards[idx];
+		int board_type = board->config->board_type;
+
+		for(int out = 0; out < 16; out++){
+			output_state_perform_action(&board->output_state[out], board_type, event_id);
+		}
+	}
 }
 
 int main(void)
