@@ -34,12 +34,13 @@ const char* cdi = "<?xml version='1.0'?> \
 <segment space='253'> \
 <name>Outputs</name> \
 <group replication='4'> \
-<repname>Board</repname> \
+<repname>PCA9685 Board </repname> \
 <int size='1'> \
 <name>Board address</name> \
 </int> \
 <int size='1'> \
 <name>Board Type</name> \
+<description>Select what this board is controlling(servos or LEDs).  Requires reboot to take effect</description> \
 <map> \
 <relation> \
 <property>0</property> \
@@ -58,6 +59,7 @@ const char* cdi = "<?xml version='1.0'?> \
 <repname>Output </repname> \
 <string size='32'> \
 <name>Output Name</name> \
+<description>What this output is for(optional)</description> \
 </string> \
 <group> \
 <name>Servo Settings</name> \
@@ -76,28 +78,39 @@ const char* cdi = "<?xml version='1.0'?> \
 <int size='1'> \
 <name>Servo Speed</name> \
 </int> \
-<int size='1'> \
-<name>Powerup Setting</name> \
-</int> \
 </group> \
-<group> \
-<name>LED Settings</name> \
 <int size='1'> \
-<name>Default LED state</name> \
+<name>Default Setting</name> \
+<description>Select which of the 6 event inputs will be the 'default' state of this output</description> \
 <map> \
 <relation> \
 <property>0</property> \
-<value>Off</value> \
+<value>Event Input 1</value> \
 </relation> \
 <relation> \
 <property>1</property> \
-<value>Steady on</value> \
+<value>Event Input 2</value> \
+</relation> \
+<relation> \
+<property>2</property> \
+<value>Event Input 3</value> \
+</relation> \
+<relation> \
+<property>3</property> \
+<value>Event Input 4</value> \
+</relation> \
+<relation> \
+<property>4</property> \
+<value>Event Input 5</value> \
+</relation> \
+<relation> \
+<property>5</property> \
+<value>Event Input 6</value> \
 </relation> \
 </map> \
 </int> \
-</group> \
-<!-- 9 reserved bytes --> \
-<group offset='9'/> \
+<!-- 10 reserved bytes --> \
+<group offset='10'/> \
 <group replication='6'> \
 <name>Event Inputs(Consumers)</name> \
 <repname>Input </repname> \
@@ -105,12 +118,17 @@ const char* cdi = "<?xml version='1.0'?> \
 <name>EventID</name> \
 <description>Event ID that will be consumed to set output to the given value</description> \
 </eventid> \
-<int size='1'> \
-<name>Percentage</name> \
-<description>When board is used as servo, sets percentage of movement that servo is set to.  When set to LED, determines brightness</description> \
+<int size='2'> \
+<name>Argument 1</name> \
+<description>When board is used as servo, sets percentage of movement that servo is set to.  When set to LED, first argument(see manual)</description> \
+</int> \
+<int size='2'> \
+<name>Argument 2</name> \
+<description>When board is used as servo this argument is ignored.  When set to LED, second argument(see manual)</description> \
 </int> \
 <int size='1'> \
 <name>LED state</name> \
+<description>Only relevant if board drives LEDs.  When this event is consumed, the LED will go to this given state</description> \
 <map> \
 <relation> \
 <property>0</property> \
@@ -120,9 +138,21 @@ const char* cdi = "<?xml version='1.0'?> \
 <property>1</property> \
 <value>Steady on</value> \
 </relation> \
+<relation> \
+<property>2</property> \
+<value>Pulse Slow</value> \
+</relation> \
+<relation> \
+<property>3</property> \
+<value>Pulse Medium</value> \
+</relation> \
+<relation> \
+<property>4</property> \
+<value>Pulse Fast</value> \
+</relation> \
 </map> \
 </int> \
-<group offset='6'/> \
+<group offset='3'/> \
 </group> \
 </group> \
 </group> \
