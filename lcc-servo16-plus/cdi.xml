@@ -52,49 +52,61 @@
 			<repname>Output </repname>
 			<string size='32'>
 				<name>Output Name</name>
+				<description>What this output is for(optional)</description>
 			</string>
+
 			<group>
 				<name>Servo Settings</name>
-			<int size='2'>
-				<name>Servo min pulse time(us)</name>
-				<description>The minimum servo pulse time.  By convention, this is 1ms(1000us).  Other servos may use a different value.</description>
-				<min>700</min>
-				<max>1500</max>
-			</int>
-			<int size='2'>
-				<name>Servo max pulse time(us)</name>
-				<description>The maximum servo pulse time.  By convention, this is 2ms(2000us).  Other servos may use a different value.</description>
-				<min>1500</min>
-				<max>2500</max>
-			</int>
+				<int size='2'>
+					<name>Servo min pulse time(us)</name>
+					<description>The minimum servo pulse time.  By convention, this is 1ms(1000us).  Other servos may use a different value.</description>
+					<min>700</min>
+					<max>1500</max>
+				</int>
+				<int size='2'>
+					<name>Servo max pulse time(us)</name>
+					<description>The maximum servo pulse time.  By convention, this is 2ms(2000us).  Other servos may use a different value.</description>
+					<min>1500</min>
+					<max>2500</max>
+				</int>
 				<int size='1'>
 					<name>Servo Speed</name>
 				</int>
-				<int size='1'>
-					<name>Powerup Setting</name>
-				</int>
 			</group>
 
-			<group>
-				<name>LED Settings</name>
-				<int size='1'>
-					<name>Default LED state</name>
-					<description>Sets what the LED does by default</description>
+			<int size='1'>
+				<name>Default Setting</name>
+				<description>Select which of the 6 event inputs will be the 'default' state of this output</description>
 				<map>
 					<relation>
 						<property>0</property>
-						<value>Off</value>
+						<value>Event Input 1</value>
 					</relation>
 					<relation>
 						<property>1</property>
-						<value>Steady on</value>
+						<value>Event Input 2</value>
+					</relation>
+					<relation>
+						<property>2</property>
+						<value>Event Input 3</value>
+					</relation>
+					<relation>
+						<property>3</property>
+						<value>Event Input 4</value>
+					</relation>
+					<relation>
+						<property>4</property>
+						<value>Event Input 5</value>
+					</relation>
+					<relation>
+						<property>5</property>
+						<value>Event Input 6</value>
 					</relation>
 				</map>
-				</int>
-			</group>
+			</int>
 
-			<!-- 9 reserved bytes -->
-			<group offset='9'/>
+			<!-- 10 reserved bytes -->
+			<group offset='10'/>
 
 			<group replication='6'>
 				<name>Event Inputs(Consumers)</name>
@@ -103,25 +115,41 @@
 					<name>EventID</name>
 					<description>Event ID that will be consumed to set output to the given value</description>
 				</eventid>
-				<int size='1'>
-					<name>Percentage</name>
-					<description>When board is used as servo, sets percentage of movement that servo is set to.  When set to LED, determines brightness</description>
+				<int size='2'>
+					<name>Argument 1</name>
+					<description>When board is used as servo, sets percentage of movement that servo is set to.  When set to LED, first argument(see manual)</description>
+				</int>
+				<int size='2'>
+					<name>Argument 2</name>
+					<description>When board is used as servo this argument is ignored.  When set to LED, second argument(see manual)</description>
 				</int>
 				<int size='1'>
 					<name>LED state</name>
-					<description>When this event is consumed, the LED will go to this given state</description>
-				<map>
-					<relation>
-						<property>0</property>
-						<value>Off</value>
-					</relation>
-					<relation>
-						<property>1</property>
-						<value>Steady on</value>
-					</relation>
-				</map>
+					<description>Only relevant if board drives LEDs.  When this event is consumed, the LED will go to this given state</description>
+					<map>
+						<relation>
+							<property>0</property>
+							<value>Off</value>
+						</relation>
+						<relation>
+							<property>1</property>
+							<value>Steady on</value>
+						</relation>
+						<relation>
+							<property>2</property>
+							<value>Pulse Slow</value>
+						</relation>
+						<relation>
+							<property>3</property>
+							<value>Pulse Medium</value>
+						</relation>
+						<relation>
+							<property>4</property>
+							<value>Pulse Fast</value>
+						</relation>
+					</map>
 				</int>
-				<group offset='6'/>
+				<group offset='3'/>
 			</group>
 		</group>
 		</group>
