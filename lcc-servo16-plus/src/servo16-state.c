@@ -7,29 +7,31 @@
 
 #include "servo16-config.h"
 #include "lcc-event.h"
+#include "servo16-output-state.h"
 
 #include <zephyr/storage/flash_map.h>
 
 struct Servo16PlusState servo16_state = {
 		.boards = {
 				{
-						.pwm_outputs = {
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 0),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 2),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 4),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 6),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 8),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 10),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 12),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 14),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 16),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 18),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 20),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 22),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 24),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 26),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 28),
-								PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 30),
+						.config = NULL,
+						.output_state = {
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 0) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 2) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 4) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 6) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 8) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 10) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 12) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 14) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 16) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 18) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 20) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 22) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 24) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 26) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 28) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 30) }
 						}
 				}
 		},
@@ -53,15 +55,25 @@ int init_state(uint64_t board_id){
 	uint64_t start_event_id = board_id << 16;
 
 	for(int x = 0; x < 4; x++){
-		servo16_state.boards[x].config = &servo16_state.pwm_boards_config[x];
+		struct BoardConfig* board_config = &servo16_state.pwm_boards_config[x];;
+		servo16_state.boards[x].config = board_config;
 
+		// Initialize default values for the board config
 		for(int y = 0; y < 16; y++){
-			servo16_state.pwm_boards_config[x].outputs[y].BE_min_pulse = __builtin_bswap16(1000);
-			servo16_state.pwm_boards_config[x].outputs[y].BE_max_pulse = __builtin_bswap16(2000);
+			board_config->outputs[y].BE_min_pulse = __builtin_bswap16(1000);
+			board_config->outputs[y].BE_max_pulse = __builtin_bswap16(2000);
 			for(int z = 0; z < 6; z++){
-				servo16_state.pwm_boards_config[x].outputs[y].events[z].BE_event_id = __builtin_bswap64(start_event_id);
+				board_config->outputs[y].events[z].BE_event_id = __builtin_bswap64(start_event_id);
 				start_event_id++;
 			}
+		}
+
+		// Initialize the default values for the output state
+		for(int z = 0; z < 16; z++){
+			struct OutputState* output_state = &servo16_state.boards[x].output_state[z];
+			struct BoardOutput* output_config = &board_config->outputs[z];
+
+			output_state_init(output_state, output_config);
 		}
 	}
 

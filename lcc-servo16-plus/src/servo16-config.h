@@ -11,12 +11,19 @@
 #include <stdint.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/pwm.h>
+#include <zephyr/kernel.h>
+
+#include "servo16-output-state.h"
 
 struct lcc_event_context;
 
 enum LEDFunctions{
 	LED_FUNC_OFF,
 	LED_FUNC_STEADY_ON,
+	// TODO figure out the expected hz for the pulse functions
+	LED_FUNC_PULSE_SLOW,
+	LED_FUNC_PULSE_MED,
+	LED_FUNC_PULSE_FAST,
 };
 
 enum BoardType{
@@ -24,13 +31,25 @@ enum BoardType{
 	BOARD_TYPE_LED,
 };
 
+/**
+ * Board Event information
+ *
+ * Read from EPROM.
+ */
 struct BoardEvent{
 	uint64_t BE_event_id;
-	uint8_t position;
+	uint16_t arg1;
+	uint16_t arg2;
 	uint8_t led_function;
-	uint8_t reserved[2];
+	uint8_t reserved[3];
 };
+_Static_assert(sizeof(struct BoardEvent) == 16, "bad size for BoardEvent");
 
+/**
+ * Board Output configuration
+ *
+ * Read from EPROM
+ */
 struct BoardOutput{
 	char description[32];
 
@@ -38,16 +57,19 @@ struct BoardOutput{
 	uint16_t BE_min_pulse;
 	uint16_t BE_max_pulse;
 	uint8_t servo_speed;
-	uint8_t powerup_setting;
 
-	// LED settings
-	uint8_t default_led_function;
+	uint8_t default_startup_event;
 
-	uint8_t reserved[9];
+	uint8_t reserved[10];
 	struct BoardEvent events[6];
 };
 _Static_assert(sizeof(struct BoardOutput) == 144, "bad size for BoardOutput");
 
+/**
+ * BoardConfig.
+ *
+ * Read from EPROM
+ */
 struct BoardConfig{
 	uint8_t address;
 	uint8_t board_type;
@@ -60,8 +82,11 @@ struct BoardConfig{
 _Static_assert(sizeof(struct BoardConfig) == 2304 + 8, "bad size for BoardConfig");
 
 struct Board{
-	const struct pwm_dt_spec pwm_outputs[16];
+	// Configuration that comes from EPROM
 	struct BoardConfig* config;
+
+	// Runtime state information
+	struct OutputState output_state[16];
 };
 
 struct Servo16PlusState{
