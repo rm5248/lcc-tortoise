@@ -150,6 +150,14 @@ const char* cdi = "<?xml version='1.0'?> \
 <property>4</property> \
 <value>Pulse Fast</value> \
 </relation> \
+<relation> \
+<property>5</property> \
+<value>Fade Up</value> \
+</relation> \
+<relation> \
+<property>6</property> \
+<value>Fade Down</value> \
+</relation> \
 </map> \
 </int> \
 <group offset='3'/> \

@@ -11,6 +11,8 @@
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/kernel.h>
 
+#include "led-funcs/led-funcs.h"
+
 struct BoardOutput;
 
 struct OutputState{
@@ -24,6 +26,7 @@ struct OutputState{
 	int moving;
 
 	// LED settings
+	led_process_function led_process_func;
 	int current_led_func;
 	int led_arg1;
 	int led_arg2;
