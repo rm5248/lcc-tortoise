@@ -21,33 +21,32 @@ static void output_state_led(struct OutputState* output_state, struct BoardEvent
 
 	switch(event->led_function){
 	case LED_FUNC_OFF:
-		output_state->current_position = 0;
+		output_state->led_process_func = led_process_off;
 		break;
 	case LED_FUNC_STEADY_ON:
-		output_state->current_position = arg1_percent;
+		output_state->led_process_func = led_process_on;
 		break;
 	case LED_FUNC_PULSE_SLOW:
-		output_state->current_position = arg1_percent;
-		output_state->target_position = arg2_percent;
-		output_state->step_size = 50;
+		output_state->led_process_func = led_process_pulse_slow;
 		break;
 	case LED_FUNC_PULSE_MED:
-		output_state->current_position = arg1_percent;
-		output_state->target_position = arg2_percent;
-		output_state->step_size = 250;
+		output_state->led_process_func = led_process_pulse_medium;
 		break;
 	case LED_FUNC_PULSE_FAST:
-		output_state->current_position = arg1_percent;
-		output_state->target_position = arg2_percent;
-		output_state->step_size = 5000;
+		output_state->led_process_func = led_process_pulse_fast;
+		break;
+	case LED_FUNC_FADE_UP:
+		output_state->led_process_func = led_process_fade_up;
+		break;
+	case LED_FUNC_FADE_DOWN:
+		output_state->led_process_func = led_process_fade_down;
 		break;
 	}
 
-	printf("Set LED %s to function %d(%d%%)\n", output_state->output_config->description, event->led_function, LE_arg1);
+	printf("Set LED %s to function %d(%d%%)\n", output_state->output_config->description, event->led_function, LE_arg1 / 1000);
 
 	k_timer_stop(&output_state->output_change_timer);
 	k_timer_start(&output_state->output_change_timer, K_NO_WAIT, K_MSEC(60));
-//	pwm_set_dt(spec, period, new_pulse);
 }
 
 static int output_state_calculate_servo_step_size(int speed, int min_pulse, int max_pulse){
@@ -123,19 +122,10 @@ static void output_state_work_func(struct k_work* work){
 
 		pwm_set_pulse_dt(&state->pwm_output, PWM_USEC(state->current_position));
 	}else if(state->moving == 2 /* LED */){
-		if(state->current_led_func == LED_FUNC_OFF ||
-				state->current_led_func == LED_FUNC_STEADY_ON){
+		int keep_calling = state->led_process_func(state);
+		if(!keep_calling){
 			k_timer_stop(&state->output_change_timer);
 			state->moving = 0;
-		}else{
-			state->current_position += state->step_size;
-			if(state->current_position >= state->led_arg1){
-				state->step_size *= -1;
-				state->current_position = state->led_arg1;
-			}else if(state->current_position <= state->led_arg2){
-				state->step_size *= -1;
-				state->current_position = state->led_arg2;
-			}
 		}
 		pwm_set_dt(&state->pwm_output, PWM_MSEC(1), state->current_position);
 	}

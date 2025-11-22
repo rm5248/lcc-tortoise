@@ -20,10 +20,11 @@ struct lcc_event_context;
 enum LEDFunctions{
 	LED_FUNC_OFF,
 	LED_FUNC_STEADY_ON,
-	// TODO figure out the expected hz for the pulse functions
-	LED_FUNC_PULSE_SLOW,
-	LED_FUNC_PULSE_MED,
-	LED_FUNC_PULSE_FAST,
+	LED_FUNC_PULSE_SLOW, // 1hz
+	LED_FUNC_PULSE_MED, // 2hz
+	LED_FUNC_PULSE_FAST, // 4hz
+	LED_FUNC_FADE_UP,
+	LED_FUNC_FADE_DOWN,
 };
 
 enum BoardType{
