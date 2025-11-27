@@ -32,7 +32,7 @@
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
 
-#define VERSION_STR "1.2.0"
+#define VERSION_STR "1.2.0+0"
 
 /*
  * Address Space / storage information
@@ -333,7 +333,7 @@ void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_
 		lcc_memory_respond_information_query(ctx, alias, 1, address_space, upper_address, 0, 0);
 	}else if(address_space == 250){
 		// Global config
-		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 1, 0, 0);
+		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 2, 0, 0);
 	}else if(address_space == 249){
 		// Firmware versions
 		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 16, 0, 0);
@@ -373,7 +373,7 @@ void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint
 		  // Global config
 		  uint8_t* buffer = &global_config.dcc_translation + starting_address;
 
-		  if(starting_address + read_count > 1){
+		  if(starting_address + read_count > 2){
 				// trying to read too much memory
 				lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
 				return;
@@ -522,12 +522,12 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 		  // Global config
 		  uint8_t* buffer_u8 = ((uint8_t*)&global_config.dcc_translation) + starting_address;
 
-		  if(starting_address + data_len > 1){
+		  if(starting_address + data_len > 2){
 				// trying to write too much memory
 			    lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
 				return;
 		  }
-		  memcpy(buffer_u8 + starting_address, data, data_len);
+		  memcpy(buffer_u8, data, data_len);
 
 		  lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
 		  save_global_config();
@@ -705,6 +705,10 @@ static void load_global_config(){
 		ret = 1;
 	}
 
+	if(global_config.max_turnouts_at_once < 1 || global_config.max_turnouts_at_once > 8){
+		global_config.max_turnouts_at_once = 4;
+	}
+
 out:
 	flash_area_close(storage_area);
 	if(ret){
@@ -827,11 +831,94 @@ static void handle_button_press(){
 	}
 }
 
+static void check_for_high_voltage(){
+	struct adc_readings readings;
+	int voltage_in_range = 0;
+
+	powerhandle_current_volts_mv(&readings);
+
+	if(readings.volts_mv < 11600 &&
+			readings.volts_mv > 8000){
+		voltage_in_range = 1;
+	}
+
+	uint32_t diff = k_cycle_get_32() - lcc_tortoise_state.disable_outputs_start_time;
+
+	if(!voltage_in_range && lcc_tortoise_state.disable_outputs_voltage_out_of_range == 0){
+		lcc_tortoise_state.disable_outputs_start_time = k_cycle_get_32();
+		lcc_tortoise_state.disable_outputs_voltage_out_of_range = 1;
+
+		for(int x = 0; x < 8; x++){
+			tortoise_disable_outputs(&lcc_tortoise_state.tortoises[x]);
+		}
+	}else if(voltage_in_range &&
+			lcc_tortoise_state.disable_outputs_voltage_out_of_range == 1 &&
+			k_cyc_to_ms_ceil32(diff) > 5000){
+		lcc_tortoise_state.disable_outputs_voltage_out_of_range = 0;
+
+		for(int x = 0; x < 8; x++){
+			tortoise_enable_outputs(&lcc_tortoise_state.tortoises[x]);
+		}
+	}
+}
+
+static void check_for_turnout_changes(){
+	int num_turnouts_changing = 0;
+	int num_turnouts_that_need_to_change = 0;
+
+	if(lcc_tortoise_state.disable_outputs_voltage_out_of_range){
+		// Voltage is too high - outputs have been disabled - don't move anything
+		return;
+	}
+
+	for(int x = 0; x < 8; x++){
+		if(tortoise_is_moving(&lcc_tortoise_state.tortoises[x])){
+			num_turnouts_changing++;
+		}
+		if(tortoise_needs_to_move(&lcc_tortoise_state.tortoises[x])){
+			num_turnouts_that_need_to_change++;
+		}
+
+		if(tortoise_is_moving(&lcc_tortoise_state.tortoises[x]) &&
+				tortoise_needs_to_move(&lcc_tortoise_state.tortoises[x])){
+			// output needs to change, and it is already moving
+			// cancel the current move and go to the new state
+			tortoise_perform_move(&lcc_tortoise_state.tortoises[x]);
+		}
+	}
+
+	if(num_turnouts_changing >= global_config.max_turnouts_at_once){
+		// nothing to do, turnouts are moving and we are at max
+		return;
+	}
+
+	if(num_turnouts_that_need_to_change == 0){
+		// Nothing to do, no turnouts need to change
+		return;
+	}
+
+	for(int x = 0; x < 8; x++){
+		// Check to see if any turnouts need to change, and change them
+		if(num_turnouts_changing >= global_config.max_turnouts_at_once){
+				// we can't start any more turnouts
+				return;
+			}
+
+		// does this turnout need to change? if so, change it!
+		if(!tortoise_is_moving(&lcc_tortoise_state.tortoises[x]) &&
+				tortoise_needs_to_move(&lcc_tortoise_state.tortoises[x])){
+			num_turnouts_changing++;
+			tortoise_perform_move(&lcc_tortoise_state.tortoises[x]);
+		}
+	}
+}
+
 static void main_loop(){
 	struct k_poll_event poll_data[2];
 	struct k_timer alias_timer;
 	struct can_frame rx_frame;
 	struct lcc_context* ctx = lcc_tortoise_state.lcc_context;
+	struct k_timer output_check_timer;
 
 	k_poll_event_init(&poll_data[0],
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
@@ -844,6 +931,8 @@ static void main_loop(){
 
 	k_timer_init(&alias_timer, NULL, NULL);
 	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
+	k_timer_init(&output_check_timer, NULL, NULL);
+	k_timer_start(&output_check_timer, K_MSEC(250), K_NO_WAIT);
 
 	while (1) {
 		int rc = k_poll(poll_data, ARRAY_SIZE(poll_data), K_MSEC(250));
@@ -891,6 +980,14 @@ static void main_loop(){
 		}
 
 		handle_button_press();
+		if(k_timer_status_get(&output_check_timer) > 0){
+			check_for_turnout_changes();
+			k_timer_start(&output_check_timer, K_MSEC(250), K_NO_WAIT);
+
+			// Periodically also check for high voltage - if the voltage is too high,
+			// disable the outputs
+			check_for_high_voltage();
+		}
 	}
 }
 

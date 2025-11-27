@@ -26,6 +26,10 @@ static void tortoise_timer_expired(struct k_timer* timer){
 int tortoise_init(struct tortoise* tort){
 	int ret = 0;
 
+	tort->start_moving_time = 0;
+	tort->current_position = POSITION_UNKNOWN;
+	tort->desired_position = POSITION_UNKNOWN;
+
 	if (!gpio_is_ready_dt(&tort->gpios[0])) {
 		return -1;
 	}
@@ -50,14 +54,12 @@ int tortoise_init(struct tortoise* tort){
 
 int tortoise_init_startup_position(struct tortoise* tort){
 	if( tort->config->startup_control == STARTUP_REVERSE ){
-		tort->current_position = POSITION_REVERSE;
+		tort->desired_position = POSITION_REVERSE;
 	}else if( tort->config->startup_control == STARTUP_NORMAL ){
-		tort->current_position = POSITION_NORMAL;
+		tort->desired_position = POSITION_NORMAL;
 	}else{
-		tort->current_position = tort->config->last_known_pos;
+		tort->desired_position = tort->config->last_known_pos;
 	}
-
-	tortoise_set_position_force(tort, tort->current_position);
 
 	return 0;
 }
@@ -115,15 +117,16 @@ int tortoise_incoming_accy_command(struct tortoise* tort, uint16_t accy_number, 
 }
 
 int tortoise_set_position(struct tortoise* tort, enum tortoise_position position){
-	if(tort->current_position == position){
+	if(tort->desired_position == position){
 		return 0;
 	}
 
-	return tortoise_set_position_force(tort, position);
+	tort->desired_position = position;
+
+	return 0;
 }
 
 static int tortoise_set_position_force(struct tortoise* tort, enum tortoise_position position){
-	tort->current_position = position;
 	gpio_pin_set_dt(&tort->gpios[0], 0);
 	gpio_pin_set_dt(&tort->gpios[1], 0);
 
@@ -136,6 +139,13 @@ static int tortoise_set_position_force(struct tortoise* tort, enum tortoise_posi
 		gpio_pin_set_dt(&tort->gpios[1], 1);
 		return 0;
 	}
+
+	if(tort->current_position == position){
+		tort->start_moving_time = 0;
+		return 0;
+	}
+	tort->current_position = position;
+	tort->start_moving_time = k_uptime_get();
 
 	if(position == POSITION_NORMAL){
 		gpio_pin_set_dt(&tort->gpios[0], 0);
@@ -222,6 +232,27 @@ int tortoise_is_controlled_by_dcc_accessory(struct tortoise* tort, int accy_numb
 
 int tortoise_check_set_position(struct tortoise* tort){
 	return tortoise_set_position_force(tort, tort->current_position);
+}
+
+int tortoise_needs_to_move(struct tortoise* tort){
+	return tort->current_position != tort->desired_position;
+}
+
+int tortoise_perform_move(struct tortoise* tort){
+	return tortoise_set_position_force(tort, tort->desired_position);
+}
+
+int tortoise_is_moving(struct tortoise* tort){
+	uint32_t now = k_uptime_get();
+
+	// If the tortoise started moving less than 2500ms ago,
+	// assume that it is still moving
+	if(tort->start_moving_time > 0 &&
+			(now - tort->start_moving_time) < 2500){
+		return 1;
+	}
+
+	return 0;
 }
 
 //int tortoise_config_to_bigendian(struct tortoise* tort, struct tortoise_config* out){

@@ -62,6 +62,10 @@ struct lcc_tortoise_state{
 	// Tracker for the current switch positions
 	uint8_t switch_tracker_dirty;
 	struct switch_tracker trackers[2048];
+
+	// should we disable all commands to the outputs?
+	uint8_t disable_outputs_voltage_out_of_range;
+	uint32_t disable_outputs_start_time;
 };
 
 struct global_config{
@@ -72,7 +76,7 @@ struct global_config{
 struct dcc_address_translation_config{
 #define DCC_TRANSLATION_ENABLE 1
 #define DCC_TRANSLATION_ENABLE_AND_SAVE 2
-	int do_dcc_translation;
+	uint8_t do_dcc_translation;
 };
 
 struct global_config_data {
@@ -80,6 +84,12 @@ struct global_config_data {
 	char node_description[64];
 	uint64_t base_event_id;
 	struct dcc_address_translation_config dcc_translation;
+	uint8_t max_turnouts_at_once;
+};
+
+struct output_position_request{
+	uint8_t output_number;
+	uint8_t position;
 };
 
 extern struct lcc_tortoise_state lcc_tortoise_state;

@@ -15,7 +15,7 @@ const char cdi[] = {
 <manufacturer>Snowball Creek Electronics</manufacturer> \
 <model>SMTC-8</model> \
 <hardwareVersion>R" CONFIG_BOARD_REVISION "</hardwareVersion> \
-<softwareVersion>1.2.0</softwareVersion> \
+<softwareVersion>1.2.0+0</softwareVersion> \
 </identification> \
 <acdi/> \
 <segment space='251'> \
@@ -119,6 +119,12 @@ const char cdi[] = {
 <value>Enabled(Save last known state upon shutdown)</value> \
 </relation> \
 </map> \
+</int> \
+<int size='1'> \
+<name>Max number of outputs to change at once</name> \
+<description>MTB MP1/MP4 switch machines use more current, so the number of turnouts that can change at once should be limited in order to not overdraw current</description> \
+<min>1</min> \
+<max>8</max> \
 </int> \
 </segment> \
 <segment space='249'> \
