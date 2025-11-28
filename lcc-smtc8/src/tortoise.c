@@ -29,6 +29,7 @@ int tortoise_init(struct tortoise* tort){
 	tort->start_moving_time = 0;
 	tort->current_position = POSITION_UNKNOWN;
 	tort->desired_position = POSITION_UNKNOWN;
+	tort->delay_moving_diff = 0;
 
 	if (!gpio_is_ready_dt(&tort->gpios[0])) {
 		return -1;
@@ -146,6 +147,8 @@ static int tortoise_set_position_force(struct tortoise* tort, enum tortoise_posi
 	}
 	tort->current_position = position;
 	tort->start_moving_time = k_uptime_get();
+	tort->delay_moving_time = 0;
+	tort->delay_moving_diff = 0;
 
 	if(position == POSITION_NORMAL){
 		gpio_pin_set_dt(&tort->gpios[0], 0);
@@ -203,6 +206,7 @@ uint64_t* tortoise_events_consumed(struct tortoise* tort){
 int tortoise_disable_outputs(struct tortoise* tort){
 	gpio_pin_set_dt(&tort->gpios[0], 0);
 	gpio_pin_set_dt(&tort->gpios[1], 0);
+	tortoise_delay_move(tort);
 
 	return 0;
 }
@@ -217,6 +221,10 @@ int tortoise_enable_outputs(struct tortoise* tort){
 		gpio_pin_set_dt(&tort->gpios[0], 1);
 		gpio_pin_set_dt(&tort->gpios[1], 0);
 	}
+
+	tortoise_resume_move(tort);
+
+	return 0;
 }
 
 int tortoise_is_controlled_by_dcc_accessory(struct tortoise* tort, int accy_number){
@@ -244,14 +252,43 @@ int tortoise_perform_move(struct tortoise* tort){
 
 int tortoise_is_moving(struct tortoise* tort){
 	uint32_t now = k_uptime_get();
+	uint32_t total_time_moving = 0;
+
+	if(tort->start_moving_time == 0){
+		// Tortoise is not moving
+		return 0;
+	}
+
+	total_time_moving = now - tort->start_moving_time - tort->delay_moving_diff;
 
 	// If the tortoise started moving less than 2500ms ago,
 	// assume that it is still moving
-	if(tort->start_moving_time > 0 &&
-			(now - tort->start_moving_time) < 2500){
+	if(total_time_moving < 2500){
 		return 1;
 	}
 
+	return 0;
+}
+
+int tortoise_delay_move(struct tortoise* tort){
+	if(tort->start_moving_time == 0){
+		// Tortoise is not moving, don't do anything
+		return 0;
+	}
+
+	tort->delay_moving_time = k_uptime_get();
+	return 0;
+}
+
+int tortoise_resume_move(struct tortoise* tort){
+	if(tort->start_moving_time == 0){
+		// Tortoise is not moving, don't do anything
+		return 0;
+	}
+
+	uint32_t now = k_uptime_get();
+
+	tort->delay_moving_diff += (now - tort->delay_moving_time);
 	return 0;
 }
 

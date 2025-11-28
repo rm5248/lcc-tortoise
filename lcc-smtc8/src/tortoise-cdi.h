@@ -15,7 +15,7 @@ const char cdi[] = {
 <manufacturer>Snowball Creek Electronics</manufacturer> \
 <model>SMTC-8</model> \
 <hardwareVersion>R" CONFIG_BOARD_REVISION "</hardwareVersion> \
-<softwareVersion>1.2.0+0</softwareVersion> \
+<softwareVersion>1.2.0+2</softwareVersion> \
 </identification> \
 <acdi/> \
 <segment space='251'> \

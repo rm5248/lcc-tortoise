@@ -59,6 +59,8 @@ struct tortoise {
 	struct tortoise_config* config;
 	struct k_timer pulse_timer;
 	uint32_t start_moving_time;
+	uint32_t delay_moving_time;
+	uint32_t delay_moving_diff;
 };
 
 /**
@@ -125,6 +127,10 @@ int tortoise_perform_move(struct tortoise* tort);
  * Check to see if this tortoise is moving or not.
  */
 int tortoise_is_moving(struct tortoise* tort);
+
+int tortoise_delay_move(struct tortoise* tort);
+
+int tortoise_resume_move(struct tortoise* tort);
 
 /**
  * Convert the configuration for this tortoise to big-endian, putting it in 'out'
