@@ -32,7 +32,7 @@
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
 
-#define VERSION_STR "1.2.0+2"
+#define VERSION_STR "1.3.0"
 
 /*
  * Address Space / storage information
