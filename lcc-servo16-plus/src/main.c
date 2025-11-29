@@ -26,6 +26,8 @@
 #include "pca9685_board.h"
 #include "servo16-output-state.h"
 
+#include "dcc-packet-parser.h"
+
 #define VERSION_STR "0"
 
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
@@ -51,10 +53,25 @@ K_THREAD_DEFINE(green_blink, 512, blink_led_green, NULL, NULL, NULL,
 
 static void blink_led_green(){
 	while(1){
-		gpio_pin_set_dt(&green_led, 1);
-		k_sleep(K_MSEC(100));
-		gpio_pin_set_dt(&green_led, 0);
-		k_sleep(K_MSEC(1500));
+		uint64_t diff = k_cycle_get_32() - servo16_state.last_rx_dcc_message;
+
+		if(k_cyc_to_ms_ceil32(diff) < 500){
+			// Receiving DCC signal, double blink
+			gpio_pin_set_dt(&green_led, 1);
+			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&green_led, 0);
+			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&green_led, 1);
+			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&green_led, 0);
+			k_sleep(K_MSEC(1500));
+		}else{
+			// No DCC signal, single blink
+			gpio_pin_set_dt(&green_led, 1);
+			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&green_led, 0);
+			k_sleep(K_MSEC(1500));
+		}
 	}
 }
 
@@ -213,7 +230,7 @@ out:
 }
 
 static void main_loop(){
-	struct k_poll_event poll_data[1];
+	struct k_poll_event poll_data[2];
 	struct k_timer alias_timer;
 	struct can_frame rx_frame;
 
@@ -221,6 +238,10 @@ static void main_loop(){
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
 			K_POLL_MODE_NOTIFY_ONLY,
 			&rx_msgq);
+	k_poll_event_init(&poll_data[1],
+			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
+			K_POLL_MODE_NOTIFY_ONLY,
+			&servo16_state.dcc_decoder_stm32.readings);
 
 	k_timer_init(&alias_timer, NULL, NULL);
 	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
@@ -238,6 +259,14 @@ static void main_loop(){
 				lcc_context_incoming_frame(lcc_ctx, &lcc_rx);
 			}
 			poll_data[0].state = K_POLL_STATE_NOT_READY;
+		}else if(poll_data[1].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
+			uint32_t timediff;
+			while(k_msgq_get(&servo16_state.dcc_decoder_stm32.readings, &timediff, K_NO_WAIT) == 0){
+				if(dcc_decoder_polarity_changed(servo16_state.dcc_decoder_stm32.dcc_decoder, timediff) == 1){
+					dcc_decoder_pump_packet(servo16_state.dcc_decoder_stm32.dcc_decoder);
+				}
+			}
+			poll_data[1].state = K_POLL_STATE_NOT_READY;
 		}
 
 		if(k_timer_status_get(&alias_timer) > 0 &&
@@ -407,6 +436,14 @@ static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
 	}
 }
 
+static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_bytes, int len){
+	servo16_state.last_rx_dcc_message = k_cycle_get_32();
+}
+
+static void accy_cb(struct dcc_packet_parser* parser, uint16_t accy_number, enum dcc_accessory_direction accy_dir){
+	printf("Accy %d to dir %d\n", accy_number, accy_dir);
+}
+
 int main(void)
 {
 	int ret;
@@ -414,7 +451,7 @@ int main(void)
 	// Sleep for a bit before we start to allow power to become stable.
 	// This is probably not needed, but it shouldn't hurt.
 	// This will also give other devices on the network a chance to come up.
-	k_sleep(K_MSEC(250));
+	k_sleep(K_MSEC(300));
 
 	splash();
 
@@ -482,6 +519,12 @@ int main(void)
 		save_config_to_flash();
 	}
 	add_all_events_consumed(evt_ctx);
+
+	dcc_decoder_init(&servo16_state.dcc_decoder_stm32);
+	dcc_decoder_set_packet_callback(servo16_state.dcc_decoder_stm32.dcc_decoder, incoming_dcc);
+	dcc_decoder_set_packet_parser(servo16_state.dcc_decoder_stm32.dcc_decoder, servo16_state.dcc_decoder_stm32.packet_parser);
+
+	dcc_packet_parser_set_accessory_cb(servo16_state.dcc_decoder_stm32.packet_parser, accy_cb);
 
 	printf("board 0 type: %d\n", servo16_state.boards[0].config->board_type);
 

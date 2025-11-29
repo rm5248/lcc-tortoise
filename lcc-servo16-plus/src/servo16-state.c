@@ -54,6 +54,10 @@ static int init_led(const struct gpio_dt_spec* led){
 int init_state(uint64_t board_id){
 	uint64_t start_event_id = board_id << 16;
 
+	servo16_state.last_rx_dcc_message = 0;
+
+	// Initialize the default values for all the boards we can control.
+	// This will likely get overwritten by values from flash
 	for(int x = 0; x < 4; x++){
 		struct BoardConfig* board_config = &servo16_state.pwm_boards_config[x];;
 		servo16_state.boards[x].config = board_config;
