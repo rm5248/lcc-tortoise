@@ -12,6 +12,8 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/kernel.h>
+#include "dcc-decode-stm32.h"
+#include "dcc-decoder.h"
 
 #include "servo16-output-state.h"
 
@@ -99,6 +101,10 @@ struct Servo16PlusState{
 	const struct gpio_dt_spec green_led;
 	const struct gpio_dt_spec blue_led;
 	const struct gpio_dt_spec gold_led;
+
+	// DCC Decoding variables
+	struct dcc_decoder_stm32 dcc_decoder_stm32;
+	uint32_t last_rx_dcc_message;
 };
 
 extern struct Servo16PlusState servo16_state;
