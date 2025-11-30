@@ -25,6 +25,7 @@
 #include "cdi.h"
 #include "pca9685_board.h"
 #include "servo16-output-state.h"
+#include "power-handler.h"
 
 #include "dcc-packet-parser.h"
 
@@ -72,6 +73,11 @@ static void blink_led_green(){
 			gpio_pin_set_dt(&green_led, 0);
 			k_sleep(K_MSEC(1500));
 		}
+
+
+		struct adc_readings readings;
+		powerhandle_current_volts_mv(&readings);
+		printf("VIN: %d VOLTS: %d CURRENT: %d\n", readings.vin_mv, readings.volts_mv, readings.current);
 	}
 }
 
@@ -525,6 +531,8 @@ int main(void)
 	dcc_decoder_set_packet_parser(servo16_state.dcc_decoder_stm32.dcc_decoder, servo16_state.dcc_decoder_stm32.packet_parser);
 
 	dcc_packet_parser_set_accessory_cb(servo16_state.dcc_decoder_stm32.packet_parser, accy_cb);
+
+	powerhandle_init();
 
 	printf("board 0 type: %d\n", servo16_state.boards[0].config->board_type);
 
