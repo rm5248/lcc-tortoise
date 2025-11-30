@@ -101,6 +101,8 @@ struct Servo16PlusState{
 	const struct gpio_dt_spec green_led;
 	const struct gpio_dt_spec blue_led;
 	const struct gpio_dt_spec gold_led;
+	const struct gpio_dt_spec blue_button;
+	const struct gpio_dt_spec gold_button;
 
 	// DCC Decoding variables
 	struct dcc_decoder_stm32 dcc_decoder_stm32;

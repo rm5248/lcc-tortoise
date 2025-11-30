@@ -78,6 +78,8 @@ static void blink_led_green(){
 		struct adc_readings readings;
 		powerhandle_current_volts_mv(&readings);
 		printf("VIN: %d VOLTS: %d CURRENT: %d\n", readings.vin_mv, readings.volts_mv, readings.current);
+		gpio_pin_toggle_dt(&blue_led);
+		gpio_pin_toggle_dt(&gold_led);
 	}
 }
 
@@ -450,6 +452,22 @@ static void accy_cb(struct dcc_packet_parser* parser, uint16_t accy_number, enum
 	printf("Accy %d to dir %d\n", accy_number, accy_dir);
 }
 
+static void blue_button_pressed(const struct device *dev, struct gpio_callback *cb,
+		    uint32_t pins)
+{
+	int blue_value = gpio_pin_get_dt(&servo16_state.blue_button);
+
+	printf("blue %d\n", blue_value);
+}
+
+static void gold_button_pressed(const struct device *dev, struct gpio_callback *cb,
+		    uint32_t pins)
+{
+	int gold_value = gpio_pin_get_dt(&servo16_state.gold_button);
+
+	printf("gold %d\n", gold_value);
+}
+
 int main(void)
 {
 	int ret;
@@ -533,6 +551,12 @@ int main(void)
 	dcc_packet_parser_set_accessory_cb(servo16_state.dcc_decoder_stm32.packet_parser, accy_cb);
 
 	powerhandle_init();
+
+	// Init button callbacks
+	gpio_init_callback(&gold_button_cb_data, gold_button_pressed, BIT(servo16_state.gold_button.pin));
+	gpio_add_callback(servo16_state.gold_button.port, &gold_button_cb_data);
+	gpio_init_callback(&blue_button_cb_data, blue_button_pressed, BIT(servo16_state.blue_button.pin));
+	gpio_add_callback(servo16_state.blue_button.port, &blue_button_cb_data);
 
 	printf("board 0 type: %d\n", servo16_state.boards[0].config->board_type);
 
