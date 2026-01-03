@@ -390,7 +390,7 @@ void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_
 //		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 16, 0, 0);
 	}else if(address_space == 248){
 		// voltage info
-//		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 8, 0, 0);
+		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 12, 0, 0);
 	}else{
 		// This memory space does not exist: return an error
 		lcc_memory_respond_information_query(ctx, alias, 0, address_space, 0, 0, 0);
@@ -409,6 +409,34 @@ void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint
 		uint8_t* config_as_u8 = (uint8_t*)servo16_state.pwm_boards_config;
 
 		lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, config_as_u8 + starting_address, read_count);
+	}else if(address_space == 251){
+		// node name/description.  This is stored at the start of the global partition.
+		if(starting_address + read_count > 128){
+			// trying to read too much memory
+			lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
+			return;
+		}
+
+		uint8_t* config_as_u8 = (uint8_t*)&servo16_global;
+
+		lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, config_as_u8 + starting_address, read_count);
+	}else if(address_space == 248){
+		// voltage information
+		struct adc_readings readings;
+
+		if(starting_address + read_count > (sizeof(readings))){
+			// trying to read too much memory
+			lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
+			return;
+		}
+
+		powerhandle_current_volts_mv(&readings);
+		readings.current = __builtin_bswap32(readings.current);
+		readings.vin_mv = __builtin_bswap32(readings.vin_mv);
+		readings.volts_mv = __builtin_bswap32(readings.volts_mv);
+		uint8_t* readings_as_u8 = (uint8_t*)&readings;
+
+		lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, readings_as_u8 + starting_address, read_count);
 	}
 }
 
@@ -429,6 +457,23 @@ void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uin
 
 		// re-init events consumed
 		add_all_events_consumed(lcc_context_get_event_context(lcc_ctx));
+	}else if(address_space == 251){
+		if((starting_address + data_len) > 128){
+			lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
+			return;
+		}
+		uint8_t* buffer_u8 = (uint8_t*)&servo16_global;
+
+		memcpy(buffer_u8 + starting_address, data, data_len);
+
+		// Write out to non-volatile memory
+		save_globals_to_flash();
+
+		lcc_context_set_simple_node_name_description(lcc_ctx,
+				servo16_global.node_name,
+				servo16_global.node_description);
+
+		lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
 	}
 }
 
@@ -542,6 +587,13 @@ int main(void)
 		// flash is empty, write out basic data
 		save_config_to_flash();
 	}
+	if(load_global_config_from_flash() == 2){
+		memset(&servo16_global, 0, sizeof(servo16_global));
+		save_globals_to_flash();
+	}
+	lcc_context_set_simple_node_name_description(lcc_ctx,
+					servo16_global.node_name,
+					servo16_global.node_description);
 	add_all_events_consumed(evt_ctx);
 
 	dcc_decoder_init(&servo16_state.dcc_decoder_stm32);
