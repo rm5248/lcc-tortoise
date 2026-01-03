@@ -109,7 +109,13 @@ struct Servo16PlusState{
 	uint32_t last_rx_dcc_message;
 };
 
+struct Servo16PlusGlobalConfig {
+	char node_name[64];
+	char node_description[64];
+};
+
 extern struct Servo16PlusState servo16_state;
+extern struct Servo16PlusGlobalConfig servo16_global;
 
 int init_state(uint64_t board_id);
 
@@ -117,6 +123,8 @@ void output_enable(void);
 
 int save_config_to_flash();
 int load_config_from_flash();
+int save_globals_to_flash();
+int load_global_config_from_flash();
 void add_all_events_consumed(struct lcc_event_context* ctx);
 
 #endif /* LCC_SERVO16_PLUS_SRC_SERVO16_CONFIG_H_ */
