@@ -14,6 +14,17 @@
 
 #include "dcc-decode-stm32.h"
 #include "power-handler.h"
+#include "adc_utils.h"
+
+#define DT_SPEC_AND_COMMA(node_id, prop, idx) \
+	ADC_DT_SPEC_GET_BY_IDX(node_id, idx),
+
+static const struct adc_dt_spec adc_channels[] = {
+	DT_FOREACH_PROP_ELEM(DT_PATH(zephyr_user), io_channels,
+			     DT_SPEC_AND_COMMA)
+};
+
+static int powerhandle_vrefint;
 
 static void adc_irq_fn(void* arg)
 {
@@ -24,75 +35,73 @@ static void adc_irq_fn(void* arg)
 	}
 }
 
-void powerhandle_init(){
-	__HAL_RCC_ADC_CLK_ENABLE();
-
-	LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_1, LL_GPIO_MODE_ANALOG);
-	LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_0, LL_GPIO_MODE_ANALOG);
-	LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_4, LL_GPIO_MODE_ANALOG);
-
-	// Install our interrupt handler for the ADC
-	IRQ_CONNECT(ADC1_COMP_IRQn, 0, adc_irq_fn, NULL, 0);
-	irq_enable(ADC1_COMP_IRQn);
-
-    /* Enable ADC internal voltage regulator */
-    LL_ADC_EnableInternalRegulator(ADC1);
-    while (LL_ADC_IsCalibrationOnGoing(ADC1) != 0U){
-    	k_sleep(K_USEC(2));
-    }
-
-	LL_ADC_SetClock(ADC1, LL_ADC_CLOCK_SYNC_PCLK_DIV2);
-	LL_ADC_REG_SetOverrun(ADC1, LL_ADC_REG_OVR_DATA_OVERWRITTEN);
-	LL_ADC_REG_SetContinuousMode(ADC1, LL_ADC_REG_CONV_CONTINUOUS);
-
-	LL_ADC_SetSamplingTimeCommonChannels(ADC1, LL_ADC_SAMPLINGTIME_COMMON_1, LL_ADC_SAMPLINGTIME_39CYCLES_5);
-	LL_ADC_REG_SetSequencerChannels(ADC1, LL_ADC_CHANNEL_1 | LL_ADC_CHANNEL_0 | LL_ADC_CHANNEL_4);
-
-	// Configure analog watchdog 1
-	LL_ADC_SetAnalogWDMonitChannels(ADC1, LL_ADC_AWD1, LL_ADC_AWD_CHANNEL_1_REG);
-	LL_ADC_ClearFlag_AWD1(ADC1);
-	LL_ADC_ConfigAnalogWDThresholds(ADC1, LL_ADC_AWD1, 0xFFF, 1500);
-	LL_ADC_EnableIT_AWD1(ADC1);
-
-	// Sampling time
-	LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_1, LL_ADC_SAMPLINGTIME_COMMON_1);
-	LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_0, LL_ADC_SAMPLINGTIME_COMMON_1);
-	LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_4, LL_ADC_SAMPLINGTIME_COMMON_1);
-
-	// Now let's enable it and start the ADC running
-	LL_ADC_Enable(ADC1);
-	LL_ADC_REG_StartConversion(ADC1);
-}
-
 void powerhandle_check_if_save_required(){
 
 }
 
-static int adc_value(int channel){
+static uint32_t adc_value(int channel){
 	LL_ADC_REG_SetSequencerChannels(ADC1, channel);
 	LL_ADC_ClearFlag_EOC(ADC1);
 	LL_ADC_REG_StartConversion(ADC1);
 
 	while(!LL_ADC_IsActiveFlag_EOC(ADC1)){}
-	int reading = LL_ADC_REG_ReadConversionData32(ADC1);
+	uint32_t reading = LL_ADC_REG_ReadConversionData12(ADC1);
+	printf("0x%X - 0x%08X\n", channel, reading);
 	while(!LL_ADC_IsActiveFlag_EOS(ADC1)){}
 
 	return reading;
 }
 
 void powerhandle_current_volts_mv(struct adc_readings* readings){
-	LL_ADC_REG_StopConversion(ADC1);
-	while(LL_ADC_REG_IsConversionOngoing(ADC1)){}
+	int err;
+	uint32_t count = 0;
+	uint16_t buf;
+	struct adc_sequence sequence = {
+		.buffer = &buf,
+		/* buffer size in bytes, not number of samples */
+		.buffer_size = sizeof(buf),
+	};
 
-	LL_ADC_REG_SetContinuousMode(ADC1, LL_ADC_REG_CONV_SINGLE);
-	int volts_count = adc_value(LL_ADC_CHANNEL_0);
-	int vin_count = adc_value(LL_ADC_CHANNEL_1);
-	int current_count = adc_value(LL_ADC_CHANNEL_4);
+	/* Configure channels individually prior to sampling. */
+	for (size_t i = 0U; i < ARRAY_SIZE(adc_channels); i++) {
+		if (!adc_is_ready_dt(&adc_channels[i])) {
+			printk("ADC controller device %s not ready\n", adc_channels[i].dev->name);
+			return 0;
+		}
+	}
 
-	LL_ADC_REG_SetContinuousMode(ADC1, LL_ADC_REG_CONV_CONTINUOUS);
-	LL_ADC_REG_StartConversion(ADC1);
+	for (size_t i = 0U; i < ARRAY_SIZE(adc_channels); i++) {
+		int32_t val_mv;
 
-	readings->volts_mv = (int)(volts_count * 1000 / 274.5);
-	readings->vin_mv = vin_count * 1000 / 271;
-	readings->current = current_count;
+		(void)adc_sequence_init_dt(&adc_channels[i], &sequence);
+
+		err = adc_read_dt(&adc_channels[i], &sequence);
+		if (err < 0) {
+			printk("Could not read (%d)\n", err);
+			continue;
+		}
+
+		/*
+		 * If using differential mode, the 16 bit value
+		 * in the ADC sample buffer should be a signed 2's
+		 * complement value.
+		 */
+		if (adc_channels[i].channel_cfg.differential) {
+			val_mv = (int32_t)((int16_t)buf);
+		} else {
+			val_mv = (int32_t)buf;
+		}
+		err = adc_raw_to_millivolts_dt(&adc_channels[i],
+						   &val_mv);
+
+		if(i == 0){
+			readings->volts_mv = adc_util_voltage_divider_input_voltage(10000, 2700, val_mv);
+		}else if(i == 1){
+			readings->vin_mv = adc_util_voltage_divider_input_voltage(56000, 7500, val_mv);
+		}else if(i == 2){
+			readings->current = (int)((float)val_mv / 1.65);
+		}
+	}
 }
+
+void powerhandle_init(){}
