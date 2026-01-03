@@ -36,6 +36,8 @@ target_sources(app PRIVATE
 	../common/firmware_upgrade.c
 	../common/dcc-decode-stm32.h
 	../common/dcc-decode-stm32.c
+	../common/adc_utils.h
+	../common/adc_utils.c
 )
 target_include_directories(app PRIVATE
 	${TRAINUTILS_DIR}/LCC
