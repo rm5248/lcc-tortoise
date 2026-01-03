@@ -8,7 +8,7 @@
 		<softwareVersion>0</softwareVersion>
 	</identification>
 	<acdi/>
-<!--
+
 	<segment space='251'>
 		<name>Node ID</name>
 		<group>
@@ -21,7 +21,6 @@
 			</string>
 		</group>	
 	</segment>
--->
 
 	<segment space='253'>
 		<name>Outputs</name>
@@ -201,15 +200,20 @@
 			</int>
 		</group>
 	</segment>
+-->
 
 	<segment space='248'>
-		<name>Voltages</name>
+		<name>Power information</name>
 		<int size='4'>
 			<name>Output Voltage(mv)</name>
 		</int>
 		<int size='4'>
 			<name>Input Voltage(mv)</name>
+			<description>Input voltage to the unit.  Depending on board configuration, comes from the LCC bus or the barrel connector</description>
+		</int>
+		<int size='4'>
+			<name>Current (ma)</name>
+			<description>How much current is being used by the unit</description>
 		</int>
 	</segment>
--->
 </cdi>

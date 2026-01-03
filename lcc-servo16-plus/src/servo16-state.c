@@ -43,6 +43,8 @@ struct Servo16PlusState servo16_state = {
 		.gold_button = GPIO_DT_SPEC_GET(DT_NODELABEL(gold_switch), gpios),
 };
 
+struct Servo16PlusGlobalConfig servo16_global = {0};
+
 static int init_led(const struct gpio_dt_spec* led){
 	if (!gpio_is_ready_dt(led)) {
 		return -1;
@@ -162,6 +164,34 @@ out:
 	return ret;
 }
 
+int save_globals_to_flash(){
+	int ret = 0;
+	const struct flash_area* storage_area = NULL;
+	int id = FIXED_PARTITION_ID(global_partition);
+
+	if(flash_area_open(id, &storage_area) < 0){
+		return 1;
+	}
+
+	ret = flash_area_erase(storage_area, 0, sizeof(servo16_global));
+	if(ret){
+		goto out;
+	}
+
+	int err = flash_area_write(storage_area, 0, &servo16_global, sizeof(servo16_global));
+	if( err < 0){
+		ret = -1;
+	}
+
+out:
+	if(ret){
+		printf("Unable to save global configs to flash: %d\n", err);
+	}
+	flash_area_close(storage_area);
+
+	return ret;
+}
+
 int load_config_from_flash(){
 	int ret = 0;
 	const struct flash_area* storage_area = NULL;
@@ -188,6 +218,40 @@ int load_config_from_flash(){
 	}
 
 	if(flash_area_read(storage_area, 0, servo16_state.pwm_boards_config, sizeof(servo16_state.pwm_boards_config)) < 0){
+		goto out;
+	}
+
+out:
+	flash_area_close(storage_area);
+	return ret;
+}
+
+int load_global_config_from_flash(){
+	int ret = 0;
+	const struct flash_area* storage_area = NULL;
+	uint8_t buffer[8];
+	int id = FIXED_PARTITION_ID(global_partition);
+
+	if(flash_area_open(id, &storage_area) < 0){
+		return 1;
+	}
+
+	if(flash_area_read(storage_area, 0, buffer, sizeof(buffer)) < 0){
+		ret = -1;
+		goto out;
+	}
+
+	// Check to see if the first 8 bytes are 0xFF.  If so, we assume the data is uninitialized
+	const uint8_t mem[8] = {
+			0xFF, 0xFF, 0xFF, 0xFF,
+			0xFF, 0xFF, 0xFF, 0xFF
+	};
+	if(memcmp(buffer, mem, 8) == 0){
+		ret = 2;
+		goto out;
+	}
+
+	if(flash_area_read(storage_area, 0, &servo16_global, sizeof(servo16_global)) < 0){
 		goto out;
 	}
 

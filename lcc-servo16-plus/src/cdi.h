@@ -17,20 +17,18 @@ const char* cdi = "<?xml version='1.0'?> \
 <softwareVersion>0</softwareVersion> \
 </identification> \
 <acdi/> \
-<!-- \
-	<segment space='251'> \
-		<name>Node ID</name> \
-		<group> \
-			<name>Your name and description for this node</name> \
-			<string size='63'> \
-				<name>Node Name</name> \
-			</string> \
-			<string size='64' offset='1'> \
-				<name>Node Description</name> \
-			</string> \
-		</group>	 \
-	</segment> \
---> \
+<segment space='251'> \
+<name>Node ID</name> \
+<group> \
+<name>Your name and description for this node</name> \
+<string size='63'> \
+<name>Node Name</name> \
+</string> \
+<string size='64' offset='1'> \
+<name>Node Description</name> \
+</string> \
+</group> \
+</segment> \
 <segment space='253'> \
 <name>Outputs</name> \
 <group replication='4'> \
@@ -203,17 +201,21 @@ const char* cdi = "<?xml version='1.0'?> \
 			</int> \
 		</group> \
 	</segment> \
- \
-	<segment space='248'> \
-		<name>Voltages</name> \
-		<int size='4'> \
-			<name>Output Voltage(mv)</name> \
-		</int> \
-		<int size='4'> \
-			<name>Input Voltage(mv)</name> \
-		</int> \
-	</segment> \
 --> \
+<segment space='248'> \
+<name>Power information</name> \
+<int size='4'> \
+<name>Output Voltage(mv)</name> \
+</int> \
+<int size='4'> \
+<name>Input Voltage(mv)</name> \
+<description>Input voltage to the unit.  Depending on board configuration, comes from the LCC bus or the barrel connector</description> \
+</int> \
+<int size='4'> \
+<name>Current (ma)</name> \
+<description>How much current is being used by the unit</description> \
+</int> \
+</segment> \
 </cdi>";
 
 #endif /* LCC_SERVO16_PLUS_SRC_CDI_H_ */
