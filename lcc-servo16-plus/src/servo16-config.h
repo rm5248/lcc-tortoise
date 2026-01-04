@@ -63,10 +63,10 @@ struct BoardOutput{
 
 	uint8_t default_startup_event;
 
-	uint8_t reserved[10];
+	uint8_t reserved[26];
 	struct BoardEvent events[6];
 };
-_Static_assert(sizeof(struct BoardOutput) == 144, "bad size for BoardOutput");
+_Static_assert(sizeof(struct BoardOutput) == 160, "bad size for BoardOutput");
 
 /**
  * BoardConfig.
@@ -78,11 +78,10 @@ struct BoardConfig{
 	uint8_t board_type;
 	uint8_t res1;
 	uint8_t res2;
-	uint32_t res3;
-//	uint8_t reserved[3];
+	uint32_t res3[7];
 	struct BoardOutput outputs[16];
 };
-_Static_assert(sizeof(struct BoardConfig) == 2304 + 8, "bad size for BoardConfig");
+_Static_assert(sizeof(struct BoardConfig) == /*sizeof outputs*/ 2560 + 32, "bad size for BoardConfig");
 
 struct Board{
 	// Configuration that comes from EPROM
@@ -95,8 +94,6 @@ struct Board{
 struct Servo16PlusState{
 	struct BoardConfig pwm_boards_config[4];
 	struct Board boards[4];
-	char name[64];
-	char description[64];
 	const struct gpio_dt_spec oe_pin;
 	const struct gpio_dt_spec green_led;
 	const struct gpio_dt_spec blue_led;
