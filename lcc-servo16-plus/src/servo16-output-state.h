@@ -16,7 +16,7 @@
 struct BoardOutput;
 
 struct OutputState{
-	const struct pwm_dt_spec pwm_output;
+	struct pwm_dt_spec pwm_output;
 	struct k_timer output_change_timer;
 	struct k_work output_change_work;
 	struct BoardOutput* output_config;
@@ -39,5 +39,10 @@ void output_state_init(struct OutputState* state, struct BoardOutput* output);
  * If the event ID is not consumed by this output, nothing happens.
  */
 int output_state_perform_action(struct OutputState* state, uint8_t board_type, uint64_t event_id);
+
+/**
+ * For the given output state, perform whatever action is the 'startup'/'initial' action
+ */
+int output_state_perform_initial(struct OutputState* state, uint8_t board_type, uint8_t initial_output);
 
 #endif /* LCC_SERVO16_PLUS_SRC_SERVO16_OUTPUT_STATE_H_ */

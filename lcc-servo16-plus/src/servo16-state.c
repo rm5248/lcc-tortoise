@@ -10,6 +10,7 @@
 #include "servo16-output-state.h"
 
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/drivers/i2c.h>
 
 struct Servo16PlusState servo16_state = {
 		.boards = {
@@ -274,4 +275,138 @@ void add_all_events_consumed(struct lcc_event_context* evt_ctx){
 	}
 
 	lcc_event_add_event_consumed_transaction_end(evt_ctx);
+}
+
+static int check_for_daughterboard(int address){
+	const struct device* i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c1));
+	uint8_t buf;
+
+	if(i2c_read(i2c_dev, &buf, 1, address) < 0){
+		return 0;
+	}
+
+	return 1;
+}
+
+void init_all_daughterboards(){
+	static const struct pwm_dt_spec pwm_output_node_0x41[] = {
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 0),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 2),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 4),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 6),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 8),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 10),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 12),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 14),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 16),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 18),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 20),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 22),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 24),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 26),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 28),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 30)
+	};
+	static const struct device* device_0x41 = DEVICE_DT_GET(DT_NODELABEL(pca9685_node1));
+
+	static const struct pwm_dt_spec pwm_output_node_0x42[] = {
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 0),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 2),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 4),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 6),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 8),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 10),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 12),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 14),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 16),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 18),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 20),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 22),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 24),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 26),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 28),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 30)
+	};
+	static const struct device* device_0x42 = DEVICE_DT_GET(DT_NODELABEL(pca9685_node2));
+
+	static const struct pwm_dt_spec pwm_output_node_0x43[] = {
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 0),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 2),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 4),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 6),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 8),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 10),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 12),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 14),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 16),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 18),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 20),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 22),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 24),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 26),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 28),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 30)
+	};
+	static const struct device* device_0x43 = DEVICE_DT_GET(DT_NODELABEL(pca9685_node3));
+
+	if(check_for_daughterboard(0x40) == 0){
+		printf("ERROR: Builtin board not found??\n");
+	}
+	for(int board = 0; board < 4; board++){
+		int addr = servo16_state.pwm_boards_config[board].address;
+		int found = check_for_daughterboard(addr);
+		const struct pwm_dt_spec* base;
+		const struct device* dev;
+		printf("Looking for board 0x%02X ... %s\n", addr, found ? "found" : "not found");
+
+		servo16_state.boards[board].ok = !!found;
+
+		if(addr == 0x41){
+			base = pwm_output_node_0x41;
+			dev = device_0x41;
+		}else if(addr == 0x42){
+			base = pwm_output_node_0x42;
+			dev = device_0x42;
+		}else if(addr == 0x43){
+			base = pwm_output_node_0x43;
+			dev = device_0x43;
+		}else{
+			if(addr != 0x40){
+				printf("Address 0x%02X currently invalid, ignoring...\n", addr);
+			}
+			continue;
+		}
+
+		if(addr != 0x40 && found){
+			// Initialize the driver
+			int ret = device_init(dev);
+			if(ret){
+				printf("Unable to init device\n");
+				continue;
+			}
+
+			for(int output = 0; output < 16; output++){
+				struct OutputState* out_state = &servo16_state.boards[board].output_state[output];
+				memcpy(&out_state->pwm_output,
+						&base[output],
+						sizeof(struct pwm_dt_spec));
+			}
+		}
+	}
+}
+
+void init_start_state(){
+	for(int board = 0; board < 4; board++){
+		if(!servo16_state.boards[board].ok){
+			continue;
+		}
+
+		uint8_t board_type = servo16_state.boards[board].config->board_type;
+		for(int output = 0; output < 16; output++){
+			struct OutputState* out_state = &servo16_state.boards[board].output_state[output];
+			uint8_t default_output = out_state->output_config->default_startup_event;
+
+			output_state_perform_initial(out_state, board_type, default_output);
+		}
+	}
 }
