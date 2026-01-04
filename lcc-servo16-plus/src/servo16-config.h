@@ -89,6 +89,8 @@ struct Board{
 
 	// Runtime state information
 	struct OutputState output_state[16];
+
+	uint8_t ok;
 };
 
 struct Servo16PlusState{
@@ -115,6 +117,8 @@ extern struct Servo16PlusState servo16_state;
 extern struct Servo16PlusGlobalConfig servo16_global;
 
 int init_state(uint64_t board_id);
+void init_all_daughterboards();
+void init_start_state();
 
 void output_enable(void);
 

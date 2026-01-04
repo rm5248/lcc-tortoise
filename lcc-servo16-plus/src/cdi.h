@@ -50,8 +50,8 @@ const char* cdi = "<?xml version='1.0'?> \
 </relation> \
 </map> \
 </int> \
-<!-- six bytes of buffer --> \
-<group offset='6'/> \
+<!-- thirty bytes of buffer --> \
+<group offset='30'/> \
 <group replication='16'> \
 <name>OUT</name> \
 <repname>Output </repname> \
@@ -107,8 +107,8 @@ const char* cdi = "<?xml version='1.0'?> \
 </relation> \
 </map> \
 </int> \
-<!-- 10 reserved bytes --> \
-<group offset='10'/> \
+<!-- 26 reserved bytes --> \
+<group offset='26'/> \
 <group replication='6'> \
 <name>Event Inputs(Consumers)</name> \
 <repname>Input </repname> \
