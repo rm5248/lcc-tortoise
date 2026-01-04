@@ -74,10 +74,6 @@ static void blink_led_green(){
 			k_sleep(K_MSEC(1500));
 		}
 
-
-		struct adc_readings readings;
-		powerhandle_current_volts_mv(&readings);
-		printf("VIN: %d VOLTS: %d CURRENT: %d\n", readings.vin_mv, readings.volts_mv, readings.current);
 		gpio_pin_toggle_dt(&blue_led);
 		gpio_pin_toggle_dt(&gold_led);
 	}
@@ -483,6 +479,10 @@ static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
 		struct Board* board = &servo16_state.boards[idx];
 		int board_type = board->config->board_type;
 
+		if(!board->ok){
+			continue;
+		}
+
 		for(int out = 0; out < 16; out++){
 			output_state_perform_action(&board->output_state[out], board_type, event_id);
 		}
@@ -517,7 +517,8 @@ int main(void)
 {
 	int ret;
 
-	// Sleep for a bit before we start to allow power to become stable.
+	// Sleep for a bit before we start to allow power to become stable and
+	// to make sure that our daughter boards come up
 	// This is probably not needed, but it shouldn't hurt.
 	// This will also give other devices on the network a chance to come up.
 	k_sleep(K_MSEC(300));
@@ -579,9 +580,6 @@ int main(void)
 	//gpio_init_callback(&blue_button_cb_data, blue_button_pressed, BIT(lcc_tortoise_state.blue_button.pin));
 	//gpio_add_callback(lcc_tortoise_state.blue_button.port, &blue_button_cb_data);
 
-	// Turn on the outputs for the servo
-	output_enable();
-
 	// Load all of our configs
 	if(load_config_from_flash() == 2){
 		// flash is empty, write out basic data
@@ -591,6 +589,17 @@ int main(void)
 		memset(&servo16_global, 0, sizeof(servo16_global));
 		save_globals_to_flash();
 	}
+
+	// inintialize all of our daughterboards now that we have loaded the config
+	// that includes their address
+	init_all_daughterboards();
+
+	// Initialize the starting state of all of the outputs
+	init_start_state();
+
+	// Now that we have initialized the outputs, enable the outputs on the PCA9685
+	output_enable();
+
 	lcc_context_set_simple_node_name_description(lcc_ctx,
 					servo16_global.node_name,
 					servo16_global.node_description);

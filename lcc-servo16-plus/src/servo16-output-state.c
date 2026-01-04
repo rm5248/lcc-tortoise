@@ -77,11 +77,14 @@ static void output_state_actuate_servo(struct OutputState* output_state, struct 
 	int LE_min_pulse = __builtin_bswap16(output_state->output_config->BE_min_pulse);
 	int LE_max_pulse = __builtin_bswap16(output_state->output_config->BE_max_pulse);
 	int diff = LE_max_pulse - LE_min_pulse;
-	int val_to_change_by = (float)diff * (float)event->arg1 / 1000.0;
+	float percent = (float)__builtin_bswap16(event->arg1) / 1000.0;
+	int val_to_change_by = (float)diff * percent;
 	int new_val = LE_min_pulse + val_to_change_by;
 
 	k_timer_stop(&output_state->output_change_timer);
-	printf("Actuate output %s to percent %d val: %d\n", output_state->output_config->description, event->arg1, new_val);
+	printf("Actuate output %s to percent %d val: %d\n", output_state->output_config->description,
+			(int)(percent * 100.0),
+			new_val);
 
 	output_state->moving = 1;
 	output_state->target_position = new_val;
@@ -161,4 +164,18 @@ int output_state_perform_action(struct OutputState* state, uint8_t board_type, u
 	}
 
 	return handled;
+}
+
+int output_state_perform_initial(struct OutputState* state, uint8_t board_type, uint8_t initial_output){
+	if(initial_output < 0 || initial_output > 6){
+		return -1;
+	}
+
+	struct BoardEvent* board_event = &state->output_config->events[initial_output];
+
+	if(board_type == BOARD_TYPE_SERVO){
+		output_state_actuate_servo(state, board_event);
+	}else if(board_type == BOARD_TYPE_LED){
+		output_state_led(state, board_event);
+	}
 }

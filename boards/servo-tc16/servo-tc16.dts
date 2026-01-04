@@ -213,6 +213,30 @@ zephyr_udc0: &usb {
 		reg = <0x40>;
 		#pwm-cells = <2>;
 	};
+
+	pca9685_node1: pca9685@41 {
+		status = "okay";
+		compatible = "nxp,pca9685-pwm";
+		reg = <0x41>;
+		#pwm-cells = <2>;
+		zephyr,deferred-init;
+	};
+
+	pca9685_node2: pca9685@42 {
+		status = "okay";
+		compatible = "nxp,pca9685-pwm";
+		reg = <0x42>;
+		#pwm-cells = <2>;
+		zephyr,deferred-init;
+	};
+
+	pca9685_node3: pca9685@43 {
+		status = "okay";
+		compatible = "nxp,pca9685-pwm";
+		reg = <0x43>;
+		#pwm-cells = <2>;
+		zephyr,deferred-init;
+	};
 };
 
 /*
@@ -286,6 +310,63 @@ zephyr_udc0: &usb {
 				<&pca9685_builtin 13 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
 				<&pca9685_builtin 14 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
 				<&pca9685_builtin 15 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_node1: node1 {
+			pwms = <&pca9685_node1 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+			        <&pca9685_node1 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 2 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 3 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 4 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 5 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 6 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 7 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 8 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 9 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 10 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 11 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 12 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 13 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 14 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node1 15 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_node2: node2 {
+			pwms = <&pca9685_node2 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+			        <&pca9685_node2 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 2 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 3 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 4 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 5 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 6 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 7 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 8 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 9 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 10 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 11 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 12 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 13 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 14 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node2 15 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_node3: node3 {
+			pwms = <&pca9685_node3 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+			        <&pca9685_node3 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 2 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 3 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 4 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 5 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 6 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 7 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 8 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 9 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 10 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 11 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 12 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 13 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 14 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+				<&pca9685_node3 15 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
 		};
 	};
 };
