@@ -1,6 +1,7 @@
 #ifndef DCC_TO_COMPUTER_H
 #define DCC_TO_COMPUTER_H
 
+#include <zephyr/kernel.h>
 #include <zephyr/sys/ring_buffer.h>
 
 struct dcc_packet{
