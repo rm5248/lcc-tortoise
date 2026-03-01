@@ -88,14 +88,14 @@
 
 	tortoise0: tort0 {
 		compatible = "tortoise-output";
-		gpios = <&arduino_header 0 GPIO_ACTIVE_HIGH>,
-		        <&arduino_header 1 GPIO_ACTIVE_HIGH>;
+		gpios = <&arduino_header ARDUINO_HEADER_R3_A0 GPIO_ACTIVE_HIGH>,
+		        <&arduino_header ARDUINO_HEADER_R3_A1 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
 	tortoise1: tort1 {
 		compatible = "tortoise-output";
-		gpios = <&arduino_header 2 GPIO_ACTIVE_HIGH>,
-		        <&arduino_header 3 GPIO_ACTIVE_HIGH>;
+		gpios = <&arduino_header ARDUINO_HEADER_R3_A2 GPIO_ACTIVE_HIGH>,
+		        <&arduino_header ARDUINO_HEADER_R3_A3 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
 };
@@ -173,6 +173,7 @@
 		gpio-controller;
 		ngpios = <16>;
 		#gpio-cells = <2>;
+		int-gpios = <&arduino_header ARDUINO_HEADER_R3_D9 GPIO_ACTIVE_LOW>;
 	};
 
 	pca9685: pca9685@41 {
