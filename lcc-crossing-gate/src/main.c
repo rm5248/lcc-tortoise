@@ -582,6 +582,7 @@ static void splash(){
 	struct mcuboot_img_header versions[2];
 	struct mcuboot_img_sem_ver semver[2] = {0};
 
+/*
 	if(boot_read_bank_header(FIXED_PARTITION_ID(slot0_partition), &versions[0], sizeof(struct mcuboot_img_header)) == 0){
 	  semver[0] = versions[0].h.v1.sem_ver;
 	}
@@ -591,6 +592,7 @@ static void splash(){
 
 	printf("  This slot version: %d.%d.%d\n", semver[0].major, semver[0].minor, semver[0].revision);
 	printf("  Secondary slot version: %d.%d.%d\n", semver[1].major, semver[1].minor, semver[1].revision);
+*/
 }
 
 static int init_led(const struct gpio_dt_spec* led){
@@ -657,6 +659,7 @@ void pwm_foobar(){
 }
 
 void do_servo(){
+#if 0
 	static const struct pwm_dt_spec servo = PWM_DT_SPEC_GET(DT_NODELABEL(servo));
 	static const uint32_t min_pulse = DT_PROP(DT_NODELABEL(servo), min_pulse);
 	static const uint32_t max_pulse = DT_PROP(DT_NODELABEL(servo), max_pulse);
@@ -706,6 +709,7 @@ void do_servo(){
 			k_sleep(K_SECONDS(1));
 //			k_sleep(K_MSEC(500));
 		}
+#endif
 }
 
 int main(void)

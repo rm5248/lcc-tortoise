@@ -1,0 +1,194 @@
+/ {
+	chosen {
+		zephyr,code-partition = &slot0_partition;
+		zephyr,canbus = &mcp2518;
+	};
+
+	inputs {
+		compatible = "gpio-keys";
+		debounce-interval-ms = <0>;
+
+		in0: input0 {
+			label = "in0";
+			gpios = <&gpio_expander 0 GPIO_ACTIVE_LOW>;
+		};
+		in1: input1 {
+			label = "in1";
+			gpios = <&gpio_expander 1 GPIO_ACTIVE_LOW>;
+		};
+		in2: input2 {
+			label = "in2";
+			gpios = <&gpio_expander 2 GPIO_ACTIVE_LOW>;
+		};
+		in3: input3 {
+			label = "in3";
+			gpios = <&gpio_expander 3 GPIO_ACTIVE_LOW>;
+		};
+		in4: input4 {
+			label = "in4";
+			gpios = <&gpio_expander 4 GPIO_ACTIVE_LOW>;
+		};
+		in5: input5 {
+			label = "in5";
+			gpios = <&gpio_expander 5 GPIO_ACTIVE_LOW>;
+		};
+		in6: input6 {
+			label = "in6";
+			gpios = <&gpio_expander 6 GPIO_ACTIVE_LOW>;
+		};
+		in7: input7 {
+			label = "in7";
+			gpios = <&gpio_expander 7 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	leds: leds {
+		compatible = "gpio-leds";
+		gold_led: led_1 {
+			gpios = <&arduino_header ARDUINO_HEADER_R3_D5 GPIO_ACTIVE_HIGH>;
+			label = "LED1";
+		};
+		blue_led: led_2 {
+			gpios = <&arduino_header ARDUINO_HEADER_R3_D6 GPIO_ACTIVE_HIGH>;
+			label = "LED2";
+		};
+		green_led: led_3 {
+			gpios = <&gpio_expander 10 GPIO_ACTIVE_HIGH>;
+		};
+
+		sound_enable: sound_en {
+			gpios = <&gpio_expander 11 GPIO_ACTIVE_HIGH>;
+			label = "sound_enable";
+		};
+		sound_power: sound_pwr {
+			gpios = <&gpio_expander 12 GPIO_ACTIVE_HIGH>;
+			label = "sound_power";
+		};
+
+	};
+
+	pwm_leds2 {
+		compatible = "pwm-leds";
+		status = "okay";
+
+		led_out1: led_4 {
+			pwms = <&pca9685 0 PWM_MSEC(1) PWM_POLARITY_NORMAL>;
+		};
+		led_out2: led_5 {
+			pwms = <&pca9685 1 PWM_MSEC(1) PWM_POLARITY_NORMAL>;
+		};
+	};
+
+	servo: servo {
+		compatible = "pwm-servo";
+		pwms = <&arduino_pwm ARDUINO_HEADER_R3_D4 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+		min-pulse = <PWM_USEC(700)>;
+		max-pulse = <PWM_USEC(2500)>;
+	};
+
+	tortoise0: tort0 {
+		compatible = "tortoise-output";
+		gpios = <&arduino_header 0 GPIO_ACTIVE_HIGH>,
+		        <&arduino_header 1 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+	tortoise1: tort1 {
+		compatible = "tortoise-output";
+		gpios = <&arduino_header 2 GPIO_ACTIVE_HIGH>,
+		        <&arduino_header 3 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+        };
+};
+
+&arduino_spi {
+	cs-gpios = <&arduino_header ARDUINO_HEADER_R3_D8 GPIO_ACTIVE_LOW>,
+		<&arduino_header ARDUINO_HEADER_R3_D7 GPIO_ACTIVE_LOW>;
+
+	mcp2518: mcp2518@0 {
+		compatible = "microchip,mcp251xfd";
+		reg = <0x0>;
+		status = "okay";
+
+		spi-max-frequency = <DT_FREQ_M(20)>;
+		int-gpios = <&arduino_header ARDUINO_HEADER_R3_D2 GPIO_ACTIVE_LOW>;
+		osc-freq = <DT_FREQ_M(16)>;
+	};
+
+	eeprom@1 {
+		compatible = "st,m95xxx", "atmel,at25";
+		reg = <0x1>;
+		status = "okay";
+		size = <DT_SIZE_K(256)>;
+		pagesize = <256>;
+		address-width = <24>;
+		spi-max-frequency = <DT_FREQ_M(20)>;
+		timeout = <5>;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			slot1_partition: partition@0000 {
+				label = "image-1";
+				reg = <0x0000 DT_SIZE_K(156)>;
+			};
+
+			/*
+			 * 2k for LCC ID data
+			 */
+			lcc_partition: partition@27000 {
+				label = "lcc-partition";
+				reg = <0x0027000 DT_SIZE_K(2)>;
+			};
+
+		};
+	};
+
+};
+
+&flash0 {
+	/delete-node/ partitions;
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		/* We have 256k of flash, so let's not worry too much about space */
+		boot_partition: partition@0 {
+			label = "bootloader";
+			reg = <0x00000000 DT_SIZE_K(48)>;
+			read-only;
+		};
+		slot0_partition: partition@C000 {
+			label = "image-0";
+			reg = <0x0000C000 DT_SIZE_K(156)>;
+		};
+	};
+};
+
+&arduino_i2c {
+	gpio_expander: pcf8574@27 {
+		compatible = "nxp,pcf857x";
+		reg = <0x27>;
+		gpio-controller;
+		ngpios = <16>;
+		#gpio-cells = <2>;
+	};
+
+	pca9685: pca9685@41 {
+		compatible = "nxp,pca9685-pwm";
+		status = "okay";
+		reg = <0x41>;
+		#pwm-cells = <3>;
+	};
+};
+
+/*
+&pwm3 {
+	pinctrl-0 = <&pwm3_default>;
+	pinctrl-names = "default";
+	interrupts = <8 1>, <9 1>;
+	interrupt-names = "gtioca", "overflow";
+	status = "okay";
+};
+*/

@@ -1,9 +1,8 @@
 mainmenu "LCC Crossing Gate"
 
 source "Kconfig.zephyr"
-config LCC_TORTOISE
+config LCC_CROSSING_GATE
 	default y
 	bool
-	select USE_STM32_HAL_TIM
-	select USE_STM32_HAL_TIM_EX
-	select USE_STM32_HAL_GPIO
+
+select EEPROM if BOARD_ARDUINO_UNO_R4
