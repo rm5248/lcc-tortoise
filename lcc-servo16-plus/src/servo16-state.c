@@ -18,21 +18,21 @@ struct Servo16PlusState servo16_state = {
 						.config = NULL,
 						.output_state = {
 								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 0) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 1) },
 								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 2) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 3) },
 								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 4) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 5) },
 								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 6) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 7) },
 								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 8) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 9) },
 								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 10) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 11) },
 								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 12) },
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 13) },
 								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 14) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 16) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 18) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 20) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 22) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 24) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 26) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 28) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 30) }
+								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 15) }
 						}
 				}
 		},
@@ -291,61 +291,61 @@ static int check_for_daughterboard(int address){
 void init_all_daughterboards(){
 	static const struct pwm_dt_spec pwm_output_node_0x41[] = {
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 0),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 1),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 2),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 3),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 4),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 5),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 6),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 7),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 8),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 9),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 10),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 11),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 12),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 13),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 14),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 16),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 18),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 20),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 22),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 24),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 26),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 28),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 30)
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node1), 15)
 	};
 	static const struct device* device_0x41 = DEVICE_DT_GET(DT_NODELABEL(pca9685_node1));
 
 	static const struct pwm_dt_spec pwm_output_node_0x42[] = {
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 0),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 1),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 2),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 3),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 4),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 5),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 6),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 7),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 8),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 9),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 10),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 11),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 12),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 13),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 14),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 16),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 18),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 20),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 22),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 24),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 26),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 28),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 30)
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node2), 15)
 	};
 	static const struct device* device_0x42 = DEVICE_DT_GET(DT_NODELABEL(pca9685_node2));
 
 	static const struct pwm_dt_spec pwm_output_node_0x43[] = {
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 0),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 1),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 2),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 3),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 4),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 5),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 6),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 7),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 8),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 9),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 10),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 11),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 12),
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 13),
 			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 14),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 16),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 18),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 20),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 22),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 24),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 26),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 28),
-			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 30)
+			PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(pwm_node3), 15)
 	};
 	static const struct device* device_0x43 = DEVICE_DT_GET(DT_NODELABEL(pca9685_node3));
 

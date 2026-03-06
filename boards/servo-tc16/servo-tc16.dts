@@ -68,6 +68,8 @@
 	zephyr,user {
 		oe-gpios = <&gpiob 4 GPIO_ACTIVE_HIGH>;
 		io-channels = <&adc1 0x00>, <&adc1 0x1>, <&adc1 0x4>;
+		powersupply-gpios = <&gpioa 8 GPIO_ACTIVE_HIGH>;
+		i2c-enable-gpios = <&gpiob 5 GPIO_ACTIVE_HIGH>;
 	};
 };
 
@@ -211,14 +213,14 @@ zephyr_udc0: &usb {
 		status = "okay";
 		compatible = "nxp,pca9685-pwm";
 		reg = <0x40>;
-		#pwm-cells = <2>;
+		#pwm-cells = <3>;
 	};
 
 	pca9685_node1: pca9685@41 {
 		status = "okay";
 		compatible = "nxp,pca9685-pwm";
 		reg = <0x41>;
-		#pwm-cells = <2>;
+		#pwm-cells = <3>;
 		zephyr,deferred-init;
 	};
 
@@ -226,7 +228,7 @@ zephyr_udc0: &usb {
 		status = "okay";
 		compatible = "nxp,pca9685-pwm";
 		reg = <0x42>;
-		#pwm-cells = <2>;
+		#pwm-cells = <3>;
 		zephyr,deferred-init;
 	};
 
@@ -234,7 +236,7 @@ zephyr_udc0: &usb {
 		status = "okay";
 		compatible = "nxp,pca9685-pwm";
 		reg = <0x43>;
-		#pwm-cells = <2>;
+		#pwm-cells = <3>;
 		zephyr,deferred-init;
 	};
 };
@@ -254,7 +256,7 @@ zephyr_udc0: &usb {
 	status = "okay";
 	pinctrl-0 = <&adc1_in0_pa0 &adc1_in1_pa1 &adc1_in4_pa4>;
 	pinctrl-names = "default";
-	st,adc-clock-source = <SYNC>;
+	st,adc-clock-source = "SYNC";
 	st,adc-prescaler = <2>;
 
 	#address-cells = <1>;
