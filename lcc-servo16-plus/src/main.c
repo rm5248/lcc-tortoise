@@ -513,6 +513,20 @@ static void gold_button_pressed(const struct device *dev, struct gpio_callback *
 	printf("gold %d\n", gold_value);
 }
 
+static void enable_powersupplies(){
+	struct gpio_dt_spec oe_gpio = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), oe_gpios);
+	struct gpio_dt_spec powersupply_gpio = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), powersupply_gpios);
+	struct gpio_dt_spec i2c_enable_gpio = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), i2c_enable_gpios);
+
+	gpio_pin_configure_dt(&oe_gpio, GPIO_OUTPUT_INACTIVE);
+	gpio_pin_configure_dt(&powersupply_gpio, GPIO_OUTPUT_INACTIVE);
+	gpio_pin_configure_dt(&i2c_enable_gpio, GPIO_OUTPUT_INACTIVE);
+
+	gpio_pin_set_dt(&oe_gpio, 1);
+	gpio_pin_set_dt(&powersupply_gpio, 1);
+	gpio_pin_set_dt(&i2c_enable_gpio, 1);
+}
+
 int main(void)
 {
 	int ret;
@@ -524,6 +538,8 @@ int main(void)
 	k_sleep(K_MSEC(300));
 
 	splash();
+
+	enable_powersupplies();
 
 	if (!device_is_ready(can_dev)) {
 		printf("CAN: Device %s not ready.\n", can_dev->name);
