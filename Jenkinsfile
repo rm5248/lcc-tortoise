@@ -122,7 +122,7 @@ fi
 
 cd lcc-tortoise
 west update
-echo "SB_CONFIG_BOOT_SIGNATURE_KEY_FILE=\\"/var/lib/signing-keys/lcc-io32-plus.pem\\"" >> lcc-link/sysbuild.conf
+echo "SB_CONFIG_BOOT_SIGNATURE_KEY_FILE=\\"/var/lib/signing-keys/lcc-io32-plus.pem\\"" >> lcc-io32-plus/sysbuild.conf
 west build --build-dir build-lccio32plus -b io32-plus --sysbuild lcc-io32-plus
 '''
 			}
