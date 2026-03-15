@@ -108,5 +108,41 @@ cp lcc-tortoise/flash-lcc-link.sh artifacts
 			}
 		} /* stage archive */
 
+		stage("Build LCC-IO32 Plus"){
+			steps{
+				sh '''#!/bin/bash
+source venv/bin/activate
+if [ ! -e .west ]
+then
+	west init -l lcc-tortoise
+	west update
+	west zephyr-export
+	pip3 install -r zephyr/scripts/requirements.txt
+fi
+
+cd lcc-tortoise
+west update
+echo "SB_CONFIG_BOOT_SIGNATURE_KEY_FILE=\\"/var/lib/signing-keys/lcc-io32-plus.pem\\"" >> lcc-link/sysbuild.conf
+west build --build-dir build-lccio32plus -b io32-plus --sysbuild lcc-io32-plus
+'''
+			}
+		} /* stage build lcc link */
+
+		stage("Archive LCC Link"){
+			steps{
+				sh '''#!/bin/bash
+mkdir -p artifacts
+rm artifacts/* || true
+
+cp lcc-tortoise/build-lccio32plus/lcc-io32-plus/zephyr/lcc-io32-plus.signed.bin artifacts/lcc-io32-plus.bin
+cp lcc-tortoise/build-lccio32plus/mcuboot/zephyr/lcc-io32-plus-bootloader.bin artifacts/lcc-io32-plus-bootloader.bin
+cp lcc-tortoise/flash-lcc-io32-plus.sh artifacts
+'''
+
+				zip archive: true, defaultExcludes: false, dir: 'artifacts', exclude: '', glob: 'lcc-io32*,flash-lcc-io32-plus.sh', overwrite: true, zipFile: 'lcc-io32plus.zip'
+				archiveArtifacts artifacts:'artifacts/lcc-io32-plus.bin,artifacts/lcc-io32-plus-bootloader.bin'
+			}
+		} /* stage archive */
+
 	} /* end stages */
 }
