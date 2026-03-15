@@ -128,7 +128,7 @@ west build --build-dir build-lccio32plus -b io32-plus --sysbuild lcc-io32-plus
 			}
 		} /* stage build lcc link */
 
-		stage("Archive LCC Link"){
+		stage("Archive LCC IO32 Plus"){
 			steps{
 				sh '''#!/bin/bash
 mkdir -p artifacts
