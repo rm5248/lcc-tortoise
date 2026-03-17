@@ -39,7 +39,7 @@
 	};
 
 	zephyr,user {
-		input-gpios = <&gpio_expander 0 GPIO_ACTIVE_HIGH>,
+		output-gpios = <&gpio_expander 0 GPIO_ACTIVE_HIGH>,
 		         <&gpio_expander 1 GPIO_ACTIVE_HIGH>,
 		         <&gpio_expander 2 GPIO_ACTIVE_HIGH>,
 		         <&gpio_expander 3 GPIO_ACTIVE_HIGH>,
@@ -55,6 +55,23 @@
 		         <&gpio_expander2 5 GPIO_ACTIVE_HIGH>,
 		         <&gpio_expander2 6 GPIO_ACTIVE_HIGH>,
 		         <&gpio_expander2 7 GPIO_ACTIVE_HIGH>;
+
+		input-gpios = <&gpio_in0 0 GPIO_ACTIVE_HIGH>,
+				<&gpio_in0 1 GPIO_ACTIVE_HIGH>,
+				<&gpio_in0 2 GPIO_ACTIVE_HIGH>,
+				<&gpio_in0 3 GPIO_ACTIVE_HIGH>,
+				<&gpio_in0 4 GPIO_ACTIVE_HIGH>,
+				<&gpio_in0 5 GPIO_ACTIVE_HIGH>,
+				<&gpio_in0 6 GPIO_ACTIVE_HIGH>,
+				<&gpio_in0 7 GPIO_ACTIVE_HIGH>,
+				<&gpio_in1 0 GPIO_ACTIVE_HIGH>,
+				<&gpio_in1 1 GPIO_ACTIVE_HIGH>,
+				<&gpio_in1 2 GPIO_ACTIVE_HIGH>,
+				<&gpio_in1 3 GPIO_ACTIVE_HIGH>,
+				<&gpio_in1 4 GPIO_ACTIVE_HIGH>,
+				<&gpio_in1 5 GPIO_ACTIVE_HIGH>,
+				<&gpio_in1 6 GPIO_ACTIVE_HIGH>,
+				<&gpio_in1 7 GPIO_ACTIVE_HIGH>;
 	};
 
 	leds: leds {
@@ -225,4 +242,29 @@ zephyr_udc0: &usb {
 	pinctrl-0 = <&fdcan2_rx_pb0 &fdcan2_tx_pb1>;
 	pinctrl-names = "default";
 	status = "okay";
+};
+
+&i2c2 {
+	pinctrl-0 = <&i2c2_scl_pa9 &i2c2_sda_pa10>;
+	pinctrl-names = "default";
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST>;
+
+	gpio_in0: tca9538@38 {
+		compatible = "ti,tca9538";
+		reg = <0x38>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <8>;
+		nint-gpios = <&gpioa 11 GPIO_ACTIVE_LOW>;
+	};
+
+	gpio_in1: tca9538@39 {
+		compatible = "ti,tca9538";
+		reg = <0x39>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <8>;
+		nint-gpios = <&gpioa 12 GPIO_ACTIVE_LOW>;
+	};
 };

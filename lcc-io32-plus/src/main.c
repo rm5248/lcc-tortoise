@@ -33,6 +33,25 @@ const struct gpio_dt_spec blue_led = GPIO_DT_SPEC_GET(DT_ALIAS(blueled), gpios);
 const struct gpio_dt_spec gold_led = GPIO_DT_SPEC_GET(DT_ALIAS(goldled), gpios);
 
 const struct gpio_dt_spec outputs[] = {
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 0),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 1),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 2),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 3),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 4),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 5),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 6),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 7),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 8),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 9),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 10),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 11),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 12),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 13),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 14),
+		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), output_gpios, 15),
+};
+
+const struct gpio_dt_spec inputs[] = {
 		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), input_gpios, 0),
 		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), input_gpios, 1),
 		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), input_gpios, 2),
@@ -50,6 +69,7 @@ const struct gpio_dt_spec outputs[] = {
 		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), input_gpios, 14),
 		GPIO_DT_SPEC_GET_BY_IDX(DT_PATH(zephyr_user), input_gpios, 15),
 };
+struct gpio_callback input_cb_data[16] = {0};
 
 K_THREAD_STACK_DEFINE(tx_stack, 512);
 struct k_thread tx_thread_data;
@@ -76,7 +96,7 @@ static void test_io(){
 		gpio_pin_toggle_dt(&gold_led);
 
 		printf("Set output %d to %d\n", count % 8, val);
-		gpio_pin_set_dt(&outputs[count % 8], val);
+		gpio_pin_set_dt(&(outputs[count % 8]), val);
 
 		count++;
 		if(count % 8 == 0){
@@ -318,13 +338,41 @@ static void splash(){
 	printf("  Secondary slot version: %d.%d.%d\n", semver[1].major, semver[1].minor, semver[1].revision);
 }
 
+static void input_callback(const struct device* port, struct gpio_callback* cb, gpio_port_pins_t pins){
+	struct gpio_dt_spec* gpio = NULL;
+	int val;
+
+	for(int x = 0; x < 16; x++){
+		if((port == inputs[x].port) &&
+				(pins == BIT(inputs[x].pin))){
+			gpio = &inputs[x];
+			break;
+		}
+	}
+
+	if(!gpio){
+		printf("spurrious IRQ??\n");
+		return;
+	}
+
+	val = gpio_pin_get_dt(gpio);
+
+	printf("Input %d changed to value %d\n", gpio->pin, val);
+}
+
 static void init_gpio(){
 	gpio_pin_configure_dt(&green_led, GPIO_OUTPUT);
 	gpio_pin_configure_dt(&blue_led, GPIO_OUTPUT);
 	gpio_pin_configure_dt(&gold_led, GPIO_OUTPUT);
 
 	for(int x = 0; x < 8; x++){
-		gpio_pin_configure_dt(&outputs[0], GPIO_OUTPUT);
+		gpio_pin_configure_dt(&outputs[x], GPIO_OUTPUT);
+	}
+
+	for(int x = 0; x < 16; x++){
+		gpio_pin_interrupt_configure_dt(&inputs[x], GPIO_INPUT | GPIO_INT_EDGE_BOTH);
+		gpio_init_callback(&input_cb_data[x], input_callback, BIT(inputs[x].pin));
+		gpio_add_callback(inputs[x].port, &input_cb_data[x]);
 	}
 }
 
