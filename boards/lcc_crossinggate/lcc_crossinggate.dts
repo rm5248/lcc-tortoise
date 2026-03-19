@@ -267,11 +267,22 @@
 
 &timers2 {
 	st,prescaler = <10000>;
-	status = "disabled";
+	status = "okay";
 
 	pwm2: pwm {
 		status = "okay";
-		pinctrl-0 = <&tim2_ch1_pa5>;
+		pinctrl-0 = <&tim2_ch1_pa15 &tim2_ch2_pb3>;
+		pinctrl-names = "default";
+	};
+};
+
+&timers3 {
+	st,prescaler = <10000>;
+	status = "okay";
+
+	pwm3: pwm {
+		status = "okay";
+		pinctrl-0 = <&tim3_ch1_pc6 &tim3_ch2_pa7>;
 		pinctrl-names = "default";
 	};
 };
