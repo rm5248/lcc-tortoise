@@ -257,6 +257,8 @@ void crossing_gate_raise_arms(){
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[1], 1);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[0], 0);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[1], 1);
+
+	gpio_pin_set_dt(&crossing_gate_state.bell.enable, 0);
 }
 
 void crossing_gate_lower_arms(){
@@ -264,6 +266,8 @@ void crossing_gate_lower_arms(){
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[1], 0);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[0], 1);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[1], 0);
+
+	gpio_pin_set_dt(&crossing_gate_state.bell.enable, 1);
 }
 
 void crossing_gate_timer_expired(struct k_timer* timer_id){

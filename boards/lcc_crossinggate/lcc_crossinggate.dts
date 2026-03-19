@@ -30,32 +30,24 @@
 		zephyr,canbus = &fdcan2;
 	};
 
-	aliases {
+	zephyr,user {
+		sound-gpios = <&gpiob 2 GPIO_ACTIVE_HIGH>;
+		tortoise-power-gpios = <&gpioa 1 GPIO_ACTIVE_HIGH>;
 	};
 
 	leds: leds {
 		compatible = "gpio-leds";
 		gold_led: led_1 {
-			gpios = <&gpioa 6 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpioa 11 GPIO_ACTIVE_HIGH>;
 			label = "LED1";
 		};
 		blue_led: led_2 {
-			gpios = <&gpioa 4 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpioa 10 GPIO_ACTIVE_HIGH>;
 			label = "LED2";
 		};
 		green_led: led_3 {
-			gpios = <&gpioc 6 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpioc 15 GPIO_ACTIVE_HIGH>;
 		};
-
-		sound_enable: sound_en {
-			gpios = <&gpioa 7 GPIO_ACTIVE_HIGH>;
-			label = "sound_enable";
-		};
-		sound_power: sound_pwr {
-			gpios = <&gpioa 12 GPIO_ACTIVE_HIGH>;
-			label = "sound_power";
-		};
-
 	};
 
 	pwmleds {
@@ -63,10 +55,10 @@
 		status = "okay";
 
 		led_out1: led_4 {
-			pwms = <&pwm1 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+			pwms = <&pwm1 1 PWM_MSEC(1) PWM_POLARITY_INVERTED>;
 		};
 		led_out2: led_5 {
-			pwms = <&pwm1 2 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+			pwms = <&pwm1 2 PWM_MSEC(1) PWM_POLARITY_INVERTED>;
 		};
 	};
 
@@ -189,12 +181,12 @@
 */
 
 &spi1 {
-	pinctrl-0 = <&spi1_sck_pb3
-		     &spi1_miso_pb4 &spi1_mosi_pb5>;
+	pinctrl-0 = <&spi1_sck_pa5
+		     &spi1_miso_pa6 &spi1_mosi_pa12>;
 	pinctrl-names = "default";
 	status = "okay";
 
-	cs-gpios = <&gpiob 7 GPIO_ACTIVE_LOW>;
+	cs-gpios = <&gpioa 2 GPIO_ACTIVE_LOW>;
 
 	gpio_expander: mcp23s08@0 {
 		compatible = "microchip,mcp23s08";
@@ -203,8 +195,8 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 		ngpios = <8>;
-		reset-gpios = <&gpioa 1 GPIO_ACTIVE_LOW>;
-		int-gpios = <&gpioa 15 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
+		int-gpios = <&gpioa 3 GPIO_ACTIVE_LOW>;
 	};
 };
 
@@ -250,14 +242,14 @@
 / {
 	tortoise0: tort0 {
 		compatible = "tortoise-output";
-		gpios = <&gpioa 2 GPIO_ACTIVE_HIGH>,
-		        <&gpioa 3 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpiob 4 GPIO_ACTIVE_HIGH>,
+		        <&gpiob 5 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
 	tortoise1: tort1 {
 		compatible = "tortoise-output";
-		gpios = <&gpioa 10 GPIO_ACTIVE_HIGH>,
-		        <&gpioa 11 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpiob 6 GPIO_ACTIVE_HIGH>,
+		        <&gpiob 7 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
 };
@@ -275,7 +267,7 @@
 
 &timers2 {
 	st,prescaler = <10000>;
-	status = "okay";
+	status = "disabled";
 
 	pwm2: pwm {
 		status = "okay";
