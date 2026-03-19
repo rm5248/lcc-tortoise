@@ -8,6 +8,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <zephyr/kernel.h>
+#include <zephyr/drivers/led.h>
+#include <zephyr/drivers/pwm.h>
 
 #include "crossing-gate-init.h"
 #include "crossing-gate.h"
@@ -42,8 +44,7 @@ struct crossing_gate crossing_gate_state = {
 				},
 		},
 		.bell = {
-				.enable = GPIO_DT_SPEC_GET(DT_NODELABEL(sound_enable), gpios),
-				.power = GPIO_DT_SPEC_GET(DT_NODELABEL(sound_power), gpios),
+				.enable = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), sound_gpios),
 				.time_millis = 0,
 				.ring_type = BELL_RING_NONE,
 		},
@@ -52,6 +53,8 @@ struct crossing_gate crossing_gate_state = {
 //				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out2), gpios),
 //				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out3), gpios),
 		},
+		.led_pwm = DEVICE_DT_GET(DT_COMPAT_GET_ANY_STATUS_OKAY(pwm_leds)),
+		.tortoise_power = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), tortoise_power_gpios),
 };
 
 static struct gpio_callback cb_data[8];
@@ -59,8 +62,8 @@ static struct gpio_callback cb_data[8];
 static void input_change(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
-	printf("input change\n");
-	crossing_gate_update();
+	char data = 0;
+	k_msgq_put(&crossing_gate_state.process_msgq, &data, K_NO_WAIT);
 }
 
 static void init_input(const struct gpio_dt_spec* in, struct gpio_callback* cb_data){
@@ -97,9 +100,15 @@ static void init_tortoise(const struct tortoise* tort){
 }
 
 void crossing_gate_init(){
-	k_thread_suspend(gate_blink);
+	k_msgq_init(&crossing_gate_state.process_msgq, crossing_gate_state.msgq_buffer, 1, 10);
+
+	led_set_brightness(crossing_gate_state.led_pwm, 0, 0);
+	led_set_brightness(crossing_gate_state.led_pwm, 1, 0);
 
 	memset(crossing_gate_state.crossing_routes, 0, sizeof(crossing_gate_state.crossing_routes));
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.crossing_routes); x++){
+		k_timer_init(&crossing_gate_state.crossing_routes[x].timeout, crossing_gate_timer_expired, NULL);
+	}
 
 	for(int x = 0; x < 8; x++){
 		init_input(&crossing_gate_state.inputs[x], &cb_data[x]);
@@ -108,11 +117,14 @@ void crossing_gate_init(){
 	for(int x = 0; x < 2; x++){
 		init_tortoise(&crossing_gate_state.tortoise_control[x]);
 	}
+
+	// Enable the power supply for the tortoises
+	gpio_pin_configure_dt(&crossing_gate_state.tortoise_power, GPIO_OUTPUT);
+	gpio_pin_set_dt(&crossing_gate_state.tortoise_power, 1);
+
 	crossing_gate_raise_arms();
 
-	// Now let's enable the bell and the power
 	gpio_pin_configure_dt(&crossing_gate_state.bell.enable, GPIO_OUTPUT);
-	gpio_pin_configure_dt(&crossing_gate_state.bell.power, GPIO_OUTPUT);
 
 	// Configure our PWM LED outputs
 //	gpio_pin_configure_dt(&crossing_gate_state.led[0], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
@@ -124,4 +136,5 @@ void crossing_gate_init(){
 	crossing_gate_state.crossing_routes[0].inputs[1].sensor_gpio = &crossing_gate_state.inputs[1];
 	crossing_gate_state.crossing_routes[0].inputs[2].sensor_gpio = &crossing_gate_state.inputs[2];
 	crossing_gate_state.crossing_routes[0].inputs[3].sensor_gpio = &crossing_gate_state.inputs[3];
+	strcpy(crossing_gate_state.crossing_routes[0].route_name, "Route 1");
 }

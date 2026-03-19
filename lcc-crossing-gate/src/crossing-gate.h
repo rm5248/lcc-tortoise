@@ -33,7 +33,6 @@ struct tortoise {
 
 struct bell {
 	const struct gpio_dt_spec enable;
-	const struct gpio_dt_spec power;
 	unsigned long time_millis;
 	enum BellRingType ring_type;
 };
@@ -51,10 +50,16 @@ struct crossing_gate{
 	const struct tortoise tortoise_control[2];
 	struct bell bell;
 	const struct gpio_dt_spec led[3];
+	// LEDs for the crossing gates
+	const struct device* led_pwm;
+
+	const struct gpio_dt_spec tortoise_power;
+
+	char msgq_buffer[10];
+	struct k_msgq process_msgq;
 };
 
 extern struct crossing_gate crossing_gate_state;
-extern const k_tid_t gate_blink;
 
 /**
  * Call this method whenever data should be processed(e.g. an input changes).
@@ -70,5 +75,7 @@ void crossing_gate_incoming_event(uint64_t event_id);
 void crossing_gate_raise_arms();
 
 void crossing_gate_lower_arms();
+
+void crossing_gate_timer_expired(struct k_timer* timer_id);
 
 #endif /* LCC_CROSSING_GATE_SRC_CROSSING_GATE_H_ */

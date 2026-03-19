@@ -6,18 +6,66 @@
  */
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/drivers/led.h>
+#include <zephyr/drivers/pwm.h>
 
 #include "crossing-gate.h"
 
 static void blink_gates(){
 	k_sleep(K_MSEC(20));
+	int led1_brightness = 0;
+	int led2_brightness = 0;
+	int dir = 0;
 
-//	while(1){
-//		gpio_pin_toggle_dt(&crossing_gate_state.led[0]);
-//		gpio_pin_toggle_dt(&crossing_gate_state.led[1]);
-//		gpio_pin_toggle_dt(&crossing_gate_state.led[2]);
-//		k_sleep(K_MSEC(500));
-//	}
+	while(1){
+		if(crossing_gate_state.gate_flash_state == FLASH_OFF &&
+						led1_brightness == 0 &&
+						led2_brightness == 0){
+					k_sleep(K_MSEC(100));
+					dir = 1;
+					continue;
+		}else if(crossing_gate_state.gate_flash_state == FLASH_OFF){
+			// Ramp down until everything is off
+			if(led1_brightness){
+				led_set_brightness(crossing_gate_state.led_pwm, 0, led1_brightness);
+				led1_brightness--;
+			}
+			if(led2_brightness){
+				led_set_brightness(crossing_gate_state.led_pwm, 1, led2_brightness);
+				led2_brightness--;
+			}
+			k_sleep(K_MSEC(2));
+		}else{
+			led_set_brightness(crossing_gate_state.led_pwm, 0, led1_brightness);
+			led_set_brightness(crossing_gate_state.led_pwm, 1, led2_brightness);
+
+			if(dir){
+				led1_brightness++;
+				led2_brightness--;
+				if(led1_brightness >= 100){
+					dir = 0;
+				}
+				if(led2_brightness < 0){
+					led2_brightness = 0;
+				}
+			}else{
+				led1_brightness--;
+				led2_brightness++;
+				if(led1_brightness <= 0){
+					dir = 1;
+				}
+				if(led2_brightness > 100){
+					led2_brightness = 100;
+				}
+			}
+		}
+
+		k_sleep(K_MSEC(2));
+		if(crossing_gate_state.gate_flash_state == FLASH_ON &&
+				(led1_brightness == 0 || led1_brightness == 100)){
+			k_sleep(K_MSEC(250));
+		}
+	}
 }
 
 K_THREAD_DEFINE(gate_blink, 512, blink_gates, NULL, NULL, NULL,
@@ -34,28 +82,28 @@ static void handle_route_ltr(struct route* route, int left_input, int left_islan
 			route->current_train.location == LOCATION_PRE_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED_INCOMING;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("Island occupied incoming\n");
+		printf("Route %s: Island occupied incoming\n", route->route_name);
 	}else if(right_island_input == 1 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("island occupied\n");
+		printf("Route %s: island occupied\n", route->route_name);
 	}else if(right_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("post island occupied incoming\n");
+		printf("Route %s: post island occupied incoming\n", route->route_name);
 	}else if(right_input == 1 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("post island occupied\n");
+		printf("Route %s: post island occupied\n", route->route_name);
 	}else if(right_input == 0 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED){
-		printf("train out LTR\n");
+		printf("Route %s: train out LTR\n", route->route_name);
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
-		route->time_cleared_ms = k_uptime_get();
+//		route->time_cleared_ms = k_uptime_get();
 	}
 }
 
@@ -70,28 +118,28 @@ static void handle_route_rtl(struct route* route, int left_input, int left_islan
 			route->current_train.location == LOCATION_PRE_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED_INCOMING;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("Island occupied incoming\n");
+		printf("Route %s: Island occupied incoming\n", route->route_name);
 	}else if(left_island_input == 1 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("island occupied\n");
+		printf("Route %s: island occupied\n", route->route_name);
 	}else if(left_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("post island occupied incoming\n");
+		printf("Route %s: post island occupied incoming\n", route->route_name);
 	}else if(left_input == 1 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("post island occupied\n");
+		printf("Route %s: post island occupied\n", route->route_name);
 	}else if(left_input == 0 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED){
-		printf("train out RTL\n");
+		printf("Route %s: train out RTL\n", route->route_name);
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
-		route->time_cleared_ms = k_uptime_get();
+//		route->time_cleared_ms = k_uptime_get();
 	}
 }
 
@@ -106,13 +154,19 @@ static void crossing_gate_handle_single_route(struct route* route){
 	int left_island_input = sensor_input_value(&route->inputs[1]);
 	int right_island_input = sensor_input_value(&route->inputs[2]);
 	int right_input = sensor_input_value(&route->inputs[3]);
-	unsigned long millis_diff = k_uptime_get() - route->current_train.last_seen_millis;
-	unsigned long time_since_route_clear = k_uptime_get() - route->time_cleared_ms;
+//	unsigned long millis_diff = k_uptime_get() - route->current_train.last_seen_millis;
+//	unsigned long time_since_route_clear = k_uptime_get() - route->time_cleared_ms;
+
+	printf("Route %s: left: %d left island: %d right island: %d right: %d\n",
+			route->route_name,
+			left_input,
+			left_island_input,
+			right_island_input,
+			right_input);
 
 	// First check to see if this is a new train coming into the route
 	if((left_input || right_input) &&
-			route->current_train.location == LOCATION_UNOCCUPIED &&
-			time_since_route_clear >= 2000){
+			route->current_train.location == LOCATION_UNOCCUPIED){
 		// There is a new train coming into the route.
 		// Let's see if this route is valid or not
 		for(int x = 0; x < sizeof(route->switch_inputs) / sizeof(route->switch_inputs[0]); x++){
@@ -128,12 +182,13 @@ static void crossing_gate_handle_single_route(struct route* route){
 		route->current_train.location = LOCATION_PRE_ISLAND_OCCUPIED;
 		if(left_input){
 			route->current_train.direction = DIRECTION_LTR;
-			printf("Incoming train LTR\n");
+			printf("Route %s: Incoming train LTR\n", route->route_name);
 		}else{
 			route->current_train.direction = DIRECTION_RTL;
-			printf("Incoming train RTL\n");
+			printf("Route %s: Incoming train RTL\n", route->route_name);
 		}
 
+		k_timer_start(&route->timeout, K_MSEC(15000), K_NO_WAIT);
 		return;
 	}
 
@@ -141,16 +196,6 @@ static void crossing_gate_handle_single_route(struct route* route){
 		handle_route_rtl(route, left_input, left_island_input, right_island_input, right_input);
 	}else if(route->current_train.direction == DIRECTION_LTR){
 		handle_route_ltr(route, left_input, left_island_input, right_island_input, right_input);
-	}
-
-	// Serial.print("millis diff: ");
-	// Serial.println(millis_diff);
-	if((millis_diff > crossing_gate_state.timeout_millis) &&
-			route->current_train.location != LOCATION_UNOCCUPIED){
-		printf("timeout\n");
-		route->current_train.location = LOCATION_UNOCCUPIED;
-		route->current_train.direction = DIRECTION_UNKNOWN;
-		route->time_cleared_ms = k_uptime_get();
 	}
 }
 
@@ -187,11 +232,10 @@ static void crossing_gate_flash(){
 		if(crossing_gate_state.gate_flash_state == FLASH_ON){
 			printf("Flash on\n");
 			crossing_gate_lower_arms();
-			// Lower the gates
-//			gpio_pin_set_dt(&crossing_gate_state.led[0], 0);
-//			gpio_pin_set_dt(&crossing_gate_state.led[1], 1);
-//			gpio_pin_set_dt(&crossing_gate_state.led[2], 0);
-			k_thread_resume(gate_blink);
+		}else if(crossing_gate_state.gate_flash_state == FLASH_OFF){
+			crossing_gate_raise_arms();
+			led_set_brightness(crossing_gate_state.led_pwm, 0, 0);
+			led_set_brightness(crossing_gate_state.led_pwm, 1, 0);
 		}
 	}
 }
@@ -209,20 +253,41 @@ void crossing_gate_incoming_event(uint64_t event_id){
 }
 
 void crossing_gate_raise_arms(){
-	printf("raise arms\n");
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[0], 0);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[1], 1);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[0], 0);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[1], 1);
-
-	k_sleep(K_MSEC(5000));
-	crossing_gate_lower_arms();
 }
 
 void crossing_gate_lower_arms(){
-	printf("lower arms\n");
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[0], 1);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[0].gpios[1], 0);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[0], 1);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[1], 0);
+}
+
+void crossing_gate_timer_expired(struct k_timer* timer_id){
+	struct route* route = NULL;
+
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.crossing_routes); x++){
+		if(&(crossing_gate_state.crossing_routes[x].timeout) == timer_id){
+			route = &crossing_gate_state.crossing_routes[x];
+		}
+	}
+
+	if(route == NULL){
+		printf("Unable to find route for timer??\n");
+		return;
+	}
+
+	k_timer_stop(timer_id);
+
+	if(route->current_train.location != LOCATION_UNOCCUPIED){
+		printf("Route %s: timeout\n", route->route_name);
+		route->current_train.location = LOCATION_UNOCCUPIED;
+		route->current_train.direction = DIRECTION_UNKNOWN;
+
+		char data = 0;
+		k_msgq_put(&crossing_gate_state.process_msgq, &data, K_NO_WAIT);
+	}
 }

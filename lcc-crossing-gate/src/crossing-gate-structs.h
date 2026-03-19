@@ -89,10 +89,11 @@ struct train{
 };
 
 struct route{
+	char route_name[64];
 	struct sensor_input inputs[4];
 	struct switch_input switch_inputs[8];
 	struct train current_train;
-	unsigned long time_cleared_ms;
+	struct k_timer timeout;
 };
 
 /**

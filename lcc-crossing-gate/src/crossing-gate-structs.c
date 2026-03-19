@@ -6,14 +6,16 @@
  */
 #include "crossing-gate-structs.h"
 
-#include "crossing-gate-structs.h"
-
 int sensor_input_value(struct sensor_input* input){
 	int val = -1;
 
 	if(input->sensor_gpio){
 		val = gpio_pin_get_dt(input->sensor_gpio);
 		input->is_on = val;
+
+		if(val > 1 || val < 0){
+			printf("val is %d\n", val);
+		}
 	}
 
 	return input->is_on;

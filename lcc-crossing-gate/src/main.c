@@ -527,10 +527,10 @@ static void main_loop(struct lcc_context* ctx){
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
 			K_POLL_MODE_NOTIFY_ONLY,
 			&rx_msgq);
-//	k_poll_event_init(&poll_data[1],
-//			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
-//			K_POLL_MODE_NOTIFY_ONLY,
-//			&dcc_decode_ctx.readings);
+	k_poll_event_init(&poll_data[1],
+			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
+			K_POLL_MODE_NOTIFY_ONLY,
+			&crossing_gate_state.process_msgq);
 
 	k_timer_init(&alias_timer, NULL, NULL);
 	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
@@ -550,6 +550,11 @@ static void main_loop(struct lcc_context* ctx){
 			poll_data[0].state = K_POLL_STATE_NOT_READY;
 			last_rx_can_msg = k_cycle_get_32();
 		}else if(poll_data[1].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
+			char data;
+			k_msgq_get(&crossing_gate_state.process_msgq, &data, K_FOREVER);
+			poll_data[1].state = K_POLL_STATE_NOT_READY;
+
+			crossing_gate_update();
 		}
 
 		if(k_timer_status_get(&alias_timer) > 0 &&
@@ -654,7 +659,7 @@ void pwm_foobar(){
 			}
 		}
 
-		k_sleep(K_MSEC(5));
+		k_sleep(K_MSEC(15));
 	}
 }
 
@@ -727,7 +732,7 @@ int main(void)
 	init_led(&gold_led);
 
 //	pwm_foobar();
-	do_servo();
+//	do_servo();
 
 	if (!device_is_ready(can_dev)) {
 		printf("CAN: Device %s not ready.\n", can_dev->name);
