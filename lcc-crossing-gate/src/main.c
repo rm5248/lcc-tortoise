@@ -188,7 +188,6 @@ static void init_can_txrx(){
 }
 
 void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space){
-	printf("query space %d\n", address_space);
 	if(address_space == 251){
 		lcc_memory_respond_information_query(ctx, alias, 1, address_space, sizeof(crossing_gate_state.node_info), 0, 0);
 	}else if(address_space == 253){
@@ -205,7 +204,6 @@ void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_
 }
 
 void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, uint8_t read_count){
-	printf("read %d bytes from address space %d offset %d\n", read_count, address_space, starting_address);
 	if(address_space == 250){
 		uint8_t* buffer = (uint8_t*)&crossing_gate_state.general_config + starting_address;
 		if(starting_address + read_count > SIZEOF_GENERAL_CONFIG){
@@ -355,20 +353,19 @@ static void reboot(struct lcc_memory_context* ctx){
 
 static void factory_reset(struct lcc_memory_context* ctx){
 	crossing_gate_set_default_values(crossing_gate_state.general_config.base_event_id);
-//	memset(&lcc_tortoise_state.tortoise_config, 0, sizeof(lcc_tortoise_state.tortoise_config));
-//	uint64_t new_base_eventid = global_config.base_event_id + 16;
-//	memset(&global_config, 0, sizeof(global_config));
-//	global_config.base_event_id = new_base_eventid;
-//
-//	for(int x = 0; x < 8; x++){
-//		lcc_tortoise_state.tortoise_config[x].BE_accessory_number = __builtin_bswap16(x + 1);
-//		lcc_tortoise_state.tortoise_config[x].startup_control = STARTUP_LAST_POSITION;
-//		lcc_tortoise_state.tortoise_config[x].BE_event_id_closed = __builtin_bswap64(new_base_eventid++);
-//		lcc_tortoise_state.tortoise_config[x].BE_event_id_thrown = __builtin_bswap64(new_base_eventid++);
-//	}
-//
-//	save_configs_to_flash();
-//	save_global_config();
+
+	partition_util_save(FIXED_PARTITION_ID(segment_253),
+			&crossing_gate_state.routes_config,
+			sizeof(crossing_gate_state.routes_config));
+	partition_util_save(FIXED_PARTITION_ID(segment_252),
+			&crossing_gate_state.general_events,
+			sizeof(crossing_gate_state.general_events));
+	partition_util_save(FIXED_PARTITION_ID(segment_251),
+			&crossing_gate_state.node_info,
+			sizeof(crossing_gate_state.node_info));
+	partition_util_save(FIXED_PARTITION_ID(segment_250),
+			&crossing_gate_state.general_config,
+			sizeof(crossing_gate_state.general_config));
 }
 
 static enum lcc_consumer_state query_consumer_state(struct lcc_context* ctx, uint64_t event_id){
@@ -458,28 +455,6 @@ out:
 	}
 
 	return ret;
-}
-
-static void load_global_config(){
-//	const struct flash_area* storage_area = NULL;
-//	int id = FIXED_PARTITION_ID(global_partition);
-//	int ret = 0;
-//
-//	if(flash_area_open(id, &storage_area) < 0){
-//		return 1;
-//	}
-//
-//	if(flash_area_read(storage_area, 0, &global_config, sizeof(global_config)) < 0){
-//		ret = 1;
-//	}
-//
-//out:
-//	flash_area_close(storage_area);
-//	if(ret){
-//		printf("Unable to load global config\n");
-//	}
-//
-//	return ret;
 }
 
 static void blue_button_pressed(const struct device *dev, struct gpio_callback *cb,
@@ -722,6 +697,8 @@ int main(void)
 
 	init_can_txrx();
 	crossing_gate_init();
+	uint64_t lcc_id = load_lcc_id();
+	crossing_gate_load_config();
 
 	struct lcc_context* ctx = lcc_context_new();
 	if(ctx == NULL){
@@ -730,8 +707,6 @@ int main(void)
 		return -1;
 	}
 
-	uint64_t lcc_id = load_lcc_id();
-	load_global_config();
 	lcc_context_set_unique_identifer( ctx,
 			lcc_id );
 	lcc_context_set_simple_node_information(ctx,

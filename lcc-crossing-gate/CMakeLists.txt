@@ -28,11 +28,14 @@ target_sources(app PRIVATE
 	src/crossing-gate-init.c
 	src/crossing-gate.c
 	${lcc-sources}
+	../common/firmware_upgrade.c
+	../common/partition_utils.c
 )
 target_include_directories(app PRIVATE
 	${TRAINUTILS_DIR}/LCC
 	${CMAKE_CURRENT_BINARY_DIR}/TrainUtils/LCC
 	${TRAINUTILS_DIR}/DCC
+	../common/
 )
 
 

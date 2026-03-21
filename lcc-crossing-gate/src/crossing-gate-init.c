@@ -14,6 +14,7 @@
 
 #include "crossing-gate-init.h"
 #include "crossing-gate.h"
+#include "partition_utils.h"
 
 // The global singleton instance
 struct crossing_gate crossing_gate_state = {
@@ -100,37 +101,17 @@ static void init_tortoise(const struct tortoise* tort){
 	}
 }
 
-static int load_from_partition(int partition_id, void* dest, size_t size){
-	const struct flash_area* storage_area = NULL;
-	int ret = 0;
-
-	if(flash_area_open(partition_id, &storage_area) < 0){
-		return -1;
-	}
-
-	if(flash_area_read(storage_area, 0, dest, size) < 0){
-		ret = -1;
-	}
-
-	flash_area_close(storage_area);
-	if(ret){
-		printf("Unable to load partition %d\n", partition_id);
-	}
-
-	return ret;
-}
-
 void crossing_gate_load_config(){
-	load_from_partition(FIXED_PARTITION_ID(segment_253),
+	partition_util_load(FIXED_PARTITION_ID(segment_253),
 			&crossing_gate_state.routes_config,
 			sizeof(crossing_gate_state.routes_config));
-	load_from_partition(FIXED_PARTITION_ID(segment_252),
+	partition_util_load(FIXED_PARTITION_ID(segment_252),
 			&crossing_gate_state.general_events,
 			sizeof(crossing_gate_state.general_events));
-	load_from_partition(FIXED_PARTITION_ID(segment_251),
+	partition_util_load(FIXED_PARTITION_ID(segment_251),
 			&crossing_gate_state.node_info,
 			sizeof(crossing_gate_state.node_info));
-	load_from_partition(FIXED_PARTITION_ID(segment_250),
+	partition_util_load(FIXED_PARTITION_ID(segment_250),
 			&crossing_gate_state.general_config,
 			sizeof(crossing_gate_state.general_config));
 }
