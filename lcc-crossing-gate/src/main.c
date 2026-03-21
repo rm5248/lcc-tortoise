@@ -769,7 +769,7 @@ int main(void)
 	lcc_memory_set_reboot_function(mem_ctx, reboot);
 	lcc_memory_set_factory_reset_function(mem_ctx, factory_reset);
 
-//	firmware_upgrade_init(ctx);
+	firmware_upgrade_init(ctx);
 
 	int stat = lcc_context_generate_alias( ctx );
 	if(stat < 0){
