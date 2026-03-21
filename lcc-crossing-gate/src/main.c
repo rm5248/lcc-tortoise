@@ -743,6 +743,7 @@ int main(void)
 		printf("error: unable to initialize! %d\n", __LINE__);
 		return -1;
 	}
+	crossing_gate_state.lcc_ctx = ctx;
 
 	lcc_context_set_unique_identifer( ctx,
 			lcc_id );

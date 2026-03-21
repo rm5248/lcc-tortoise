@@ -83,6 +83,7 @@ struct route{
 	struct switch_input switch_inputs[8];
 	struct train current_train;
 	struct k_timer timeout;
+	struct k_timer reactivation_timeout;
 };
 
 void sensor_input_init(struct sensor_input* input, struct gpio_dt_spec* gpio);

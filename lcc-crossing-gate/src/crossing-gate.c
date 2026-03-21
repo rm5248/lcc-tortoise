@@ -10,6 +10,7 @@
 #include <zephyr/drivers/pwm.h>
 
 #include "crossing-gate.h"
+#include "lcc-event.h"
 
 static void blink_gates(){
 	k_sleep(K_MSEC(20));
@@ -103,7 +104,7 @@ static void handle_route_ltr(struct route* route, int left_input, int left_islan
 		printf("Route %s: train out LTR\n", route->config->route_name);
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
-//		route->time_cleared_ms = k_uptime_get();
+		k_timer_start(&route->reactivation_timeout, K_MSEC(5000), K_NO_WAIT);
 	}
 }
 
@@ -139,7 +140,7 @@ static void handle_route_rtl(struct route* route, int left_input, int left_islan
 		printf("Route %s: train out RTL\n", route->config->route_name);
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
-//		route->time_cleared_ms = k_uptime_get();
+		k_timer_start(&route->reactivation_timeout, K_MSEC(5000), K_NO_WAIT);
 	}
 }
 
@@ -164,7 +165,8 @@ static void crossing_gate_handle_single_route(struct route* route){
 
 	// First check to see if this is a new train coming into the route
 	if((left_input || right_input) &&
-			route->current_train.location == LOCATION_UNOCCUPIED){
+			route->current_train.location == LOCATION_UNOCCUPIED &&
+			k_timer_status_get(&route->reactivation_timeout) == 0){
 		// There is a new train coming into the route.
 		// Let's see if this route is valid or not
 		for(int x = 0; x < sizeof(route->switch_inputs) / sizeof(route->switch_inputs[0]); x++){
@@ -260,6 +262,10 @@ void crossing_gate_raise_arms(){
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[1], 1);
 
 	gpio_pin_set_dt(&crossing_gate_state.bell.enable, 0);
+
+	struct lcc_event_ctx* evt_ctx = lcc_context_get_event_context(crossing_gate_state.lcc_ctx);
+	uint64_t produced_event = __builtin_bswap64(crossing_gate_state.general_events.BE_gates_active_event);
+	lcc_event_produce_event(evt_ctx, produced_event);
 }
 
 void crossing_gate_lower_arms(){
@@ -269,6 +275,10 @@ void crossing_gate_lower_arms(){
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[1], 0);
 
 	gpio_pin_set_dt(&crossing_gate_state.bell.enable, 1);
+
+	struct lcc_event_ctx* evt_ctx = lcc_context_get_event_context(crossing_gate_state.lcc_ctx);
+	uint64_t produced_event = __builtin_bswap64(crossing_gate_state.general_events.BE_gates_inactive_event);
+	lcc_event_produce_event(evt_ctx, produced_event);
 }
 
 void crossing_gate_timer_expired(struct k_timer* timer_id){
@@ -291,6 +301,7 @@ void crossing_gate_timer_expired(struct k_timer* timer_id){
 		printf("Route %s: timeout\n", route->config->route_name);
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
+		k_timer_start(&route->reactivation_timeout, K_MSEC(5000), K_NO_WAIT);
 
 		int data = 0xFFFF;
 		k_msgq_put(&crossing_gate_state.pin_change_msgq, &data, K_NO_WAIT);

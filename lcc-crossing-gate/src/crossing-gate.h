@@ -126,6 +126,7 @@ struct crossing_gate{
 	enum GateFlashState gate_flash_state;
 	unsigned long timeout_millis;
 	struct route crossing_routes[NUM_ROUTES];
+	struct lcc_context* lcc_ctx;
 
 	// The specific IO on the board
 	const struct gpio_dt_spec inputs[8];

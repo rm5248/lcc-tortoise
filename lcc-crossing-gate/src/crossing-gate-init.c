@@ -202,6 +202,7 @@ void crossing_gate_init(){
 	memset(crossing_gate_state.crossing_routes, 0, sizeof(crossing_gate_state.crossing_routes));
 	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.crossing_routes); x++){
 		k_timer_init(&crossing_gate_state.crossing_routes[x].timeout, crossing_gate_timer_expired, NULL);
+		k_timer_init(&crossing_gate_state.crossing_routes[x].reactivation_timeout, NULL, NULL);
 		crossing_gate_state.crossing_routes[x].config = &(crossing_gate_state.routes_config.all_routes[x]);
 	}
 
