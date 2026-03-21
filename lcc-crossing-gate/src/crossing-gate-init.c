@@ -10,6 +10,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/led.h>
 #include <zephyr/drivers/pwm.h>
+#include <zephyr/storage/flash_map.h>
 
 #include "crossing-gate-init.h"
 #include "crossing-gate.h"
@@ -99,6 +100,82 @@ static void init_tortoise(const struct tortoise* tort){
 	}
 }
 
+static int load_from_partition(int partition_id, void* dest, size_t size){
+	const struct flash_area* storage_area = NULL;
+	int ret = 0;
+
+	if(flash_area_open(partition_id, &storage_area) < 0){
+		return -1;
+	}
+
+	if(flash_area_read(storage_area, 0, dest, size) < 0){
+		ret = -1;
+	}
+
+	flash_area_close(storage_area);
+	if(ret){
+		printf("Unable to load partition %d\n", partition_id);
+	}
+
+	return ret;
+}
+
+void crossing_gate_load_config(){
+	load_from_partition(FIXED_PARTITION_ID(segment_253),
+			&crossing_gate_state.routes_config,
+			sizeof(crossing_gate_state.routes_config));
+	load_from_partition(FIXED_PARTITION_ID(segment_252),
+			&crossing_gate_state.general_events,
+			sizeof(crossing_gate_state.general_events));
+	load_from_partition(FIXED_PARTITION_ID(segment_251),
+			&crossing_gate_state.node_info,
+			sizeof(crossing_gate_state.node_info));
+	load_from_partition(FIXED_PARTITION_ID(segment_250),
+			&crossing_gate_state.general_config,
+			sizeof(crossing_gate_state.general_config));
+}
+
+void crossing_gate_set_default_values(uint64_t base_event_id){
+	// Segment 250
+	crossing_gate_state.general_config.timeout = 25;
+	crossing_gate_state.general_config.bell_behavior = 4;
+	crossing_gate_state.general_config.bell_ring_time = 0;
+
+	// Segment 251
+	memset(crossing_gate_state.node_info.description, 0, sizeof(crossing_gate_state.node_info.description));
+	memset(crossing_gate_state.node_info.name, 0, sizeof(crossing_gate_state.node_info.name));
+
+	// Segment 252
+	crossing_gate_state.general_events.BE_gates_active_event = __builtin_bswap64(base_event_id++);
+	crossing_gate_state.general_events.BE_gates_inactive_event = __builtin_bswap64(base_event_id++);
+	crossing_gate_state.general_events.BE_manual_gates_activate_event = __builtin_bswap64(base_event_id++);
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.general_events.inputs); x++){
+		memset(crossing_gate_state.general_events.inputs[x].input_name, 0, sizeof(crossing_gate_state.general_events.inputs[x].input_name));
+		crossing_gate_state.general_events.inputs[x].BE_input_activated_event = __builtin_bswap64(base_event_id++);
+		crossing_gate_state.general_events.inputs[x].BE_input_deactivated_event = __builtin_bswap64(base_event_id++);
+	}
+
+	// Segment 253
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.routes_config.all_routes); x++){
+		struct route_config* cfg = &crossing_gate_state.routes_config.all_routes[x];
+		memset(cfg->route_name, 0, sizeof(cfg->route_name));
+
+		for(int y = 0; y < ARRAY_SIZE(cfg->inputs); y++){
+			memset(&cfg->inputs[y], 0, sizeof(cfg->inputs[y]));
+			cfg->inputs[y].BE_event_sensor_on = __builtin_bswap64(base_event_id++);
+			cfg->inputs[y].BE_event_sensor_off = __builtin_bswap64(base_event_id++);
+		}
+
+		for(int z = 0; z < ARRAY_SIZE(cfg->switch_inputs); z++){
+			memset(&cfg->switch_inputs[z], 0, sizeof(cfg->switch_inputs[z]));
+			cfg->switch_inputs[z].BE_event_switch_normal = __builtin_bswap64(base_event_id++);
+			cfg->switch_inputs[z].BE_event_switch_reversed = __builtin_bswap64(base_event_id++);
+		}
+	}
+
+	crossing_gate_state.general_config.base_event_id = base_event_id;
+}
+
 void crossing_gate_init(){
 	k_msgq_init(&crossing_gate_state.process_msgq, crossing_gate_state.msgq_buffer, 1, 10);
 
@@ -108,6 +185,7 @@ void crossing_gate_init(){
 	memset(crossing_gate_state.crossing_routes, 0, sizeof(crossing_gate_state.crossing_routes));
 	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.crossing_routes); x++){
 		k_timer_init(&crossing_gate_state.crossing_routes[x].timeout, crossing_gate_timer_expired, NULL);
+		crossing_gate_state.crossing_routes[x].config = &(crossing_gate_state.routes_config.all_routes[x]);
 	}
 
 	for(int x = 0; x < 8; x++){
@@ -132,9 +210,9 @@ void crossing_gate_init(){
 //	gpio_pin_configure_dt(&crossing_gate_state.led[2], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
 
 	// statically configure a route for testing purposes
-	crossing_gate_state.crossing_routes[0].inputs[0].sensor_gpio = &crossing_gate_state.inputs[0];
-	crossing_gate_state.crossing_routes[0].inputs[1].sensor_gpio = &crossing_gate_state.inputs[1];
-	crossing_gate_state.crossing_routes[0].inputs[2].sensor_gpio = &crossing_gate_state.inputs[2];
-	crossing_gate_state.crossing_routes[0].inputs[3].sensor_gpio = &crossing_gate_state.inputs[3];
-	strcpy(crossing_gate_state.crossing_routes[0].route_name, "Route 1");
+//	crossing_gate_state.crossing_routes[0].sensors[0].sensor_gpio = &crossing_gate_state.inputs[0];
+//	crossing_gate_state.crossing_routes[0].sensors[1].sensor_gpio = &crossing_gate_state.inputs[1];
+//	crossing_gate_state.crossing_routes[0].sensors[2].sensor_gpio = &crossing_gate_state.inputs[2];
+//	crossing_gate_state.crossing_routes[0].sensors[3].sensor_gpio = &crossing_gate_state.inputs[3];
+//	strcpy(crossing_gate_state.crossing_routes[0].config->route_name, "Route 1");
 }

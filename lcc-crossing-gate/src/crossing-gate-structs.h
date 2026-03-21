@@ -26,10 +26,10 @@ struct sensor_input_eeprom{
 	uint8_t polarity;
 	uint8_t padding;
 	uint16_t analog_value;
-	uint64_t event_id_on;
-	uint64_t event_id_off;
-	uint16_t debounce_on;
-	uint16_t debounce_off;
+	uint64_t BE_event_id_on;
+	uint64_t BE_event_id_off;
+	uint16_t BE_debounce_on;
+	uint16_t BE_debounce_off;
 };
 
 struct switch_input_eeprom{
@@ -37,34 +37,22 @@ struct switch_input_eeprom{
 	uint8_t polarity;
 	uint8_t route_posistion;
 	uint8_t padding;
-	uint64_t event_id_normal;
-	uint64_t event_id_reverse;
+	uint64_t BE_event_id_normal;
+	uint64_t BE_eevent_id_reverse;
 };
 
+struct sensor_config;
 struct sensor_input{
 	const struct gpio_dt_spec* sensor_gpio;
-	uint8_t flags;
-//	uint16_t analog_value;
-//	Button debouncer;
-//	uint16_t debounce_on;
-//	uint16_t debounce_off;
-
-	// If using event IDs:
-	uint64_t event_id_on;
-	uint64_t event_id_off;
-	uint8_t is_on;
+	struct sensor_config* config;
+	int is_on;
 };
 
+struct switch_input_config;
 struct switch_input{
 	const struct gpio_dt_spec* switch_gpio;
-	uint8_t polarity;
-	/* what posistion does this switch need to be in for the route to be valid(normal or reverse) */
-	uint8_t route_position;
-
-	// If using event IDs:
-	uint8_t current_pos;
-	uint64_t event_id_normal;
-	uint64_t event_id_reverse;
+	struct switch_input_config* config;
+	int current_pos;
 };
 
 enum Direction{
@@ -88,9 +76,10 @@ struct train{
 	enum TrainLocation location;
 };
 
+struct route_config;
 struct route{
-	char route_name[64];
-	struct sensor_input inputs[4];
+	struct route_config* config;
+	struct sensor_input sensors[4];
 	struct switch_input switch_inputs[8];
 	struct train current_train;
 	struct k_timer timeout;

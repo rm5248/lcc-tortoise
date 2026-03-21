@@ -27,11 +27,15 @@
 			<repname>Route</repname>
 			<string size='64'>
 				<name>Route Name</name>
-				<description>A name for this route</description>
+				<description>A name for this route(ex: Track 1, Track 1 West -> Track 2)</description>
 			</string>
 
 			<group replication='4'>
 				<repname>Sensor Inputs</repname>
+				<string size='28'>
+					<name>Sensor Name</name>
+					<description>Sensor used for the route.  Only used for debug purposes</description>
+				</string>
 				<int size='1'>
 					<name>Input type</name>
 					<description>Inputs can be either on the board itself, or come from a remote board using Event IDs</description>
@@ -109,6 +113,10 @@
 
 			<group replication='8'>
 				<repname>Switch Inputs</repname>
+				<string size='28'>
+					<name>Switch Name</name>
+					<description>Switch used for the route.  Only used for debug purposes</description>
+				</string>
 				<int size='1'>
 					<name>Input type</name>
 					<description>Inputs can be either on the board itself, or come from a remote board using Event IDs</description>
@@ -198,5 +206,78 @@
 				</eventid>
 			</group>
 		</group>
+	</segment>
+
+	<segment space='252'>
+		<name>General Events</name>
+		<eventid>
+			<name>Gate Active Event</name>
+			<description>This event is sent(produced) by this node when the gates are active</description>
+		</eventid>
+		<eventid>
+			<name>Gate Deactivated Event</name>
+			<description>This event is sent(produced) by this node when the gates are deactivated</description>
+		</eventid>
+		<eventid>
+			<name>Manual Activation</name>
+			<description>This event is received(consumed) by this node in order to trigger the gates to become activated</description>
+		</eventid>
+		<group replication='8'>
+			<repname>Inputs</repname>
+			<string size='24'>
+				<name>Input Name</name>
+			</string>
+			<eventid>
+				<name>Input activated</name>
+				<description>This event is sent(produced) by this node when the input is activated</description>
+			</eventid>
+			<eventid>
+				<name>Input deactivated</name>
+				<description>This event is sent(produced) by this node when the input is deactivated</description>
+			</eventid>
+		</group>
+	</segment>
+
+	<segment space='250'>
+		<name>General Config</name>
+		<int size='1'>
+			<name>Timeout</name>
+			<description>Timeout value for the system to reset and become 'inactive.'  This value is in seconds</description>
+			<min>0</min>
+			<max>120</max>
+			<default>25</default>
+		</int>
+		<int size='1'>
+			<name>Bell Behavior</name>
+			<description>How the bell output should behave</description>
+			<map>
+				<relation>
+					<property>0</property>
+					<value>No ring</value>
+				</relation>
+				<relation>
+					<property>1</property>
+					<value>Ring while gates lowering</value>
+				</relation>
+				<relation>
+					<property>2</property>
+					<value>Ring while gates raising</value>
+				</relation>
+				<relation>
+					<property>3</property>
+					<value>Ring while gates lowering and raising</value>
+				</relation>
+				<relation>
+					<property>4</property>
+					<value>Ring while gates are active</value>
+				</relation>
+			</map>
+		</int>
+		<int size='2'>
+			<name>Bell ring time</name>
+			<description>Bell ring time(in milliseconds) when gates are raising/lowering</description>
+			<min>0</min>
+			<max>10000</max>
+		</int>
 	</segment>
 </cdi>

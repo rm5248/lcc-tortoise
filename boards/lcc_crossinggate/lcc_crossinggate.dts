@@ -230,6 +230,29 @@
 		};
 
 		/*
+		 * 10k for route config data
+		 */
+		segment_253: partition@6C000 {
+			label = "route_config";
+			reg = <0x0006C000 DT_SIZE_K(10)>;
+		};
+
+		segment_252: partition@6E800 {
+			label = "general_events";
+			reg = <0x0006E800 DT_SIZE_K(2)>;
+		};
+
+		segment_251: partition@6F000 {
+			label = "node_info";
+			reg = <0x0006F000 DT_SIZE_K(2)>;
+		};
+
+		segment_250: partition@6F800 {
+			label = "general_config";
+			reg = <0x0006F800 DT_SIZE_K(2)>;
+		};
+
+		/*
 		 * 2k for LCC ID data
 		 */
 		lcc_partition: partition@7F000 {

@@ -9,6 +9,7 @@
 #define LCC_CROSSING_GATE_SRC_CROSSING_GATE_H_
 
 #include <zephyr/drivers/gpio.h>
+#include <assert.h>
 
 #include "crossing-gate-structs.h"
 
@@ -38,6 +39,84 @@ struct bell {
 };
 
 /**
+ * Node info - segment 251
+ */
+struct node_info_segment {
+	char name[64];
+	char description[64];
+};
+
+struct sensor_config {
+	char sensor_name[28];
+	uint8_t sensor_type;
+	uint8_t sensor_input;
+	uint8_t polarity;
+	uint8_t reserved;
+	uint64_t BE_event_sensor_on;
+	uint64_t BE_event_sensor_off;
+};
+_Static_assert(sizeof(struct sensor_config) == 48);
+
+struct switch_input_config {
+	char sensor_name[28];
+	uint8_t switch_input_type;
+	uint8_t swithc_input;
+	uint8_t polarity;
+	uint8_t position_for_route;
+	uint64_t BE_event_switch_normal;
+	uint64_t BE_event_switch_reversed;
+};
+_Static_assert(sizeof(struct switch_input_config) == 48);
+
+struct route_config {
+	char route_name[64];
+	struct sensor_config inputs[4];
+	struct switch_input_config switch_inputs[8];
+};
+_Static_assert(sizeof(struct route_config) == 640);
+
+/**
+ * Route info - segment 253
+ */
+struct routes_segment {
+	struct route_config all_routes[16];
+};
+_Static_assert(sizeof(struct routes_segment) == 10240);
+
+struct general_input {
+	char input_name[24];
+	uint64_t BE_input_activated_event;
+	uint64_t BE_input_deactivated_event;
+};
+_Static_assert(sizeof(struct general_input) == 40);
+
+/**
+ * General events - segment 252
+ */
+struct general_events_segment {
+	uint64_t BE_gates_active_event;
+	uint64_t BE_gates_inactive_event;
+	uint64_t BE_manual_gates_activate_event;
+	struct general_input inputs[8];
+};
+_Static_assert(sizeof(struct general_events_segment) == 344);
+
+/**
+ * General config - segment 250
+ */
+struct general_config_segment {
+	uint8_t timeout;
+	uint8_t bell_behavior;
+	uint16_t bell_ring_time;
+	uint32_t reserved[13];
+
+	// Hidden configuration values
+	uint64_t base_event_id;
+};
+_Static_assert(sizeof(struct general_config_segment) == 64);
+#define SIZEOF_GENERAL_CONFIG (4)
+
+/**
  * Holds the global instance data for the crossing gate controller
  */
 struct crossing_gate{
@@ -57,6 +136,15 @@ struct crossing_gate{
 
 	char msgq_buffer[10];
 	struct k_msgq process_msgq;
+
+	// Segment 250
+	struct general_config_segment general_config;
+	// Segment 251
+	struct node_info_segment node_info;
+	// Segment 252
+	struct general_events_segment general_events;
+	// Segment 253
+	struct routes_segment routes_config;
 };
 
 extern struct crossing_gate crossing_gate_state;

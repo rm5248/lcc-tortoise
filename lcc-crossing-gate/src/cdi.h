@@ -1,0 +1,289 @@
+/*
+ * cdi.h
+ *
+ *  Created on: Mar 19, 2026
+ *      Author: robert
+ */
+
+#ifndef LCC_CROSSING_GATE_SRC_CDI_H_
+#define LCC_CROSSING_GATE_SRC_CDI_H_
+
+const char* CDI_XML = "<?xml version='1.0'?> \
+<cdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/schema/cdi/1/1/cdi.xsd'> \
+<identification> \
+<manufacturer>Snowball Creek Electronics</manufacturer> \
+<model>Crossing Gate Controller</model> \
+<hardwareVersion>P2</hardwareVersion> \
+<softwareVersion>1.0</softwareVersion> \
+</identification> \
+<acdi/> \
+<segment space='251'> \
+<name>Node ID</name> \
+<group> \
+<name>Your name and description for this node</name> \
+<string size='63'> \
+<name>Node Name</name> \
+</string> \
+<string size='64' offset='1'> \
+<name>Node Description</name> \
+</string> \
+</group> \
+</segment> \
+<segment space='253'> \
+<name>Routes</name> \
+<group replication='16'> \
+<repname>Route</repname> \
+<string size='64'> \
+<name>Route Name</name> \
+<description>A name for this route(ex: Track 1, Track 1 West -&gt; Track 2)</description> \
+</string> \
+<group replication='4'> \
+<repname>Sensor Inputs</repname> \
+<string size='28'> \
+<name>Sensor Name</name> \
+<description>Sensor used for the route.  Only used for debug purposes</description> \
+</string> \
+<int size='1'> \
+<name>Input type</name> \
+<description>Inputs can be either on the board itself, or come from a remote board using Event IDs</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Board input</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Remote input(Event ID)</value> \
+</relation> \
+</map> \
+</int> \
+<int size='1'> \
+<name>Sensor input</name> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Input 1</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Input 2</value> \
+</relation> \
+<relation> \
+<property>2</property> \
+<value>Input 3</value> \
+</relation> \
+<relation> \
+<property>3</property> \
+<value>Input 4</value> \
+</relation> \
+<relation> \
+<property>4</property> \
+<value>Input 5</value> \
+</relation> \
+<relation> \
+<property>5</property> \
+<value>Input 6</value> \
+</relation> \
+<relation> \
+<property>6</property> \
+<value>Input 7</value> \
+</relation> \
+<relation> \
+<property>7</property> \
+<value>Input 8</value> \
+</relation> \
+</map> \
+</int> \
+<int size='1'> \
+<name>Polarity</name> \
+<description>Polarity is only used if using an input on the board</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Normal</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Reversed</value> \
+</relation> \
+</map> \
+</int> \
+<eventid offset='1'> \
+<name>Event sensor on</name> \
+<description>The event ID consumed by this device to indicate that the sensor is active</description> \
+</eventid> \
+<eventid> \
+<name>Event sensor off</name> \
+<description>The event ID consumed by this device to indicate that the sensor is inactive</description> \
+</eventid> \
+</group> \
+<group replication='8'> \
+<repname>Switch Inputs</repname> \
+<string size='28'> \
+<name>Switch Name</name> \
+<description>Switch used for the route.  Only used for debug purposes</description> \
+</string> \
+<int size='1'> \
+<name>Input type</name> \
+<description>Inputs can be either on the board itself, or come from a remote board using Event IDs</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Board input</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Remote input(Event ID)</value> \
+</relation> \
+</map> \
+</int> \
+<int size='1'> \
+<name>Sensor input</name> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Input 1</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Input 2</value> \
+</relation> \
+<relation> \
+<property>2</property> \
+<value>Input 3</value> \
+</relation> \
+<relation> \
+<property>3</property> \
+<value>Input 4</value> \
+</relation> \
+<relation> \
+<property>4</property> \
+<value>Input 5</value> \
+</relation> \
+<relation> \
+<property>5</property> \
+<value>Input 6</value> \
+</relation> \
+<relation> \
+<property>6</property> \
+<value>Input 7</value> \
+</relation> \
+<relation> \
+<property>7</property> \
+<value>Input 8</value> \
+</relation> \
+</map> \
+</int> \
+<int size='1'> \
+<name>Polarity</name> \
+<description>Polarity is only used if using an input on the board</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Normal</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Reversed</value> \
+</relation> \
+</map> \
+</int> \
+<int size='1'> \
+<name>Route position</name> \
+<description>The position that the switch needs to be in for this route to be valid</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Normal</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Reversed</value> \
+</relation> \
+</map> \
+</int> \
+<eventid> \
+<name>Event switch normal</name> \
+<description>The event ID consumed by this device to indicate that the switch is in the normal position</description> \
+</eventid> \
+<eventid> \
+<name>Event switch reversed</name> \
+<description>The event ID consumed by this device to indicate that the switch is in the reversed position</description> \
+</eventid> \
+</group> \
+</group> \
+</segment> \
+<segment space='252'> \
+<name>General Events</name> \
+<eventid> \
+<name>Gate Active Event</name> \
+<description>This event is sent(produced) by this node when the gates are active</description> \
+</eventid> \
+<eventid> \
+<name>Gate Deactivated Event</name> \
+<description>This event is sent(produced) by this node when the gates are deactivated</description> \
+</eventid> \
+<eventid> \
+<name>Manual Activation</name> \
+<description>This event is received(consumed) by this node in order to trigger the gates to become activated</description> \
+</eventid> \
+<group replication='8'> \
+<repname>Inputs</repname> \
+<string size='24'> \
+<name>Input Name</name> \
+</string> \
+<eventid> \
+<name>Input activated</name> \
+<description>This event is sent(produced) by this node when the input is activated</description> \
+</eventid> \
+<eventid> \
+<name>Input deactivated</name> \
+<description>This event is sent(produced) by this node when the input is deactivated</description> \
+</eventid> \
+</group> \
+</segment> \
+<segment space='250'> \
+<name>General Config</name> \
+<int size='1'> \
+<name>Timeout</name> \
+<description>Timeout value for the system to reset and become 'inactive.'  This value is in seconds</description> \
+<min>0</min> \
+<max>120</max> \
+<default>25</default> \
+</int> \
+<int size='1'> \
+<name>Bell Behavior</name> \
+<description>How the bell output should behave</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>No ring</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Ring while gates lowering</value> \
+</relation> \
+<relation> \
+<property>2</property> \
+<value>Ring while gates raising</value> \
+</relation> \
+<relation> \
+<property>3</property> \
+<value>Ring while gates lowering and raising</value> \
+</relation> \
+<relation> \
+<property>4</property> \
+<value>Ring while gates are active</value> \
+</relation> \
+</map> \
+</int> \
+<int size='2'> \
+<name>Bell ring time</name> \
+<description>Bell ring time(in milliseconds) when gates are raising/lowering</description> \
+<min>0</min> \
+<max>10000</max> \
+</int> \
+</segment> \
+</cdi>";
+
+#endif /* LCC_CROSSING_GATE_SRC_CDI_H_ */
