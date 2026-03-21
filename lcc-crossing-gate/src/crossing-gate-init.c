@@ -64,8 +64,20 @@ static struct gpio_callback cb_data[8];
 static void input_change(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
-	char data = 0;
-	k_msgq_put(&crossing_gate_state.process_msgq, &data, K_NO_WAIT);
+	int real_pin = -1;
+
+	// Map between the bitmask and our pin input
+	for(int bit_num = 0; bit_num < 8; bit_num++){
+		if(pins == BIT(bit_num)){
+			real_pin = bit_num;
+		}
+	}
+
+	if(real_pin < 0){
+		return;
+	}
+
+	k_msgq_put(&crossing_gate_state.pin_change_msgq, &real_pin, K_NO_WAIT);
 }
 
 static void init_input(const struct gpio_dt_spec* in, struct gpio_callback* cb_data){
@@ -101,6 +113,24 @@ static void init_tortoise(const struct tortoise* tort){
 	}
 }
 
+static void init_single_route(int route_num){
+	struct route* current_route = &crossing_gate_state.crossing_routes[route_num];
+	struct route_config* route_config = &crossing_gate_state.routes_config.all_routes[route_num];
+	current_route->config = route_config;
+
+	for(int sensor = 0; sensor < ARRAY_SIZE(current_route->sensors); sensor++){
+		struct sensor_input* input = &current_route->sensors[sensor];
+		input->config = &route_config->inputs[sensor];
+		sensor_input_init(input, &crossing_gate_state.inputs[input->config->sensor_input]);
+	}
+
+	for(int turnout = 0; turnout < ARRAY_SIZE(current_route->switch_inputs); turnout++){
+		struct switch_input* input = &current_route->switch_inputs[turnout];
+		input->config = &route_config->switch_inputs[turnout];
+		switch_input_init(input, &crossing_gate_state.inputs[input->config->swithc_input]);
+	}
+}
+
 void crossing_gate_load_config(){
 	partition_util_load(FIXED_PARTITION_ID(segment_253),
 			&crossing_gate_state.routes_config,
@@ -114,6 +144,12 @@ void crossing_gate_load_config(){
 	partition_util_load(FIXED_PARTITION_ID(segment_250),
 			&crossing_gate_state.general_config,
 			sizeof(crossing_gate_state.general_config));
+
+	// Now that we have loaded the config, we need to update our data structures in RAM so
+	// that they are pointed at the correct things
+	for(int route_num = 0; route_num < ARRAY_SIZE(crossing_gate_state.crossing_routes); route_num++){
+		init_single_route(route_num);
+	}
 }
 
 void crossing_gate_set_default_values(uint64_t base_event_id){
@@ -158,7 +194,7 @@ void crossing_gate_set_default_values(uint64_t base_event_id){
 }
 
 void crossing_gate_init(){
-	k_msgq_init(&crossing_gate_state.process_msgq, crossing_gate_state.msgq_buffer, 1, 10);
+	k_msgq_init(&crossing_gate_state.pin_change_msgq, (char*)crossing_gate_state.pin_changemsgq_buffer, sizeof(int), 10);
 
 	led_set_brightness(crossing_gate_state.led_pwm, 0, 0);
 	led_set_brightness(crossing_gate_state.led_pwm, 1, 0);
@@ -169,7 +205,7 @@ void crossing_gate_init(){
 		crossing_gate_state.crossing_routes[x].config = &(crossing_gate_state.routes_config.all_routes[x]);
 	}
 
-	for(int x = 0; x < 8; x++){
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.inputs); x++){
 		init_input(&crossing_gate_state.inputs[x], &cb_data[x]);
 	}
 

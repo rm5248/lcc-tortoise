@@ -25,6 +25,7 @@
 #include "lcc-common.h"
 #include "lcc-event.h"
 #include "lcc-memory.h"
+#include "partition_utils.h"
 
 /*
  * Address Space / storage information
@@ -299,52 +300,74 @@ static int save_global_config(){
 //	return ret;
 }
 
-void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, void* data, int data_len){
-	  if(address_space == 250){
-		  if((starting_address + data_len) > sizeof(crossing_gate_state.general_config)){
-				lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
-				return;
-		  }
+void mem_address_space_write(struct lcc_memory_context *ctx, uint16_t alias,
+		uint8_t address_space, uint32_t starting_address, void *data,
+		int data_len) {
+	if (address_space == 250) {
+		if ((starting_address + data_len)
+				> sizeof(crossing_gate_state.general_config)) {
+			lcc_memory_respond_write_reply_fail(ctx, alias, address_space,
+					starting_address, 0, NULL);
+			return;
+		}
 
-		  uint8_t* config_raw = &crossing_gate_state.general_config;
-		  memcpy(config_raw + starting_address, data, data_len);
-//		  save_global_config();
+		uint8_t *config_raw = &crossing_gate_state.general_config;
+		memcpy(config_raw + starting_address, data, data_len);
+		partition_util_save(FIXED_PARTITION_ID(segment_250),
+				&crossing_gate_state.general_config,
+				sizeof(crossing_gate_state.general_config));
 
-		  lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
-	  }else if(address_space == 251){
-		  if((starting_address + data_len) > sizeof(crossing_gate_state.node_info)){
-				lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
-				return;
-		  }
+		lcc_memory_respond_write_reply_ok(ctx, alias, address_space,
+				starting_address);
+	} else if (address_space == 251) {
+		if ((starting_address + data_len)
+				> sizeof(crossing_gate_state.node_info)) {
+			lcc_memory_respond_write_reply_fail(ctx, alias, address_space,
+					starting_address, 0, NULL);
+			return;
+		}
 
-		  uint8_t* config_raw = &crossing_gate_state.node_info;
-		  memcpy(config_raw + starting_address, data, data_len);
-//		  save_global_config();
+		uint8_t *config_raw = &crossing_gate_state.node_info;
+		memcpy(config_raw + starting_address, data, data_len);
+		partition_util_save(FIXED_PARTITION_ID(segment_251),
+				&crossing_gate_state.node_info,
+				sizeof(crossing_gate_state.node_info));
 
-		  lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
-	  }else if(address_space == 252){
-		  if((starting_address + data_len) > sizeof(crossing_gate_state.general_events)){
-				lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
-				return;
-		  }
+		lcc_memory_respond_write_reply_ok(ctx, alias, address_space,
+				starting_address);
+	} else if (address_space == 252) {
+		if ((starting_address + data_len)
+				> sizeof(crossing_gate_state.general_events)) {
+			lcc_memory_respond_write_reply_fail(ctx, alias, address_space,
+					starting_address, 0, NULL);
+			return;
+		}
 
-		  uint8_t* config_raw = &crossing_gate_state.general_events;
-		  memcpy(config_raw + starting_address, data, data_len);
-//		  save_global_config();
+		uint8_t *config_raw = &crossing_gate_state.general_events;
+		memcpy(config_raw + starting_address, data, data_len);
+		partition_util_save(FIXED_PARTITION_ID(segment_252),
+				&crossing_gate_state.general_events,
+				sizeof(crossing_gate_state.general_events));
 
-		  lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
-	  }else if(address_space == 253){
-		  if((starting_address + data_len) > sizeof(crossing_gate_state.routes_config)){
-				lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
-				return;
-		  }
+		lcc_memory_respond_write_reply_ok(ctx, alias, address_space,
+				starting_address);
+	} else if (address_space == 253) {
+		if ((starting_address + data_len)
+				> sizeof(crossing_gate_state.routes_config)) {
+			lcc_memory_respond_write_reply_fail(ctx, alias, address_space,
+					starting_address, 0, NULL);
+			return;
+		}
 
-		  uint8_t* config_raw = &crossing_gate_state.routes_config;
-		  memcpy(config_raw + starting_address, data, data_len);
-//		  save_global_config();
+		uint8_t *config_raw = &crossing_gate_state.routes_config;
+		memcpy(config_raw + starting_address, data, data_len);
+		partition_util_save(FIXED_PARTITION_ID(segment_253),
+				&crossing_gate_state.routes_config,
+				sizeof(crossing_gate_state.routes_config));
 
-		  lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
-	  }
+		lcc_memory_respond_write_reply_ok(ctx, alias, address_space,
+				starting_address);
+	}
 }
 
 static void reboot(struct lcc_memory_context* ctx){
@@ -480,7 +503,7 @@ static void main_loop(struct lcc_context* ctx){
 	k_poll_event_init(&poll_data[1],
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
 			K_POLL_MODE_NOTIFY_ONLY,
-			&crossing_gate_state.process_msgq);
+			&crossing_gate_state.pin_change_msgq);
 
 	k_timer_init(&alias_timer, NULL, NULL);
 	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
@@ -500,9 +523,23 @@ static void main_loop(struct lcc_context* ctx){
 			poll_data[0].state = K_POLL_STATE_NOT_READY;
 			last_rx_can_msg = k_cycle_get_32();
 		}else if(poll_data[1].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
-			char data;
-			k_msgq_get(&crossing_gate_state.process_msgq, &data, K_FOREVER);
+			int pin;
+			k_msgq_get(&crossing_gate_state.pin_change_msgq, &pin, K_FOREVER);
 			poll_data[1].state = K_POLL_STATE_NOT_READY;
+
+			if(pin >= 0 && pin <= 7){
+				// generate the correct event ID for this pin changing
+				int val = gpio_pin_get_dt(&crossing_gate_state.inputs[pin]);
+				if(val){
+					struct lcc_event_ctx* evt_ctx = lcc_context_get_event_context(ctx);
+					uint64_t produced_event = __builtin_bswap64(crossing_gate_state.general_events.inputs[pin].BE_input_activated_event);
+					lcc_event_produce_event(evt_ctx, produced_event);
+				}else{
+					struct lcc_event_ctx* evt_ctx = lcc_context_get_event_context(ctx);
+					uint64_t produced_event = __builtin_bswap64(crossing_gate_state.general_events.inputs[pin].BE_input_deactivated_event);
+					lcc_event_produce_event(evt_ctx, produced_event);
+				}
+			}
 
 			crossing_gate_update();
 		}

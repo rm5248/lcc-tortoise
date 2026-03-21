@@ -47,7 +47,8 @@ struct node_info_segment {
 };
 
 struct sensor_config {
-	char sensor_name[28];
+	char sensor_name[27];
+	uint8_t sensor_enabled;
 	uint8_t sensor_type;
 	uint8_t sensor_input;
 	uint8_t polarity;
@@ -58,7 +59,8 @@ struct sensor_config {
 _Static_assert(sizeof(struct sensor_config) == 48);
 
 struct switch_input_config {
-	char sensor_name[28];
+	char sensor_name[27];
+	uint8_t switch_enabled;
 	uint8_t switch_input_type;
 	uint8_t swithc_input;
 	uint8_t polarity;
@@ -69,7 +71,8 @@ struct switch_input_config {
 _Static_assert(sizeof(struct switch_input_config) == 48);
 
 struct route_config {
-	char route_name[64];
+	char route_name[63];
+	char route_enabled;
 	struct sensor_config inputs[4];
 	struct switch_input_config switch_inputs[8];
 };
@@ -79,7 +82,7 @@ _Static_assert(sizeof(struct route_config) == 640);
  * Route info - segment 253
  */
 struct routes_segment {
-	struct route_config all_routes[16];
+	struct route_config all_routes[NUM_ROUTES];
 };
 _Static_assert(sizeof(struct routes_segment) == 10240);
 
@@ -134,8 +137,8 @@ struct crossing_gate{
 
 	const struct gpio_dt_spec tortoise_power;
 
-	char msgq_buffer[10];
-	struct k_msgq process_msgq;
+	int pin_changemsgq_buffer[10];
+	struct k_msgq pin_change_msgq;
 
 	// Segment 250
 	struct general_config_segment general_config;

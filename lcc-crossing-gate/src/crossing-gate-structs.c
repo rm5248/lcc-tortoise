@@ -7,6 +7,14 @@
 #include "crossing-gate-structs.h"
 #include "crossing-gate.h"
 
+void sensor_input_init(struct sensor_input* input, struct gpio_dt_spec* gpio){
+	input->sensor_gpio = NULL;
+	if(input->config->sensor_type == 0){
+		// board input
+		input->sensor_gpio = gpio;
+	}
+}
+
 int sensor_input_value(struct sensor_input* input){
 	int val = -1;
 
@@ -37,16 +45,19 @@ void sensor_input_handle_event(struct sensor_input* input, uint64_t event_id){
 }
 
 int sensor_input_valid(struct sensor_input* input){
-  if(input->sensor_gpio){
-    return 1;
-  }
+	return input->config->sensor_enabled;
+}
 
-  if(input->config->BE_event_sensor_on > 0 &&
-		  input->config->BE_event_sensor_off > 0){
-      return 1;
-    }
+void switch_input_init(struct switch_input* input, struct gpio_dt_spec* gpio){
+	input->switch_gpio = NULL;
+	if(input->config->switch_input_type == 0){
+		// board input
+		input->switch_gpio = gpio;
+	}
+}
 
-  return 0;
+int switch_input_enabled(struct switch_input* input){
+	return input->config->switch_enabled;
 }
 
 int switch_input_value(struct switch_input* input){

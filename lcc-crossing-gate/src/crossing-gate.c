@@ -144,10 +144,8 @@ static void handle_route_rtl(struct route* route, int left_input, int left_islan
 }
 
 static void crossing_gate_handle_single_route(struct route* route){
-	for(int x = 0; x < ARRAY_SIZE(route->sensors); x++){
-		if(!sensor_input_valid(&route->sensors[x])){
-			return;
-		}
+	if(!route->config->route_enabled){
+		return;
 	}
 
 	int left_input = sensor_input_value(&route->sensors[0]);
@@ -170,6 +168,9 @@ static void crossing_gate_handle_single_route(struct route* route){
 		// There is a new train coming into the route.
 		// Let's see if this route is valid or not
 		for(int x = 0; x < sizeof(route->switch_inputs) / sizeof(route->switch_inputs[0]); x++){
+			if(!switch_input_enabled(&route->switch_inputs[x])){
+				continue;
+			}
 			if(switch_input_value(&route->switch_inputs[x]) != route->config->switch_inputs[x].polarity){
 				// The switch is not set to the right position for this route to be active
 				return;
@@ -291,7 +292,7 @@ void crossing_gate_timer_expired(struct k_timer* timer_id){
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
 
-		char data = 0;
-		k_msgq_put(&crossing_gate_state.process_msgq, &data, K_NO_WAIT);
+		int data = 0xFFFF;
+		k_msgq_put(&crossing_gate_state.pin_change_msgq, &data, K_NO_WAIT);
 	}
 }

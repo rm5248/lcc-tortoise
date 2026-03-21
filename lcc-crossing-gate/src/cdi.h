@@ -33,16 +33,45 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 <name>Routes</name> \
 <group replication='16'> \
 <repname>Route</repname> \
-<string size='64'> \
+<string size='63'> \
 <name>Route Name</name> \
-<description>A name for this route(ex: Track 1, Track 1 West -&gt; Track 2)</description> \
+<description>A name for this route(ex: Track 1 Westbound, Track 1 West -&gt; Track 2)</description> \
 </string> \
+<int size='1'> \
+<name>Enabled</name> \
+<description>Should this route be enabled or not?</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Disabled</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Enabled</value> \
+</relation> \
+</map> \
+</int> \
 <group replication='4'> \
+<name>Route Sensors</name> \
 <repname>Sensor Inputs</repname> \
-<string size='28'> \
+<string size='27'> \
 <name>Sensor Name</name> \
 <description>Sensor used for the route.  Only used for debug purposes</description> \
 </string> \
+<int size='1'> \
+<name>Enabled</name> \
+<description>Is this sensor used or not?</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Disabled</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Enabled</value> \
+</relation> \
+</map> \
+</int> \
 <int size='1'> \
 <name>Input type</name> \
 <description>Inputs can be either on the board itself, or come from a remote board using Event IDs</description> \
@@ -118,11 +147,26 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 </eventid> \
 </group> \
 <group replication='8'> \
+<name>Switches on route</name> \
 <repname>Switch Inputs</repname> \
-<string size='28'> \
+<string size='27'> \
 <name>Switch Name</name> \
 <description>Switch used for the route.  Only used for debug purposes</description> \
 </string> \
+<int size='1'> \
+<name>Enabled</name> \
+<description>Is this switch used or not?</description> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>Disabled</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Enabled</value> \
+</relation> \
+</map> \
+</int> \
 <int size='1'> \
 <name>Input type</name> \
 <description>Inputs can be either on the board itself, or come from a remote board using Event IDs</description> \

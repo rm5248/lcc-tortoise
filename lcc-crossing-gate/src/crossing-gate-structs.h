@@ -85,6 +85,8 @@ struct route{
 	struct k_timer timeout;
 };
 
+void sensor_input_init(struct sensor_input* input, struct gpio_dt_spec* gpio);
+
 /**
  * Determine the current value of the sensor input.  Value will be either 0(for inactive) or 1(for active)
  */
@@ -107,6 +109,10 @@ void sensor_input_handle_event(struct sensor_input* input, uint64_t event_id);
  * Check to see if the sensor input is valid.  A valid sensor input has either a GPIO or both event IDs set.
  */
 int sensor_input_valid(struct sensor_input* input);
+
+void switch_input_init(struct switch_input* input, struct gpio_dt_spec* gpio);
+
+int switch_input_enabled(struct switch_input* input);
 
 /**
  * Determine the current value of the given switch.  Value will be either
