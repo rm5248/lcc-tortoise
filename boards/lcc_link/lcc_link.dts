@@ -39,17 +39,13 @@
 			gpios = <&gpioc 6 GPIO_ACTIVE_HIGH>;
 			label = "status_led";
 		};
-		led2: led_2 {
+		rx_led: led_2 {
 			gpios = <&gpiob 2 GPIO_ACTIVE_HIGH>;
-			label = "LED2";
+			label = "rx";
 		};
-	};
-
-	gpio_keys {
-		compatible = "gpio-keys";
-		load_switch: button_load {
-			label = "load_switch";
-			gpios = <&gpioa 14 (GPIO_ACTIVE_HIGH)>;
+		tx_led: led_3 {
+			gpios = <&gpioa 8 GPIO_ACTIVE_HIGH>;
+			label = "tx";
 		};
 	};
 };

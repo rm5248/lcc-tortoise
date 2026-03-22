@@ -25,16 +25,11 @@ const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
 const struct device *const can_usb_dev = DEVICE_DT_GET(DT_NODELABEL(cdc_acm_can));
 const struct device *const dcc_usb_dev = DEVICE_DT_GET(DT_NODELABEL(cdc_acm_dcc));
 const struct device *const console_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
-const struct gpio_dt_spec load_button  = GPIO_DT_SPEC_GET(DT_NODELABEL(load_switch), gpios);
 
 static struct computer_to_can computer_to_can;
 static struct can_to_computer can_to_computer;
 static struct dcc_to_computer dcc_to_computer;
 static uint32_t last_rx_dcc_msg;
-static struct gpio_callback load_button_cb_data;
-static uint32_t load_button_press = 0;
-static uint32_t load_button_diff = 0;
-static int in_bootloader_mode = 0;
 static uint32_t last_rx_can_msg = 0;
 static uint32_t last_tx_can_msg = 0;
 struct lcc_context* lcc_ctx = NULL;
@@ -48,6 +43,8 @@ K_THREAD_DEFINE(activity_blink, 512, blink_activity_led, NULL, NULL, NULL,
 
 // VID:PID
 // 0483:5740
+// This VID/PID combination is what is used by ST for their 'Virtual COM port'
+// it is also used by RR-cirkits
 
 static void irq_handler_can_usb(const struct device *dev, void *user_data){
 	while (uart_irq_update(dev) && uart_irq_is_pending(dev)) {
@@ -129,61 +126,67 @@ static void blink_status_led(){
 	const struct gpio_dt_spec status_led = GPIO_DT_SPEC_GET(DT_NODELABEL(status_led), gpios);
 
 	while(1){
-		if(in_bootloader_mode){
-			// LED should be on, wink off once every three seconds
+		uint64_t diff = k_cycle_get_32() - last_rx_dcc_msg;
+
+		if(k_cyc_to_ms_ceil32(diff) < 500){
+			// Receiving DCC signal, double blink
 			gpio_pin_set_dt(&status_led, 1);
-			k_sleep(K_MSEC(3000));
+			k_sleep(K_MSEC(100));
 			gpio_pin_set_dt(&status_led, 0);
 			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&status_led, 1);
+			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&status_led, 0);
+			k_sleep(K_MSEC(1500));
 		}else{
-			uint64_t diff = k_cycle_get_32() - last_rx_dcc_msg;
-
-			if(k_cyc_to_ms_ceil32(diff) < 500){
-				// Receiving DCC signal, double blink
-				gpio_pin_set_dt(&status_led, 1);
-				k_sleep(K_MSEC(100));
-				gpio_pin_set_dt(&status_led, 0);
-				k_sleep(K_MSEC(100));
-				gpio_pin_set_dt(&status_led, 1);
-				k_sleep(K_MSEC(100));
-				gpio_pin_set_dt(&status_led, 0);
-				k_sleep(K_MSEC(1500));
-			}else{
-				// No DCC signal, single blink
-				gpio_pin_set_dt(&status_led, 1);
-				k_sleep(K_MSEC(100));
-				gpio_pin_set_dt(&status_led, 0);
-				k_sleep(K_MSEC(1500));
-			}
+			// No DCC signal, single blink
+			gpio_pin_set_dt(&status_led, 1);
+			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&status_led, 0);
+			k_sleep(K_MSEC(1500));
 		}
 	}
 }
 
 static void blink_activity_led(){
-	const struct gpio_dt_spec activity_led = GPIO_DT_SPEC_GET(DT_NODELABEL(led2), gpios);
+	const struct gpio_dt_spec rx_led = GPIO_DT_SPEC_GET(DT_NODELABEL(rx_led), gpios);
+	const struct gpio_dt_spec tx_led = GPIO_DT_SPEC_GET(DT_NODELABEL(tx_led), gpios);
 
-	if (!gpio_is_ready_dt(&activity_led)) {
+	if (!gpio_is_ready_dt(&rx_led)) {
 		return;
 	}
 
-	if(gpio_pin_configure_dt(&activity_led, GPIO_OUTPUT_INACTIVE) < 0){
+	if (!gpio_is_ready_dt(&tx_led)) {
+		return;
+	}
+
+	if(gpio_pin_configure_dt(&rx_led, GPIO_OUTPUT) < 0){
+		return;
+	}
+	if(gpio_pin_configure_dt(&tx_led, GPIO_OUTPUT) < 0){
 		return;
 	}
 
 	while(1){
 		uint64_t diff_tx = k_cycle_get_32() - last_tx_can_msg;
 		uint64_t diff_rx = k_cycle_get_32() - last_rx_can_msg;
+		int blinked = 0;
 
 		if(k_cyc_to_ms_ceil32(diff_tx) < 25){
-			gpio_pin_set_dt(&activity_led, 1);
-			k_sleep(K_MSEC(50));
-			gpio_pin_set_dt(&activity_led, 0);
-		}else if(k_cyc_to_ms_ceil32(diff_rx) < 25){
-			gpio_pin_set_dt(&activity_led, 1);
-			k_sleep(K_MSEC(50));
-			gpio_pin_set_dt(&activity_led, 0);
+			gpio_pin_set_dt(&tx_led, 1);
+			blinked = 1;
 		}
-		k_sleep(K_MSEC(10));
+		if(k_cyc_to_ms_ceil32(diff_rx) < 25){
+			gpio_pin_set_dt(&rx_led, 1);
+			blinked = 1;
+		}
+
+		if(blinked){
+			k_sleep(K_MSEC(50));
+			gpio_pin_set_dt(&tx_led, 0);
+			gpio_pin_set_dt(&rx_led, 0);
+		}
+		k_sleep(K_MSEC(20));
 	}
 }
 
@@ -234,34 +237,6 @@ static int do_usb_init(){
 	return 0;
 }
 
-static void load_button_pressed(const struct device *dev, struct gpio_callback *cb,
-		    uint32_t pins)
-{
-	int load_value = gpio_pin_get_dt(&load_button);
-
-	if(load_value){
-		load_button_press = k_cycle_get_32();
-	}else{
-		load_button_diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - load_button_press);
-		load_button_press = 0;
-	}
-}
-
-static void handle_button(struct computer_to_can* computer_to_can, struct can_to_computer* can_to_computer){
-	if(load_button_press == 0){
-		return;
-	}
-
-	uint32_t load_button_curr_diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - load_button_press);
-
-	if(load_button_curr_diff > 2000 && !in_bootloader_mode){
-		// User has held load button for at least two seconds, go into bootloader mode
-		printf("Going into bootloader mode\n");
-		in_bootloader_mode = 1;
-		lcc_ctx = firmware_load(computer_to_can, can_to_computer);
-	}
-}
-
 static void splash(){
 	printf("LCC-Link starting up\n");
 }
@@ -273,40 +248,13 @@ static void init_dcc(){
 	uart_irq_callback_set(dcc_usb_dev, irq_handler_dcc_usb);
 }
 
-static void init_load_button(){
-	if (!gpio_is_ready_dt(&load_button)) {
-		return;
-	}
-
-	if(gpio_pin_configure_dt(&load_button, GPIO_INPUT) < 0){
-		return;
-	}
-
-	if(gpio_pin_interrupt_configure_dt(&load_button, GPIO_INT_EDGE_BOTH) < 0){
-		return;
-	}
-
-	gpio_init_callback(&load_button_cb_data, load_button_pressed, BIT(load_button.pin));
-	gpio_add_callback(load_button.port, &load_button_cb_data);
-}
-
 static void parse_from_computer(struct computer_to_can* computer_to_can){
 	static struct can_frame rx_frame;
 	static struct lcc_can_frame lcc_rx;
 
 	while(k_msgq_get(computer_to_can_parsed_queue(computer_to_can), &rx_frame, K_NO_WAIT) == 0){
-		if(in_bootloader_mode){
-			// Convert to LCC CAN frame and push to liblcc
-			memset(&lcc_rx, 0, sizeof(lcc_rx));
-			lcc_rx.can_id = rx_frame.id;
-			lcc_rx.can_len = rx_frame.dlc;
-			memcpy(lcc_rx.data, rx_frame.data, 8);
-
-			lcc_context_incoming_frame(lcc_ctx, &lcc_rx);
-		}else{
-			// Send out to CAN
-			computer_to_can_tx_frame(computer_to_can, &rx_frame);
-		}
+		// Send out to CAN
+		computer_to_can_tx_frame(computer_to_can, &rx_frame);
 	}
 }
 
@@ -332,17 +280,15 @@ static void main_loop(struct computer_to_can* computer_to_can, struct can_to_com
 			// A frame has been parsed from the computer
 			parse_from_computer(computer_to_can);
 			poll_data[0].state = K_POLL_STATE_NOT_READY;
-			last_rx_can_msg = k_cycle_get_32();
+			last_tx_can_msg = k_cycle_get_32();
 		}else if(poll_data[1].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
 			// A frame has been received from the CAN bus
 			static struct can_frame rx_frame;
 			while(k_msgq_get(can_to_computer_msgq(can_to_computer), &rx_frame, K_NO_WAIT) == 0){
-				// If we are in bootloader mode, drop it like it's hot
-				if(!in_bootloader_mode){
-					can_to_computer_send_frame(can_to_computer, &rx_frame);
-				}
+				can_to_computer_send_frame(can_to_computer, &rx_frame);
 			}
 			poll_data[1].state = K_POLL_STATE_NOT_READY;
+			last_rx_can_msg = k_cycle_get_32();
 		}else if(poll_data[2].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
 			uint32_t timediff;
 			while(k_msgq_get(&dcc_decode_ctx.readings, &timediff, K_NO_WAIT) == 0){
@@ -352,8 +298,6 @@ static void main_loop(struct computer_to_can* computer_to_can, struct can_to_com
 			}
 			poll_data[2].state = K_POLL_STATE_NOT_READY;
 		}
-
-		handle_button(computer_to_can, can_to_computer);
 	}
 }
 
@@ -399,8 +343,6 @@ int main(void)
 	uart_irq_rx_enable(can_usb_dev);
 
 	init_dcc();
-	init_load_button();
-	load_button_press = 0;
 
 	main_loop(&computer_to_can, &can_to_computer);
 
