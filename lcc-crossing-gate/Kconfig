@@ -1,0 +1,8 @@
+mainmenu "LCC Crossing Gate"
+
+source "Kconfig.zephyr"
+config LCC_CROSSING_GATE
+	default y
+	bool
+
+select EEPROM if BOARD_ARDUINO_UNO_R4

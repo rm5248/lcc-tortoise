@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(LCC-Tortoise)
+project(LCC-Crossing-Gate)
 
 # Bring in the LCC library
 #set(LIBLCC_ENABLE_STATIC_CONTEXT ON)
@@ -24,20 +24,18 @@ file(GLOB lcc-sources
 
 target_sources(app PRIVATE 
 	src/main.c 
-	src/tortoise.c 
-	src/lcc-tortoise-state.c
-	src/dcc-decode-stm32.c
-	src/power-handler.c
-	src/firmware_upgrade.c
-	src/switch-tracker.c
-	src/birthing.c
-	src/tortoise-cdi.c
+	src/crossing-gate-structs.c
+	src/crossing-gate-init.c
+	src/crossing-gate.c
 	${lcc-sources}
+	../common/firmware_upgrade.c
+	../common/partition_utils.c
 )
 target_include_directories(app PRIVATE
 	${TRAINUTILS_DIR}/LCC
 	${CMAKE_CURRENT_BINARY_DIR}/TrainUtils/LCC
 	${TRAINUTILS_DIR}/DCC
+	../common/
 )
 
 
@@ -54,7 +52,7 @@ target_compile_definitions(app PRIVATE
 )
 set(LIBLCC_DEBUG 0)
 set(LIBLCC_ENABLE_STATIC_CONTEXT 1)
-set(LIBLCC_EVENT_LIST_STATIC_SIZE 4224)
+set(LIBLCC_EVENT_LIST_STATIC_SIZE 32)
 set(PROJECT_VERSION_MAJOR ${LCC_VERSION_MAJOR})
 set(PROJECT_VERSION_MINOR ${LCC_VERSION_MINOR})
 set(PROJECT_VERSION_PATCH ${LCC_VERSION_PATCH})

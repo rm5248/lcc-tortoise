@@ -22,6 +22,7 @@ manifest:
         name-allowlist:
           - cmsis_6      # required by the ARM port
           - hal_stm32  # required by the nucleo_f302r8 board (STM32 based)
+          - hal_renesas
     - name: mcuboot
       revision: eecc3f7dab98fee2be213f7b6519a4ad37a65688
       path: bootloader/mcuboot
