@@ -142,6 +142,7 @@ static int timer2_init(){
 
 int dcc_decoder_init(struct dcc_decoder_stm32* decoder){
 	dcc_decode_ctx = decoder;
+	memset(decoder, 0, sizeof(struct dcc_decoder_stm32));
 	k_msgq_init(&decoder->readings,
 			decoder->readings_data,
 			sizeof(uint32_t),

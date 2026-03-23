@@ -9,6 +9,7 @@
 #define LCC_TORTOISE_ZEPHYR_SRC_DCC_DECODE_H_
 
 #include <zephyr/kernel.h>
+#include <zephyr/drivers/gpio.h>
 
 struct dcc_decoder;
 struct dcc_packet_parser;
