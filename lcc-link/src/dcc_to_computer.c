@@ -12,6 +12,8 @@
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
 
+extern struct dcc_decoder_stm32 dcc_decode_ctx;
+
 K_THREAD_STACK_DEFINE(dcc_process_stack, 512);
 
 static void dcc_process(void *arg1, void *unused2, void *unused3) {

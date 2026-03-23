@@ -27,14 +27,16 @@ target_sources(app PRIVATE
 	src/computer_to_can.c
 	src/can_to_computer.c
 	src/dcc_to_computer.c
-	src/dcc-decode-stm32.c
-	src/firmware-load.c
 	${lcc-sources}
+	../common/partition_utils.c
+	../common/firmware_upgrade.c
+	../common/dcc-decode-stm32.c
 )
 target_include_directories(app PRIVATE
 	${TRAINUTILS_DIR}/LCC
 	${CMAKE_CURRENT_BINARY_DIR}/TrainUtils/LCC
 	${TRAINUTILS_DIR}/DCC
+	../common
 )
 
 
