@@ -8,7 +8,6 @@
 #include <zephyr/drivers/can.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/ring_buffer.h>
-#include <zephyr/usb/usb_device.h>
 #include <zephyr/usb/usbd.h>
 #include <zephyr/drivers/uart.h>
 
@@ -27,6 +26,17 @@
 
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
+
+USBD_DEVICE_DEFINE(lcc_link_usbd,
+		   DEVICE_DT_GET(DT_NODELABEL(zephyr_udc0)),
+		   0x0483, 0x5740);
+
+USBD_DESC_LANG_DEFINE(lcc_link_lang);
+USBD_DESC_MANUFACTURER_DEFINE(lcc_link_mfr, "Snowball Creek Electronics");
+USBD_DESC_PRODUCT_DEFINE(lcc_link_product, "LCC Link");
+
+USBD_DESC_CONFIG_DEFINE(lcc_link_fs_cfg_desc, "FS Configuration");
+USBD_CONFIGURATION_DEFINE(lcc_link_fs_config, 0, 100, &lcc_link_fs_cfg_desc);
 
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
 const struct device *const can_usb_dev = DEVICE_DT_GET(DT_NODELABEL(cdc_acm_can));
@@ -205,8 +215,7 @@ static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_byte
 }
 
 static int do_usb_init(){
-	int ret = 0;
-	const struct gpio_dt_spec status_led = GPIO_DT_SPEC_GET(DT_NODELABEL(status_led), gpios);
+	int ret;
 
 	if (!device_is_ready(can_usb_dev)) {
 		printf("CDC ACM device not ready\n");
@@ -218,31 +227,29 @@ static int do_usb_init(){
 		return -1;
 	}
 
-	ret = usb_enable(NULL);
-	while(ret != 0){
-		gpio_pin_set_dt(&status_led, 1);
-		k_msleep(200);
-		gpio_pin_set_dt(&status_led, 0);
-		k_msleep(200);
-	}
+	ret = usbd_add_descriptor(&lcc_link_usbd, &lcc_link_lang);
+	if (ret) return ret;
 
-//	while (true) {
-//		uint32_t dtr = 0U;
-//
-//		uart_line_ctrl_get(console_dev, UART_LINE_CTRL_DTR, &dtr);
-//		if (dtr) {
-//			break;
-//		} else {
-//			/* Give CPU resources to low priority threads. */
-//			k_sleep(K_MSEC(50));
-//		}
-//		gpio_pin_set_dt(&status_led, 1);
-//	}
-//
-//	gpio_pin_set_dt(&status_led, 0);
-//	printf("Console init done\n");
+	ret = usbd_add_descriptor(&lcc_link_usbd, &lcc_link_mfr);
+	if (ret) return ret;
 
-	return 0;
+	ret = usbd_add_descriptor(&lcc_link_usbd, &lcc_link_product);
+	if (ret) return ret;
+
+	ret = usbd_add_configuration(&lcc_link_usbd, USBD_SPEED_FS, &lcc_link_fs_config);
+	if (ret) return ret;
+
+	ret = usbd_register_all_classes(&lcc_link_usbd, USBD_SPEED_FS, 1, NULL);
+	if (ret) return ret;
+
+	usbd_device_set_code_triple(&lcc_link_usbd, USBD_SPEED_FS,
+				    USB_BCC_MISCELLANEOUS, 0x02, 0x01);
+
+	ret = usbd_init(&lcc_link_usbd);
+	if (ret) return ret;
+
+	ret = usbd_enable(&lcc_link_usbd);
+	return ret;
 }
 
 static void splash(){
