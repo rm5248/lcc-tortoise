@@ -110,7 +110,7 @@ int computer_to_can_parse(struct computer_to_can* computer_to_can, struct can_fr
 		computer_to_can->gridconnect_in[computer_to_can->gridconnect_in_pos] = byte;
 		computer_to_can->gridconnect_in_pos++;
 
-		if(computer_to_can->gridconnect_in_pos > sizeof(computer_to_can->gridconnect_in)){
+		if(computer_to_can->gridconnect_in_pos >= sizeof(computer_to_can->gridconnect_in)){
 			computer_to_can->gridconnect_in_pos = 0;
 		}
 

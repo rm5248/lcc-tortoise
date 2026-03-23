@@ -46,6 +46,9 @@ void dcc_to_computer_init(struct dcc_to_computer* dcc, const struct device* comp
 
 void dcc_to_computer_add_packet(struct dcc_to_computer* dcc, const uint8_t* packet_bytes, int len){
 	struct dcc_packet packet = {0};
+	if(len > sizeof(packet.data)){
+		len = sizeof(packet.data);
+	}
 	packet.len = len;
 	memcpy(packet.data, packet_bytes, len);
 
