@@ -13,8 +13,6 @@ struct dcc_to_computer{
 	uint8_t ring_buffer_outgoing[1024];
 	struct ring_buf ringbuf_outgoing;
 	const struct device* computer_uart;
-	k_tid_t process_thread_tid;
-	struct k_thread process_thread_data;
 };
 
 void dcc_to_computer_init(struct dcc_to_computer* dcc, const struct device* computer_uart);

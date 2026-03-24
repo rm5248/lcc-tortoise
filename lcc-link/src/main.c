@@ -65,10 +65,11 @@ K_THREAD_DEFINE(activity_blink, 512, blink_activity_led, NULL, NULL, NULL,
 // it is also used by RR-cirkits
 
 static void irq_handler_can_usb(const struct device *dev, void *user_data){
+	static uint8_t buffer[64];
+
 	while (uart_irq_update(dev) && uart_irq_is_pending(dev)) {
 		if (uart_irq_rx_ready(dev)) {
 				int recv_len, rb_len;
-				uint8_t buffer[64];
 
 				recv_len = uart_fifo_read(dev, buffer, sizeof(buffer));
 				if (recv_len < 0) {
@@ -83,7 +84,6 @@ static void irq_handler_can_usb(const struct device *dev, void *user_data){
 		}
 
 		if (uart_irq_tx_ready(dev)) {
-			uint8_t buffer[64];
 			int rb_len, send_len;
 
 			rb_len = ring_buf_get(&can_to_computer.ringbuf_outgoing, buffer, sizeof(buffer));
@@ -104,10 +104,11 @@ static void irq_handler_can_usb(const struct device *dev, void *user_data){
 }
 
 static void irq_handler_dcc_usb(const struct device *dev, void *user_data){
+	static uint8_t buffer[64];
+
 	while (uart_irq_update(dev) && uart_irq_is_pending(dev)) {
 			if (uart_irq_rx_ready(dev)) {
 					int recv_len, rb_len;
-					uint8_t buffer[64];
 
 					recv_len = uart_fifo_read(dev, buffer, sizeof(buffer));
 					if (recv_len < 0) {
@@ -120,7 +121,6 @@ static void irq_handler_dcc_usb(const struct device *dev, void *user_data){
 
 
 			if (uart_irq_tx_ready(dev)) {
-				uint8_t buffer[64];
 				int rb_len, send_len;
 
 				rb_len = ring_buf_get(&dcc_to_computer.ringbuf_outgoing, buffer, sizeof(buffer));
@@ -283,8 +283,8 @@ static void parse_from_computer(struct computer_to_can* computer_to_can){
 }
 
 static void main_loop(struct computer_to_can* computer_to_can, struct can_to_computer* can_to_computer){
-	struct k_poll_event poll_data[3] = {0};
-	struct k_timer alias_timer;
+	static struct k_poll_event poll_data[3] = {0};
+	static struct k_timer alias_timer;
 
 	k_timer_init(&alias_timer, NULL, NULL);
 	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
@@ -376,12 +376,8 @@ void mem_address_space_write(struct lcc_memory_context *ctx, uint16_t alias,
 	lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
 }
 
-int main(void)
-{
-	int ret;
-	const struct gpio_dt_spec status_led = GPIO_DT_SPEC_GET(DT_NODELABEL(status_led), gpios);
-
-	splash();
+static int enable_status_led(){
+	struct gpio_dt_spec status_led = GPIO_DT_SPEC_GET(DT_NODELABEL(status_led), gpios);
 
 	if (!gpio_is_ready_dt(&status_led)) {
 		return -1;
@@ -391,13 +387,33 @@ int main(void)
 		return -1;
 	}
 
+	return 0;
+}
+
+static void fail_usb(){
+	struct gpio_dt_spec status_led = GPIO_DT_SPEC_GET(DT_NODELABEL(status_led), gpios);
+
+	while(1){
+		gpio_pin_set_dt(&status_led, 1);
+		k_msleep(50);
+		gpio_pin_set_dt(&status_led, 0);
+		k_msleep(250);
+	}
+}
+
+int main(void)
+{
+	int ret;
+
+	splash();
+
+	if(enable_status_led() < 0){
+		printf("unable to enable status LED\n");
+		return -1;
+	}
+
 	if(do_usb_init() < 0){
-		while(1){
-			gpio_pin_set_dt(&status_led, 1);
-			k_msleep(50);
-			gpio_pin_set_dt(&status_led, 0);
-			k_msleep(250);
-		}
+		fail_usb();
 	}
 
 	if (!device_is_ready(can_dev)) {
@@ -438,7 +454,7 @@ int main(void)
 	// need datagram context and memory context in order to support firmware upgrades
 	lcc_datagram_context_new(lcc_ctx);
 	struct lcc_memory_context* mem_ctx = lcc_memory_new(lcc_ctx);
-	const char* cdi = "<cdi></cdi>";
+	static const char* cdi = "<cdi></cdi>";
 	lcc_memory_set_cdi(mem_ctx, cdi, strlen(cdi), 0);
 	lcc_memory_set_memory_functions(mem_ctx,
 	    mem_address_space_information_query,
