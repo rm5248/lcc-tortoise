@@ -10,6 +10,10 @@
 #include <zephyr/sys/ring_buffer.h>
 #include <zephyr/usb/usbd.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/dfu/mcuboot.h>
+#include <zephyr/storage/flash_map.h>
+#include <zephyr/sys/reboot.h>
+#include <zephyr/console/console.h>
 
 #include "lcc-gridconnect.h"
 #include "computer_to_can.h"
@@ -252,8 +256,95 @@ static int do_usb_init(){
 	return ret;
 }
 
+static void reboot(struct lcc_memory_context* ctx){
+	sys_reboot(SYS_REBOOT_COLD);
+}
+
+static void factory_reset(struct lcc_memory_context* ctx){
+}
+
+static uint64_t load_lcc_id(){
+	uint64_t ret = 0;
+	int do_reboot = 0;
+
+	const struct flash_area* lcc_storage_area = NULL;
+	int id = FIXED_PARTITION_ID(lcc_partition);
+
+	if(flash_area_open(id, &lcc_storage_area) < 0){
+		return 1;
+	}
+
+	if(flash_area_read(lcc_storage_area, 0, &ret, sizeof(ret)) < 0){
+		return 1;
+	}
+
+	// Check to see if the first 8 bytes are 0xFF.  If so, we assume the data is uninitialized
+	const uint8_t mem[8] = {
+			0xFF, 0xFF, 0xFF, 0xFF,
+			0xFF, 0xFF, 0xFF, 0xFF
+	};
+	if(memcmp(&ret, mem, 8) == 0){
+		uint64_t new_id = 0;
+		int valid = 0;
+
+		console_getline_init();
+
+		// Do our birthing checks to validate that the outputs and inputs are working
+//		smtc8_birthing();
+
+		while(!valid){
+			printf("LCC ID blank!  Please input lower 2 bytes of LCC ID as a single hex string followed by enter:\n");
+			char id_buffer[32];
+			char* console_data = console_getline();
+			printf("console line: %s\n", console_data);
+			new_id = strtoull(console_data, NULL, 16);
+			new_id = new_id & 0xFFFF;
+			new_id = new_id | (0x02020200ull << 16);
+			lcc_node_id_to_dotted_format(new_id, id_buffer, sizeof(id_buffer));
+
+			printf("New node ID will be %s.  Type 'y'<ENTER> to accept\n", id_buffer);
+			console_data = console_getline();
+			printf("response: %s\n", console_data);
+			if(console_data[0] == 'y'){
+				valid = 1;
+				ret = new_id;
+			}
+		}
+
+		flash_area_write(lcc_storage_area, 0, &ret, sizeof(ret));
+
+		// Do a 'factory reset' to make sure everything is initialized
+		factory_reset(NULL);
+		do_reboot = 1;
+	}
+
+out:
+	flash_area_close(lcc_storage_area);
+
+	if(do_reboot){
+		printf("Birthing complete, rebooting...\n");
+		sys_reboot(SYS_REBOOT_COLD);
+	}
+
+	return ret;
+}
+
 static void splash(){
 	printf("LCC-Link starting up\n");
+	printf("  Version: " CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION "\n");
+
+	struct mcuboot_img_header versions[2];
+	struct mcuboot_img_sem_ver semver[2] = {0};
+
+	if(boot_read_bank_header(FIXED_PARTITION_ID(slot0_partition), &versions[0], sizeof(struct mcuboot_img_header)) == 0){
+	  semver[0] = versions[0].h.v1.sem_ver;
+	}
+	if(boot_read_bank_header(FIXED_PARTITION_ID(slot1_partition), &versions[1], sizeof(struct mcuboot_img_header)) == 0){
+	  semver[1] = versions[1].h.v1.sem_ver;
+	}
+
+	printf("  This slot version: %d.%d.%d\n", semver[0].major, semver[0].minor, semver[0].revision);
+	printf("  Secondary slot version: %d.%d.%d\n", semver[1].major, semver[1].minor, semver[1].revision);
 }
 
 static void init_dcc(){
@@ -353,7 +444,11 @@ static int lcc_write_cb(struct lcc_context*, struct lcc_can_frame* lcc_frame){
 	zephyr_can_frame_tx.flags = CAN_FRAME_IDE;
 	memcpy(zephyr_can_frame_tx.data, lcc_frame->data, 8);
 
+	// Send the frame to the computer
 	can_to_computer_send_frame(&can_to_computer, &zephyr_can_frame_tx);
+
+	// also send it to the bus
+	computer_to_can_tx_frame(&computer_to_can, &zephyr_can_frame_tx);
 
 	return LCC_OK;
 }
@@ -442,13 +537,14 @@ int main(void)
 		return -1;
 	}
 
+	uint64_t lcc_id = load_lcc_id();
 	lcc_context_set_unique_identifer( lcc_ctx,
-			0x020202000000 );
+			lcc_id );
 	lcc_context_set_simple_node_information(lcc_ctx,
 			"Snowball Creek Electronics",
 			"LCC-Link",
-			"R" CONFIG_BOARD_REVISION,
-			"0.1");
+			"R1",
+			CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
 
 	lcc_context_set_write_function(lcc_ctx, lcc_write_cb, 0);
 	// need datagram context and memory context in order to support firmware upgrades

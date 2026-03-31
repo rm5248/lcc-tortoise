@@ -190,5 +190,22 @@ zephyr_udc0: &usb {
 			label = "image-1";
 			reg = <0x0003C000 DT_SIZE_K(192)>;
 		};
+
+		segment_253: partition@6C000 {
+			label = "dcc_config";
+			reg = <0x0006C000 DT_SIZE_K(2)>;
+		};
+		segment_251: partition@6C800 {
+			label = "node_info";
+			reg = <0x0006C800 DT_SIZE_K(2)>;
+		};
+
+		/*
+		 * 2k for LCC ID data
+		 */
+		lcc_partition: partition@7F000 {
+			label = "lcc-partition";
+			reg = <0x0007F000 DT_SIZE_K(2)>;
+		};
 	};
 };
