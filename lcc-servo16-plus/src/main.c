@@ -16,6 +16,7 @@
 #include <zephyr/sys/reboot.h>
 #include <zephyr/console/console.h>
 #include <zephyr/dfu/mcuboot.h>
+#include <zephyr/drivers/uart.h>
 
 #include "firmware_upgrade.h"
 #include "lcc.h"
@@ -47,6 +48,8 @@ struct k_thread tx_thread_data;
 k_tid_t tx_thread_tid;
 CAN_MSGQ_DEFINE(rx_msgq, 55);
 CAN_MSGQ_DEFINE(tx_msgq, 12);
+
+K_MSGQ_DEFINE(button_msgq, sizeof(uint8_t), 10, 1);
 
 static void blink_led_green();
 K_THREAD_DEFINE(green_blink, 512, blink_led_green, NULL, NULL, NULL,
@@ -233,10 +236,30 @@ out:
 	return ret;
 }
 
+static void parse_button(uint8_t* button){
+	if(button[0] != (~button[1])){
+		printf("bytes are not complements: ignore\n");
+		return;
+	}
+
+	int button_up = button[0] & (0x01 << 7);
+	int button_number = button[0] & 0x0F;
+
+	printf("Button number %d is: %s\n", button_number, button_up ? "up" : "down");
+}
+
 static void main_loop(){
-	struct k_poll_event poll_data[2];
+	enum btn_parse_state{
+		BUTTON_BYTE0,
+		BUTTON_BYTE1
+	};
+
+	struct k_poll_event poll_data[3];
 	struct k_timer alias_timer;
 	struct can_frame rx_frame;
+	uint8_t button_bytes[2];
+	enum btn_parse_state button_parse_state = BUTTON_BYTE0;
+	struct k_timer button_clear_timer;
 
 	k_poll_event_init(&poll_data[0],
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
@@ -246,12 +269,23 @@ static void main_loop(){
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
 			K_POLL_MODE_NOTIFY_ONLY,
 			&servo16_state.dcc_decoder_stm32.readings);
+	k_poll_event_init(&poll_data[2],
+			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
+			K_POLL_MODE_NOTIFY_ONLY,
+			&button_msgq);
 
 	k_timer_init(&alias_timer, NULL, NULL);
 	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
+	k_timer_init(&button_clear_timer, NULL, NULL);
 
 	while (1) {
 		int rc = k_poll(poll_data, ARRAY_SIZE(poll_data), K_MSEC(250));
+
+		if(k_timer_status_get(&button_clear_timer) > 0){
+			// Timer expired, clear out our parsing state for the button
+			button_parse_state = BUTTON_BYTE0;
+		}
+
 		if(poll_data[0].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
 			// Receive a CAN frame if there is any
 			while(k_msgq_get(&rx_msgq, &rx_frame, K_NO_WAIT) == 0){
@@ -271,6 +305,21 @@ static void main_loop(){
 				}
 			}
 			poll_data[1].state = K_POLL_STATE_NOT_READY;
+		}else if(poll_data[2].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
+			uint8_t byte;
+			while(k_msgq_get(&button_msgq, &byte, K_NO_WAIT) == 0){
+				if(button_parse_state == BUTTON_BYTE0){
+					button_bytes[0] = byte;
+					button_parse_state = BUTTON_BYTE1;
+				}else{
+					button_bytes[1] = byte;
+					parse_button(button_bytes);
+					button_parse_state = BUTTON_BYTE0;
+				}
+
+				k_timer_start(&button_clear_timer, K_MSEC(500), K_NO_WAIT);
+				poll_data[2].state = K_POLL_STATE_NOT_READY;
+			}
 		}
 
 		if(k_timer_status_get(&alias_timer) > 0 &&
@@ -527,6 +576,35 @@ static void enable_powersupplies(){
 	gpio_pin_set_dt(&i2c_enable_gpio, 1);
 }
 
+static void uart_irq_handler(const struct device* dev, void* user_data){
+	static uint8_t buffer[8];
+
+	while(uart_irq_update(dev) && uart_irq_is_pending(dev)){
+		if(uart_irq_rx_ready(dev)){
+			int recv_len = uart_fifo_read(dev, buffer, sizeof(buffer));
+			if(recv_len < 0){
+				continue;
+			}
+
+			for(int x = 0; x < recv_len; x++){
+				k_msgq_put(&button_msgq, &buffer[x], K_NO_WAIT);
+			}
+		}
+	}
+}
+
+static void initialize_button_board(){
+	const struct device* const button_uart = DEVICE_DT_GET(DT_NODELABEL(usart1));
+
+	if (!device_is_ready(button_uart)) {
+		printf("Button UART not ready\n");
+		return;
+	}
+
+	uart_irq_callback_set(button_uart, uart_irq_handler);
+	uart_irq_rx_enable(button_uart);
+}
+
 int main(void)
 {
 	int ret;
@@ -535,9 +613,10 @@ int main(void)
 	// to make sure that our daughter boards come up
 	// This is probably not needed, but it shouldn't hurt.
 	// This will also give other devices on the network a chance to come up.
-	k_sleep(K_MSEC(300));
+	k_sleep(K_MSEC(500));
 
 	splash();
+	uint64_t lcc_id = load_lcc_id();
 
 	enable_powersupplies();
 
@@ -554,7 +633,6 @@ int main(void)
 
 	init_can_txrx();
 
-	uint64_t lcc_id = load_lcc_id();
 	struct lcc_context* ctx = lcc_context_new();
 	lcc_ctx = ctx;
 	lcc_context_set_unique_identifer( ctx,
@@ -628,6 +706,9 @@ int main(void)
 	dcc_packet_parser_set_accessory_cb(servo16_state.dcc_decoder_stm32.packet_parser, accy_cb);
 
 	powerhandle_init();
+
+	// initialize the button board
+	initialize_button_board();
 
 	// Init button callbacks
 	gpio_init_callback(&gold_button_cb_data, gold_button_pressed, BIT(servo16_state.gold_button.pin));
