@@ -30,6 +30,7 @@
 
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
+#include "lcc-link-config.h"
 
 USBD_DEVICE_DEFINE(lcc_link_usbd,
 		   DEVICE_DT_GET(DT_NODELABEL(zephyr_udc0)),
@@ -55,6 +56,7 @@ static uint32_t last_rx_can_msg = 0;
 static uint32_t last_tx_can_msg = 0;
 struct lcc_context* lcc_ctx = NULL;
 struct dcc_decoder_stm32 dcc_decode_ctx;
+struct lcc_link_config lcc_link_data;
 
 static void blink_status_led();
 static void blink_activity_led();
