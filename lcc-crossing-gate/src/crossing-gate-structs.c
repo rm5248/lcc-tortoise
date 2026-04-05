@@ -20,6 +20,9 @@ int sensor_input_value(struct sensor_input* input){
 
 	if(input->sensor_gpio){
 		val = gpio_pin_get_dt(input->sensor_gpio);
+		if(input->config->polarity == 1){
+			val = !val;
+		}
 		input->is_on = val;
 	}
 
@@ -31,6 +34,9 @@ int sensor_input_raw_value(struct sensor_input* input){
 
 	if(input->sensor_gpio){
 		val = gpio_pin_get_dt(input->sensor_gpio);
+		if(input->config->polarity == 1){
+			val = !val;
+		}
 	}
 
 	return val;
