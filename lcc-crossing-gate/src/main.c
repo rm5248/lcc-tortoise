@@ -566,9 +566,8 @@ static int tx_queue_size_cb(struct lcc_context*){
 }
 
 static void splash(){
-#define VERSION_STR "1.0"
 	printf("LCC Crossing Gate Controller\n");
-	printf("  Version: " VERSION_STR);
+	printf("  Version: " CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
 	printf("  Rev: R" CONFIG_BOARD_REVISION "\n");
 
 	struct mcuboot_img_header versions[2];
@@ -751,7 +750,7 @@ int main(void)
 			"Snowball Creek Electronics",
 			"Crossing Gate Controller",
 			"R" CONFIG_BOARD_REVISION,
-			VERSION_STR);
+			CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
 
 	lcc_context_set_write_function( ctx, lcc_write_cb, tx_queue_size_cb );
 	struct lcc_event_context* evt_ctx = lcc_event_new(ctx);
