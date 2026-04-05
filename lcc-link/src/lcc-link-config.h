@@ -30,6 +30,9 @@ struct node_info_segment {
  */
 struct dcc_decoding_info{
 	uint8_t pass_idle_packets;
+
+	//note: min write size is 8, so make sure we have some data to write
+	uint8_t reserved[7];
 };
 
 struct lcc_link_config{

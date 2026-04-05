@@ -27,6 +27,7 @@ target_sources(app PRIVATE
 	src/computer_to_can.c
 	src/can_to_computer.c
 	src/dcc_to_computer.c
+	src/cdi.h
 	${lcc-sources}
 	../common/partition_utils.c
 	../common/firmware_upgrade.c

@@ -26,8 +26,10 @@
 #include "lcc-common.h"
 #include "lcc-memory.h"
 #include "lcc-datagram.h"
-#include "partition_utils.h"
+#include "lcc-memory-map.h"
+#include "cdi.h"
 
+#include "partition_utils.h"
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
 #include "lcc-link-config.h"
@@ -64,6 +66,38 @@ K_THREAD_DEFINE(status_blink, 512, blink_status_led, NULL, NULL, NULL,
 		7, 0, 0);
 K_THREAD_DEFINE(activity_blink, 512, blink_activity_led, NULL, NULL, NULL,
 		7, 0, 0);
+
+//struct lcc_memory_segment{
+//    uint8_t space;
+//    uint8_t space_flags;
+//    uint32_t low_address;
+//    uint32_t high_address;
+//    void* memory;
+//};
+const struct lcc_memory_segment memory_segments[] = {
+		{
+				.space = 251,
+				.space_flags = 0,
+				.low_address = 0,
+				.high_address = sizeof(struct node_info_segment),
+				.memory = &lcc_link_data.node_info,
+		},
+		{
+				.space = 253,
+				.space_flags = 0,
+				.low_address = 0,
+				.high_address = 1, //sizeof(struct dcc_decoding_info), // <-- min size to write needs to be 8, but we only have 1 byte
+				.memory = &lcc_link_data.dcc_decoding_info,
+		},
+		{
+				.space = 0,
+				.space_flags = 0,
+				.low_address = 0,
+				.high_address = 0,
+				.memory = NULL,
+		}
+};
+static void memory_space_written(struct lcc_memory_map* map, uint8_t space);
 
 // VID:PID
 // 0483:5740
@@ -217,6 +251,15 @@ static void blink_activity_led(){
 static void incoming_dcc(struct dcc_decoder* decoder, const uint8_t* packet_bytes, int len){
 	last_rx_dcc_msg = k_cycle_get_32();
 
+	// Check to see if we should add this packet
+	if(len == 3 && !lcc_link_data.dcc_decoding_info.pass_idle_packets){
+		// if this is an idle packet, drop it
+		const uint8_t idle_packet[] = { 0xFF, 0x00, 0xFF };
+		if(memcmp(packet_bytes, idle_packet, 3) == 0){
+			return;
+		}
+	}
+
 	dcc_to_computer_add_packet(&dcc_to_computer, packet_bytes, len);
 }
 
@@ -263,6 +306,12 @@ static void reboot(struct lcc_memory_context* ctx){
 }
 
 static void factory_reset(struct lcc_memory_context* ctx){
+	memset(&lcc_link_data.dcc_decoding_info, 0, sizeof(lcc_link_data.dcc_decoding_info));
+	memset(&lcc_link_data.node_info, 0, sizeof(lcc_link_data.node_info));
+
+	lcc_link_data.dcc_decoding_info.pass_idle_packets = 1;
+	memory_space_written(NULL, 251);
+	memory_space_written(NULL, 253);
 }
 
 static uint64_t load_lcc_id(){
@@ -301,7 +350,7 @@ static uint64_t load_lcc_id(){
 			printf("console line: %s\n", console_data);
 			new_id = strtoull(console_data, NULL, 16);
 			new_id = new_id & 0xFFFF;
-			new_id = new_id | (0x02020200ull << 16);
+			new_id = new_id | (0x02020202ull << 16);
 			lcc_node_id_to_dotted_format(new_id, id_buffer, sizeof(id_buffer));
 
 			printf("New node ID will be %s.  Type 'y'<ENTER> to accept\n", id_buffer);
@@ -455,22 +504,86 @@ static int lcc_write_cb(struct lcc_context*, struct lcc_can_frame* lcc_frame){
 	return LCC_OK;
 }
 
-void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space){
-	// This memory space does not exist: return an error
-	printf("%s:%d\n", __FILE__, __LINE__);
-	lcc_memory_respond_information_query(ctx, alias, 0, address_space, 0, 0, 0);
+static void memory_space_written(struct lcc_memory_map*, uint8_t space){
+	const struct flash_area* storage_area = NULL;
+	int id;
+	void* ram_location;
+	uint32_t size;
+	int ret = 0;
+
+	if(space == 253){
+		id = FIXED_PARTITION_ID(segment_253);
+		ram_location = memory_segments[1].memory;
+		size = 8; // memory_segments[1].high_address; // need to write at least 8 bytes
+	}else if(space == 251){
+		id = FIXED_PARTITION_ID(segment_251);
+		ram_location = memory_segments[0].memory;
+		size = memory_segments[0].high_address;
+	}else{
+		printf("Memory space %d written to, but no such space defined\n", space);
+		return;
+	}
+
+	if(flash_area_open(id, &storage_area) < 0){
+		return;
+	}
+
+	ret = flash_area_erase(storage_area, 0, storage_area->fa_size);
+	if(ret){
+		goto out;
+	}
+
+	ret = flash_area_write(storage_area, 0, ram_location, size);
+
+out:
+	if(ret){
+		printf("Unable to save space %d to flash(reason: %d)\n", space, ret);
+	}
+	flash_area_close(storage_area);
 }
 
-void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, uint8_t read_count){
-	printf("%s:%d\n", __FILE__, __LINE__);
-	lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
+static int load_global_config(){
+	const struct flash_area* storage_area = NULL;
+	int id = FIXED_PARTITION_ID(segment_253);
+	int ret = 0;
+
+	if(flash_area_open(id, &storage_area) < 0){
+		return 1;
+	}
+
+	if(flash_area_read(storage_area, 0, &lcc_link_data.dcc_decoding_info, sizeof(struct dcc_decoding_info)) < 0){
+		ret = 1;
+	}
+
+out:
+	flash_area_close(storage_area);
+	if(ret){
+		printf("Unable to load global config\n");
+	}
+
+	return ret;
 }
 
-void mem_address_space_write(struct lcc_memory_context *ctx, uint16_t alias,
-		uint8_t address_space, uint32_t starting_address, void *data,
-		int data_len) {
-	printf("%s:%d\n", __FILE__, __LINE__);
-	lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
+static int load_node_info(){
+	const struct flash_area* storage_area = NULL;
+	int id = FIXED_PARTITION_ID(segment_251);
+	int ret = 0;
+
+	if(flash_area_open(id, &storage_area) < 0){
+		return 1;
+	}
+
+	if(flash_area_read(storage_area, 0, &lcc_link_data.node_info, sizeof(struct node_info_segment)) < 0){
+		ret = 1;
+	}
+
+out:
+	flash_area_close(storage_area);
+	if(ret){
+		printf("Unable to load global config\n");
+	}
+
+	return ret;
 }
 
 static int enable_status_led(){
@@ -548,16 +661,17 @@ int main(void)
 			"R1",
 			CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
 
+
 	lcc_context_set_write_function(lcc_ctx, lcc_write_cb, 0);
 	// need datagram context and memory context in order to support firmware upgrades
 	lcc_datagram_context_new(lcc_ctx);
 	struct lcc_memory_context* mem_ctx = lcc_memory_new(lcc_ctx);
-	static const char* cdi = "<cdi></cdi>";
+	struct lcc_memory_map* mem_map = lcc_memory_map_new(mem_ctx, memory_segments);
+	lcc_memory_map_set_written_callback(mem_map, memory_space_written);
+
+	lcc_memory_set_factory_reset_function(mem_ctx, factory_reset);
+	lcc_memory_set_reboot_function(mem_ctx, reboot);
 	lcc_memory_set_cdi(mem_ctx, cdi, strlen(cdi), 0);
-	lcc_memory_set_memory_functions(mem_ctx,
-	    mem_address_space_information_query,
-	    mem_address_space_read,
-	    mem_address_space_write);
 
 	firmware_upgrade_init(lcc_ctx);
 
@@ -566,6 +680,13 @@ int main(void)
 		printf("error: can't gen alias: %d\n", stat);
 		return 0;
 	}
+
+	load_global_config();
+	load_node_info();
+
+	lcc_context_set_simple_node_name_description(lcc_ctx,
+			lcc_link_data.node_info.name,
+			lcc_link_data.node_info.description);
 
 	main_loop(&computer_to_can, &can_to_computer);
 
