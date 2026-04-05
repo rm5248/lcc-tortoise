@@ -454,8 +454,17 @@ static void main_loop(struct computer_to_can* computer_to_can, struct can_to_com
 		}else if(poll_data[1].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
 			// A frame has been received from the CAN bus
 			static struct can_frame rx_frame;
+			static struct lcc_can_frame lcc_rx;
 			while(k_msgq_get(can_to_computer_msgq(can_to_computer), &rx_frame, K_NO_WAIT) == 0){
 				can_to_computer_send_frame(can_to_computer, &rx_frame);
+
+				// also send it to our local processing so we do stuff too
+				memset(&lcc_rx, 0, sizeof(lcc_rx));
+				lcc_rx.can_id = rx_frame.id;
+				lcc_rx.can_len = rx_frame.dlc;
+				memcpy(lcc_rx.data, rx_frame.data, 8);
+
+				lcc_context_incoming_frame(lcc_ctx, &lcc_rx);
 			}
 			poll_data[1].state = K_POLL_STATE_NOT_READY;
 			last_rx_can_msg = k_cycle_get_32();
