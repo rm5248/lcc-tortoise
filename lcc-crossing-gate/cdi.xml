@@ -325,4 +325,24 @@
 			<max>10000</max>
 		</int>
 	</segment>
+
+	<segment space='249'>
+		<name>LED/Servo config</name>
+		<group replication='6'>
+			<int size='1'>
+				<name>Output usage</name>
+				<map>
+					<relation>
+						<property>0</property>
+						<value>LED</value>
+					</relation>
+					<relation>
+						<property>1</property>
+						<value>Servo</value>
+					</relation>
+				</map>
+			</int>
+		</group>
+	</segment>
+
 </cdi>

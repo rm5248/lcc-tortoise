@@ -328,6 +328,24 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 <max>10000</max> \
 </int> \
 </segment> \
+<segment space='249'> \
+<name>LED/Servo config</name> \
+<group replication='6'> \
+<int size='1'> \
+<name>Output usage</name> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>LED</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>Servo</value> \
+</relation> \
+</map> \
+</int> \
+</group> \
+</segment> \
 </cdi>";
 
 #endif /* LCC_CROSSING_GATE_SRC_CDI_H_ */

@@ -260,3 +260,18 @@ void crossing_gate_init(){
 //	crossing_gate_state.crossing_routes[0].sensors[3].sensor_gpio = &crossing_gate_state.inputs[3];
 //	strcpy(crossing_gate_state.crossing_routes[0].config->route_name, "Route 1");
 }
+
+static void init_single_pwm(int idx){
+	int zero_value = 0;
+	if(crossing_gate_state.pwm_config.pwm_configs[idx].polarity == 1){
+		zero_value = 100;
+	}
+
+	led_set_brightness(crossing_gate_state.led_pwm, idx, zero_value);
+}
+
+void crossing_gate_do_pwm_config(){
+	for(int x = 0; x < 6; x++){
+		init_single_pwm(x);
+	}
+}

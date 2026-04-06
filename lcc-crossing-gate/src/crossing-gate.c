@@ -12,13 +12,26 @@
 #include "crossing-gate.h"
 #include "lcc-event.h"
 
+static int real_brightness(int led_idx, int current_brightness){
+	if(crossing_gate_state.pwm_config.pwm_configs[led_idx].polarity == 1){
+		return 100 - current_brightness;
+	}
+	return current_brightness;
+}
+
 static void blink_gates(){
 	k_sleep(K_MSEC(20));
 	int led1_brightness = 0;
 	int led2_brightness = 0;
 	int dir = 0;
+	int real_led1_brightness;
+	int real_led2_brightness;
 
 	while(1){
+		// Take our polarity into account
+		real_led1_brightness = real_brightness(0, led1_brightness);
+		real_led2_brightness = real_brightness(1, led2_brightness);
+
 		if(crossing_gate_state.gate_flash_state == FLASH_OFF &&
 						led1_brightness == 0 &&
 						led2_brightness == 0){
@@ -28,17 +41,17 @@ static void blink_gates(){
 		}else if(crossing_gate_state.gate_flash_state == FLASH_OFF){
 			// Ramp down until everything is off
 			if(led1_brightness){
-				led_set_brightness(crossing_gate_state.led_pwm, 0, led1_brightness);
+				led_set_brightness(crossing_gate_state.led_pwm, 0, real_led1_brightness);
 				led1_brightness--;
 			}
 			if(led2_brightness){
-				led_set_brightness(crossing_gate_state.led_pwm, 1, led2_brightness);
+				led_set_brightness(crossing_gate_state.led_pwm, 1, real_led2_brightness);
 				led2_brightness--;
 			}
 			k_sleep(K_MSEC(2));
 		}else{
-			led_set_brightness(crossing_gate_state.led_pwm, 0, led1_brightness);
-			led_set_brightness(crossing_gate_state.led_pwm, 1, led2_brightness);
+			led_set_brightness(crossing_gate_state.led_pwm, 0, real_led1_brightness);
+			led_set_brightness(crossing_gate_state.led_pwm, 1, real_led2_brightness);
 
 			if(dir){
 				led1_brightness++;

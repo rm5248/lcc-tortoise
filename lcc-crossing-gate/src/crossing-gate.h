@@ -119,6 +119,22 @@ struct general_config_segment {
 _Static_assert(sizeof(struct general_config_segment) == 64);
 #define SIZEOF_GENERAL_CONFIG (4)
 
+
+struct pwm_output_config{
+	uint8_t usage;
+	uint8_t polarity;
+	uint8_t reserved[14];
+};
+_Static_assert(sizeof(struct pwm_output_config) == 16);
+
+/**
+ * PWM configuration - segment 249
+ */
+struct pwm_output_segment {
+	struct pwm_output_config pwm_configs[6];
+};
+_Static_assert(sizeof(struct pwm_output_segment) == 16 * 6);
+
 /**
  * Holds the global instance data for the crossing gate controller
  */
@@ -149,6 +165,8 @@ struct crossing_gate{
 	struct general_events_segment general_events;
 	// Segment 253
 	struct routes_segment routes_config;
+	//Segmetn 249
+	struct pwm_output_segment pwm_config;
 };
 
 extern struct crossing_gate crossing_gate_state;
