@@ -14,7 +14,7 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 <manufacturer>Snowball Creek Electronics</manufacturer> \
 <model>Crossing Gate Controller</model> \
 <hardwareVersion>P2</hardwareVersion> \
-<softwareVersion>1.0</softwareVersion> \
+<softwareVersion>" CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION "</softwareVersion> \
 </identification> \
 <acdi/> \
 <segment space='251'> \
@@ -331,6 +331,7 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 <segment space='249'> \
 <name>LED/Servo config</name> \
 <group replication='6'> \
+<repname>PWM Output</repname> \
 <int size='1'> \
 <name>Output usage</name> \
 <map> \
@@ -344,6 +345,21 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 </relation> \
 </map> \
 </int> \
+<int size='1'> \
+<name>LED Polarity</name> \
+<map> \
+<relation> \
+<property>0</property> \
+<value>PWM to GND</value> \
+</relation> \
+<relation> \
+<property>1</property> \
+<value>PWM to 5v</value> \
+</relation> \
+</map> \
+</int> \
+<!-- align to 16 bytes --> \
+<group offset='14'/> \
 </group> \
 </segment> \
 </cdi>";

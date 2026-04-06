@@ -25,6 +25,7 @@
 #include "lcc-common.h"
 #include "lcc-event.h"
 #include "lcc-memory.h"
+#include "lcc-memory-map.h"
 #include "partition_utils.h"
 
 /*
@@ -51,6 +52,46 @@ static uint32_t last_rx_can_msg = 0;
 const struct gpio_dt_spec blue_led = GPIO_DT_SPEC_GET(DT_NODELABEL(blue_led), gpios);
 const struct gpio_dt_spec gold_led = GPIO_DT_SPEC_GET(DT_NODELABEL(gold_led), gpios);
 const struct gpio_dt_spec green_led = GPIO_DT_SPEC_GET(DT_NODELABEL(green_led), gpios);
+
+const struct lcc_memory_segment memory_segments[] = {
+	{
+		.space = 250,
+		.space_flags = 0,
+		.low_address = 0,
+		// Special case: only expose the visible portion, hiding internal values like base_event_id
+		.high_address = SIZEOF_GENERAL_CONFIG,
+		.memory = &crossing_gate_state.general_config,
+	},
+	{
+		.space = 251,
+		.space_flags = 0,
+		.low_address = 0,
+		.high_address = sizeof(struct node_info_segment),
+		.memory = &crossing_gate_state.node_info,
+	},
+	{
+		.space = 252,
+		.space_flags = 0,
+		.low_address = 0,
+		.high_address = sizeof(struct general_events_segment),
+		.memory = &crossing_gate_state.general_events,
+	},
+	{
+		.space = 253,
+		.space_flags = 0,
+		.low_address = 0,
+		.high_address = sizeof(struct routes_segment),
+		.memory = &crossing_gate_state.routes_config,
+	},
+	{
+		.space = 249,
+		.space_flags = 0,
+		.low_address = 0,
+		.high_address = sizeof(struct pwm_output_segment),
+		.memory = &crossing_gate_state.pwm_config,
+	},
+	{ .space = 0 },
+};
 
 static void blink_led_green(){
 	int x = 0;
@@ -188,185 +229,27 @@ static void init_can_txrx(){
 	}
 }
 
-void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space){
-	if(address_space == 251){
-		lcc_memory_respond_information_query(ctx, alias, 1, address_space, sizeof(crossing_gate_state.node_info), 0, 0);
-	}else if(address_space == 253){
-		lcc_memory_respond_information_query(ctx, alias, 1, address_space, sizeof(crossing_gate_state.routes_config), 0, 0);
-	}else if(address_space == 250){
-		// Special case for general config: ignore the hidden values.
-		lcc_memory_respond_information_query(ctx, alias, 1, address_space, SIZEOF_GENERAL_CONFIG, 0, 0);
-	}else if(address_space == 252){
-		lcc_memory_respond_information_query(ctx, alias, 1, address_space, sizeof(crossing_gate_state.general_events), 0, 0);
-	}else{
-		// This memory space does not exist: return an error
-		lcc_memory_respond_information_query(ctx, alias, 0, address_space, 0, 0, 0);
-	}
-}
-
-void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, uint8_t read_count){
-	if(address_space == 250){
-		uint8_t* buffer = (uint8_t*)&crossing_gate_state.general_config + starting_address;
-		if(starting_address + read_count > SIZEOF_GENERAL_CONFIG){
-			// trying to read too much memory
-			lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
-			return;
-		}
-
-		lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, buffer, read_count);
-	}else if(address_space == 251){
-		uint8_t* buffer = (uint8_t*)&crossing_gate_state.node_info + starting_address;
-		if(starting_address + read_count > sizeof(crossing_gate_state.node_info)){
-			// trying to read too much memory
-			lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
-			return;
-		}
-
-		lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, buffer, read_count);
-	}else if(address_space == 252){
-		uint8_t* buffer = (uint8_t*)&crossing_gate_state.general_events + starting_address;
-		if(starting_address + read_count > sizeof(crossing_gate_state.general_events)){
-			// trying to read too much memory
-			lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
-			return;
-		}
-
-		lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, buffer, read_count);
-	}else if(address_space == 253){
-		uint8_t* buffer = (uint8_t*)&crossing_gate_state.routes_config + starting_address;
-		if(starting_address + read_count > sizeof(crossing_gate_state.routes_config)){
-			printf("trying to read too much space 253\n");
-			// trying to read too much memory
-			lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
-			return;
-		}
-
-		lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, buffer, read_count);
-	}
-}
-
-int save_configs_to_flash(){
-//	int ret = 0;
-//
-//	const struct flash_area* storage_area = NULL;
-//	int id = FIXED_PARTITION_ID(config_partition);
-//
-//	if(flash_area_open(id, &storage_area) < 0){
-//		return 1;
-//	}
-//
-//	ret = flash_area_erase(storage_area, 0, sizeof(lcc_tortoise_state.tortoise_config));
-//	if(ret){
-//		goto out;
-//	}
-//
-//	if(flash_area_write(storage_area, 0, &lcc_tortoise_state.tortoise_config, sizeof(lcc_tortoise_state.tortoise_config)) < 0){
-//		ret = 1;
-//	}
-//
-//out:
-//	flash_area_close(storage_area);
-//	if(ret){
-//		printf("Unable to save configs to flash\n");
-//	}
-//
-//	return ret;
-}
-
-static int save_global_config(){
-//	const struct flash_area* storage_area = NULL;
-//	int id = FIXED_PARTITION_ID(global_partition);
-//	int ret = 0;
-//
-//	if(flash_area_open(id, &storage_area) < 0){
-//		return 1;
-//	}
-//
-//	ret = flash_area_erase(storage_area, 0, sizeof(global_config));
-//	if(ret){
-//		goto out;
-//	}
-//
-//	if(flash_area_write(storage_area, 0, &global_config, sizeof(global_config)) < 0){
-//		ret = 1;
-//	}
-//
-//out:
-//	flash_area_close(storage_area);
-//	if(ret){
-//		printf("Unable to save global config to flash\n");
-//	}
-//
-//	return ret;
-}
-
-void mem_address_space_write(struct lcc_memory_context *ctx, uint16_t alias,
-		uint8_t address_space, uint32_t starting_address, void *data,
-		int data_len) {
-	if (address_space == 250) {
-		if ((starting_address + data_len)
-				> sizeof(crossing_gate_state.general_config)) {
-			lcc_memory_respond_write_reply_fail(ctx, alias, address_space,
-					starting_address, 0, NULL);
-			return;
-		}
-
-		uint8_t *config_raw = &crossing_gate_state.general_config;
-		memcpy(config_raw + starting_address, data, data_len);
+static void memory_space_written(struct lcc_memory_map* map, uint8_t space){
+	if(space == 250){
 		partition_util_save(FIXED_PARTITION_ID(segment_250),
 				&crossing_gate_state.general_config,
 				sizeof(crossing_gate_state.general_config));
-
-		lcc_memory_respond_write_reply_ok(ctx, alias, address_space,
-				starting_address);
-	} else if (address_space == 251) {
-		if ((starting_address + data_len)
-				> sizeof(crossing_gate_state.node_info)) {
-			lcc_memory_respond_write_reply_fail(ctx, alias, address_space,
-					starting_address, 0, NULL);
-			return;
-		}
-
-		uint8_t *config_raw = &crossing_gate_state.node_info;
-		memcpy(config_raw + starting_address, data, data_len);
+	}else if(space == 251){
 		partition_util_save(FIXED_PARTITION_ID(segment_251),
 				&crossing_gate_state.node_info,
 				sizeof(crossing_gate_state.node_info));
-
-		lcc_memory_respond_write_reply_ok(ctx, alias, address_space,
-				starting_address);
-	} else if (address_space == 252) {
-		if ((starting_address + data_len)
-				> sizeof(crossing_gate_state.general_events)) {
-			lcc_memory_respond_write_reply_fail(ctx, alias, address_space,
-					starting_address, 0, NULL);
-			return;
-		}
-
-		uint8_t *config_raw = &crossing_gate_state.general_events;
-		memcpy(config_raw + starting_address, data, data_len);
+	}else if(space == 252){
 		partition_util_save(FIXED_PARTITION_ID(segment_252),
 				&crossing_gate_state.general_events,
 				sizeof(crossing_gate_state.general_events));
-
-		lcc_memory_respond_write_reply_ok(ctx, alias, address_space,
-				starting_address);
-	} else if (address_space == 253) {
-		if ((starting_address + data_len)
-				> sizeof(crossing_gate_state.routes_config)) {
-			lcc_memory_respond_write_reply_fail(ctx, alias, address_space,
-					starting_address, 0, NULL);
-			return;
-		}
-
-		uint8_t *config_raw = &crossing_gate_state.routes_config;
-		memcpy(config_raw + starting_address, data, data_len);
+	}else if(space == 253){
 		partition_util_save(FIXED_PARTITION_ID(segment_253),
 				&crossing_gate_state.routes_config,
 				sizeof(crossing_gate_state.routes_config));
-
-		lcc_memory_respond_write_reply_ok(ctx, alias, address_space,
-				starting_address);
+	}else if(space == 249){
+		partition_util_save(FIXED_PARTITION_ID(segment_249),
+				&crossing_gate_state.pwm_config,
+				sizeof(crossing_gate_state.pwm_config));
 	}
 }
 
@@ -389,6 +272,9 @@ static void factory_reset(struct lcc_memory_context* ctx){
 	partition_util_save(FIXED_PARTITION_ID(segment_250),
 			&crossing_gate_state.general_config,
 			sizeof(crossing_gate_state.general_config));
+	partition_util_save(FIXED_PARTITION_ID(segment_249),
+			&crossing_gate_state.pwm_config,
+			sizeof(crossing_gate_state.pwm_config));
 }
 
 static enum lcc_consumer_state query_consumer_state(struct lcc_context* ctx, uint64_t event_id){
@@ -762,10 +648,8 @@ int main(void)
 	lcc_datagram_context_new(ctx);
 	struct lcc_memory_context* mem_ctx = lcc_memory_new(ctx);
 	lcc_memory_set_cdi(mem_ctx, CDI_XML, sizeof(CDI_XML), 0);
-	lcc_memory_set_memory_functions(mem_ctx,
-	    mem_address_space_information_query,
-	    mem_address_space_read,
-	    mem_address_space_write);
+	struct lcc_memory_map* mem_map = lcc_memory_map_new(mem_ctx, memory_segments);
+	lcc_memory_map_set_written_callback(mem_map, memory_space_written);
 	lcc_memory_set_reboot_function(mem_ctx, reboot);
 	lcc_memory_set_factory_reset_function(mem_ctx, factory_reset);
 

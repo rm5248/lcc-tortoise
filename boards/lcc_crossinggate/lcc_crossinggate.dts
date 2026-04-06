@@ -252,6 +252,11 @@
 			reg = <0x0006F800 DT_SIZE_K(2)>;
 		};
 
+		segment_249: partition@70000 {
+			label = "pwm_config";
+			reg = <0x00070000 DT_SIZE_K(2)>;
+		};
+
 		/*
 		 * 2k for LCC ID data
 		 */

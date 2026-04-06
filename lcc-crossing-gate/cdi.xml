@@ -329,6 +329,7 @@
 	<segment space='249'>
 		<name>LED/Servo config</name>
 		<group replication='6'>
+			<repname>PWM Output</repname>
 			<int size='1'>
 				<name>Output usage</name>
 				<map>
@@ -342,6 +343,21 @@
 					</relation>
 				</map>
 			</int>
+			<int size='1'>
+				<name>LED Polarity</name>
+				<map>
+					<relation>
+						<property>0</property>
+						<value>PWM to GND</value>
+					</relation>
+					<relation>
+						<property>1</property>
+						<value>PWM to 5v</value>
+					</relation>
+				</map>
+			</int>
+			<!-- align to 16 bytes -->
+			<group offset='14'/>
 		</group>
 	</segment>
 

@@ -190,6 +190,9 @@ void crossing_gate_set_default_values(uint64_t base_event_id){
 		}
 	}
 
+	// Segment 249
+	memset(&crossing_gate_state.pwm_config, 0, sizeof(struct pwm_output_segment));
+
 	crossing_gate_state.general_config.base_event_id = base_event_id;
 
 	// Now that we have initialized everything to sane values, set up two routes
