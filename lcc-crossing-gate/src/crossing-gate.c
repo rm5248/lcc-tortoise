@@ -184,6 +184,10 @@ static void crossing_gate_handle_single_route(struct route* route){
 			right_island_input,
 			right_input);
 
+	LOG_DBG("Location: %d reactivation timeout: %d",
+		route->current_train.location,
+		k_timer_status_get(&route->reactivation_timeout));
+
 	// First check to see if this is a new train coming into the route
 	if((left_input || right_input) &&
 			route->current_train.location == LOCATION_UNOCCUPIED &&
