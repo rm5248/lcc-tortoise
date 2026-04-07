@@ -206,9 +206,11 @@ static void crossing_gate_handle_single_route(struct route* route){
 		route->current_train.location = LOCATION_PRE_ISLAND_OCCUPIED;
 		if(left_input){
 			route->current_train.direction = DIRECTION_LTR;
+			route_update_train_seen(route);
 			LOG_INF("Route %s: Incoming train LTR", route->config->route_name);
 		}else{
 			route->current_train.direction = DIRECTION_RTL;
+			route_update_train_seen(route);
 			LOG_INF("Route %s: Incoming train RTL", route->config->route_name);
 		}
 
