@@ -248,9 +248,10 @@ static void crossing_gate_flash(){
 		crossing_gate_state.gate_flash_state = expectedGateFlashState;
 
 		if(crossing_gate_state.gate_flash_state == FLASH_ON){
-			LOG_INF("Flash on");
+			LOG_INF("Tracks occupied: flash on");
 			crossing_gate_lower_arms();
 		}else if(crossing_gate_state.gate_flash_state == FLASH_OFF){
+			LOG_INF("Tracks not occupied: flash off");
 			crossing_gate_raise_arms();
 			led_set_brightness(crossing_gate_state.led_pwm, 0, 0);
 			led_set_brightness(crossing_gate_state.led_pwm, 1, 0);
