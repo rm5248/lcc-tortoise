@@ -16,6 +16,10 @@
 #include <zephyr/sys/reboot.h>
 #include <zephyr/console/console.h>
 #include <zephyr/dfu/mcuboot.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
+
+LOG_MODULE_REGISTER(crossing_gate_main, LOG_LEVEL_DBG);
 
 #include "crossing-gate.h"
 #include "crossing-gate-init.h"
@@ -94,31 +98,43 @@ const struct lcc_memory_segment memory_segments[] = {
 };
 
 static void blink_led_green(){
-	int x = 0;
 	while(1){
-		gpio_pin_set_dt(&green_led, 1);
-		k_sleep(K_MSEC(100));
-		gpio_pin_set_dt(&green_led, 0);
-		k_sleep(K_MSEC(1500));
-
-//		if(x++ % 2){
-//			crossing_gate_raise_arms();
-//		}else{
-//			crossing_gate_lower_arms();
-//		}
+		if(crossing_gate_state.config_mode != CONFIG_MODE_NORMAL){
+			// In config mode: stay on, wink off briefly every 3 seconds
+			gpio_pin_set_dt(&green_led, 1);
+			k_sleep(K_MSEC(3000));
+			gpio_pin_set_dt(&green_led, 0);
+			k_sleep(K_MSEC(100));
+		}else{
+			gpio_pin_set_dt(&green_led, 1);
+			k_sleep(K_MSEC(100));
+			gpio_pin_set_dt(&green_led, 0);
+			k_sleep(K_MSEC(1500));
+		}
 	}
 }
 
 static void blink_led_blue(){
 	while(1){
-		uint64_t diff = k_cycle_get_32() - last_rx_can_msg;
+		if(crossing_gate_state.config_mode != CONFIG_MODE_NORMAL){
+			// Blink N times to indicate current config menu option
+			for(int x = 0; x < crossing_gate_state.config_mode; x++){
+				gpio_pin_set_dt(&blue_led, 1);
+				k_sleep(K_MSEC(150));
+				gpio_pin_set_dt(&blue_led, 0);
+				k_sleep(K_MSEC(150));
+			}
+			k_sleep(K_SECONDS(2));
+		}else{
+			uint64_t diff = k_cycle_get_32() - last_rx_can_msg;
 
-		if(k_cyc_to_ms_ceil32(diff) < 25){
-			gpio_pin_set_dt(&blue_led, 1);
-			k_sleep(K_MSEC(50));
-			gpio_pin_set_dt(&blue_led, 0);
+			if(k_cyc_to_ms_ceil32(diff) < 25){
+				gpio_pin_set_dt(&blue_led, 1);
+				k_sleep(K_MSEC(50));
+				gpio_pin_set_dt(&blue_led, 0);
+			}
+			k_sleep(K_MSEC(10));
 		}
-		k_sleep(K_MSEC(10));
 	}
 }
 
@@ -170,18 +186,18 @@ static void can_frame_send_thread(void *unused1, void *unused2, void *unused3)
 		if(k_msgq_get(&tx_msgq, &tx_frame, K_FOREVER) == 0){
 			int err = can_get_state(can_dev, &state, &err_cnt);
 			if(err != 0){
-				printf("Can't get CAN state\n");
+				LOG_ERR("Can't get CAN state");
 				continue;
 			}
 
 			if(state == CAN_STATE_BUS_OFF){
-				printf("CAN bus off, dropping packet\n");
+				LOG_WRN("CAN bus off, dropping packet");
 				continue;
 			}
 
 			int stat = can_send(can_dev, &tx_frame, K_FOREVER, NULL, NULL );
 			if(stat < 0){
-				printf("Unable to send: %d\n", stat);
+				LOG_ERR("Unable to send: %d", stat);
 			}
 
 			last_tx_can_msg = k_cycle_get_32();
@@ -216,7 +232,7 @@ static void init_can_txrx(){
 	int filter_id;
 
 	filter_id = can_add_rx_filter_msgq(can_dev, &rx_msgq, &filter);
-	printf("Filter ID: %d\n", filter_id);
+	LOG_DBG("Filter ID: %d", filter_id);
 
 	tx_thread_tid = k_thread_create(&tx_thread_data,
 				tx_stack,
@@ -225,7 +241,7 @@ static void init_can_txrx(){
 				0, 0,
 				K_NO_WAIT);
 	if (!tx_thread_tid) {
-		printf("ERROR spawning tx thread\n");
+		LOG_ERR("ERROR spawning tx thread");
 	}
 }
 
@@ -369,11 +385,133 @@ out:
 static void blue_button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
+	int value = gpio_pin_get_dt(&crossing_gate_state.blue_button);
+	LOG_DBG("Blue button val: %d", value);
+
+	if(value){
+		crossing_gate_state.blue_button_press = k_cycle_get_32();
+	}else{
+		crossing_gate_state.blue_button_press_diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - crossing_gate_state.blue_button_press);
+		crossing_gate_state.blue_button_press = 0;
+	}
 }
 
 static void gold_button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
+	int value = gpio_pin_get_dt(&crossing_gate_state.gold_button);
+	LOG_DBG("Gold button val: %d", value);
+
+	if(value){
+		crossing_gate_state.gold_button_press = k_cycle_get_32();
+	}else{
+		crossing_gate_state.gold_button_press_diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - crossing_gate_state.gold_button_press);
+		crossing_gate_state.gold_button_press = 0;
+	}
+}
+
+static void wakeup_led_threads(){
+	k_wakeup(blue_blink);
+	k_wakeup(green_blink);
+}
+
+static void handle_button_press(){
+	if(crossing_gate_state.blue_button_press != 0){
+		int diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - crossing_gate_state.blue_button_press);
+
+		// Blue held >5s from normal mode: enter config mode
+		if(crossing_gate_state.config_mode == CONFIG_MODE_NORMAL && diff > 5000){
+			LOG_DBG("Entering config mode");
+			crossing_gate_state.config_mode = CONFIG_MODE_GRIDCONNECT;
+			crossing_gate_state.blue_button_press_diff = 0;
+			crossing_gate_state.gold_button_press_diff = 0;
+			crossing_gate_state.blue_button_press = k_cycle_get_32();
+			wakeup_led_threads();
+		}else if(diff > 2000 && crossing_gate_state.config_mode != CONFIG_MODE_NORMAL){
+			// Blue held >2s from config mode: exit config mode
+			crossing_gate_state.config_mode = CONFIG_MODE_NORMAL;
+			crossing_gate_state.blue_button_press_diff = 0;
+			crossing_gate_state.gold_button_press_diff = 0;
+			wakeup_led_threads();
+			LOG_DBG("Leaving config mode");
+		}
+	}
+
+	if(crossing_gate_state.config_mode == CONFIG_MODE_NORMAL){
+		return;
+	}
+
+	// Blue short press: cycle forward through config menu options
+	if(crossing_gate_state.blue_button_press_diff > 50 &&
+			crossing_gate_state.blue_button_press_diff < 2000){
+		crossing_gate_state.blue_button_press_diff = 0;
+		if(crossing_gate_state.config_mode == CONFIG_MODE_MAX){
+			crossing_gate_state.config_mode = CONFIG_MODE_GRIDCONNECT;
+		}else{
+			LOG_DBG("Go to next config mode");
+			crossing_gate_state.config_mode++;
+		}
+		wakeup_led_threads();
+	}
+
+	// Gold short press: execute current config menu option
+	if(crossing_gate_state.gold_button_press_diff > 50 &&
+			crossing_gate_state.gold_button_press_diff < 1000){
+		crossing_gate_state.gold_button_press_diff = 0;
+		if(crossing_gate_state.config_mode == CONFIG_MODE_GRIDCONNECT){
+			// Toggle gridconnect mode
+			crossing_gate_state.gridconnect_mode = !crossing_gate_state.gridconnect_mode;
+			LOG_INF("Gridconnect mode %s", crossing_gate_state.gridconnect_mode ? "enabled" : "disabled");
+			wakeup_led_threads();
+
+			if(crossing_gate_state.gridconnect_mode){
+				k_thread_suspend(gold_blink);
+				// Wait for the last log messages to be written and then disable the logging backend
+				log_flush();
+//				printf("backend: %p\n", log_backend_get_by_name("log_backend_uart0"));
+//				printf("backend: %p\n", log_backend_get(0));
+				log_backend_disable(log_backend_get(0));
+			}else{
+				k_thread_resume(gold_blink);
+				const struct log_backend* backend = log_backend_get(0);
+				log_backend_enable(backend, backend->cb->ctx, LOG_LEVEL_DBG);
+			}
+			gpio_pin_set_dt(&gold_led, crossing_gate_state.gridconnect_mode);
+		}
+	}else if(crossing_gate_state.gold_button_press &&
+			crossing_gate_state.config_mode == CONFIG_MODE_FACTORY_RESET){
+		// Gold held >2s in factory reset option: perform factory reset
+		int diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - crossing_gate_state.gold_button_press);
+		if(diff > 2000){
+			crossing_gate_state.blue_button_press = 0;
+			crossing_gate_state.gold_button_press = 0;
+
+			k_thread_suspend(blue_blink);
+			k_thread_suspend(gold_blink);
+
+			factory_reset(NULL);
+
+			// Flash alternating LEDs until gold button is released
+			while(1){
+				gpio_pin_set_dt(&blue_led, 1);
+				gpio_pin_set_dt(&gold_led, 0);
+				k_sleep(K_MSEC(100));
+				gpio_pin_set_dt(&blue_led, 0);
+				gpio_pin_set_dt(&gold_led, 1);
+				k_sleep(K_MSEC(100));
+				int gold_value = gpio_pin_get_dt(&crossing_gate_state.gold_button);
+				if(gold_value == 0){
+					break;
+				}
+			}
+
+			crossing_gate_state.config_mode = CONFIG_MODE_NORMAL;
+			gpio_pin_set_dt(&blue_led, 0);
+			gpio_pin_set_dt(&gold_led, 0);
+			k_thread_resume(blue_blink);
+			k_thread_resume(gold_blink);
+		}
+	}
 }
 
 static void main_loop(struct lcc_context* ctx){
@@ -441,9 +579,11 @@ static void main_loop(struct lcc_context* ctx){
 		      // If we were unable to claim our alias, we need to generate a new one and start over
 		      lcc_context_generate_alias(ctx);
 		    }else{
-		      printf("Claimed alias %X\n", lcc_context_alias(ctx) );
+		      LOG_INF("Claimed alias %X", lcc_context_alias(ctx));
 		    }
 		}
+
+		handle_button_press();
 	}
 }
 
@@ -500,12 +640,12 @@ void pwm_foobar(){
 //	const struct device* led_pwm = spec.dev;
 
 	if(!led_pwm){
-		printf("bad led pwm!\n");
+		LOG_ERR("bad led pwm!");
 		return;
 	}
 
 	if(!device_is_ready(led_pwm)){
-		printf("device not ready\n");
+		LOG_ERR("device not ready");
 	}
 
 	led_on(led_pwm, 0);
@@ -607,13 +747,13 @@ int main(void)
 //	do_servo();
 
 	if (!device_is_ready(can_dev)) {
-		printf("CAN: Device %s not ready.\n", can_dev->name);
+		LOG_ERR("CAN: Device %s not ready.", can_dev->name);
 		return 0;
 	}
 
 	ret = can_start(can_dev);
 	if(ret != 0){
-		printf("Can't start CAN\n");
+		LOG_ERR("Can't start CAN");
 		return 0;
 	}
 
@@ -626,7 +766,7 @@ int main(void)
 	struct lcc_context* ctx = lcc_context_new();
 	if(ctx == NULL){
 		// This uses only static data to initialize, so this should never happen.
-		printf("error: unable to initialize! %d\n", __LINE__);
+		LOG_ERR("unable to initialize! %d", __LINE__);
 		return -1;
 	}
 	crossing_gate_state.lcc_ctx = ctx;
@@ -657,15 +797,15 @@ int main(void)
 
 	int stat = lcc_context_generate_alias( ctx );
 	if(stat < 0){
-		printf("error: can't gen alias: %d\n", stat);
+		LOG_ERR("can't gen alias: %d", stat);
 		return 0;
 	}
 
-	// Init our callbacks
-//	gpio_init_callback(&gold_button_cb_data, gold_button_pressed, BIT(lcc_tortoise_state.gold_button.pin));
-//	gpio_add_callback(lcc_tortoise_state.gold_button.port, &gold_button_cb_data);
-//	gpio_init_callback(&blue_button_cb_data, blue_button_pressed, BIT(lcc_tortoise_state.blue_button.pin));
-//	gpio_add_callback(lcc_tortoise_state.blue_button.port, &blue_button_cb_data);
+	// Init button callbacks
+	gpio_init_callback(&blue_button_cb_data, blue_button_pressed, BIT(crossing_gate_state.blue_button.pin));
+	gpio_add_callback(crossing_gate_state.blue_button.port, &blue_button_cb_data);
+	gpio_init_callback(&gold_button_cb_data, gold_button_pressed, BIT(crossing_gate_state.gold_button.pin));
+	gpio_add_callback(crossing_gate_state.gold_button.port, &gold_button_cb_data);
 
 	main_loop(ctx);
 

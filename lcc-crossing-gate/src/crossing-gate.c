@@ -8,9 +8,12 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/drivers/led.h>
 #include <zephyr/drivers/pwm.h>
+#include <zephyr/logging/log.h>
 
 #include "crossing-gate.h"
 #include "lcc-event.h"
+
+LOG_MODULE_REGISTER(crossing_gate, LOG_LEVEL_DBG);
 
 static int real_brightness(int led_idx, int current_brightness){
 	if(crossing_gate_state.pwm_config.pwm_configs[led_idx].polarity == 1){
@@ -96,25 +99,25 @@ static void handle_route_ltr(struct route* route, int left_input, int left_islan
 			route->current_train.location == LOCATION_PRE_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED_INCOMING;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("Route %s: Island occupied incoming\n", route->config->route_name);
+		LOG_INF("Route %s: Island occupied incoming", route->config->route_name);
 	}else if(right_island_input == 1 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("Route %s: island occupied\n", route->config->route_name);
+		LOG_INF("Route %s: island occupied", route->config->route_name);
 	}else if(right_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("Route %s: post island occupied incoming\n", route->config->route_name);
+		LOG_INF("Route %s: post island occupied incoming", route->config->route_name);
 	}else if(right_input == 1 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("Route %s: post island occupied\n", route->config->route_name);
+		LOG_INF("Route %s: post island occupied", route->config->route_name);
 	}else if(right_input == 0 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED){
-		printf("Route %s: train out LTR\n", route->config->route_name);
+		LOG_INF("Route %s: train out LTR", route->config->route_name);
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
 		k_timer_start(&route->reactivation_timeout, K_MSEC(5000), K_NO_WAIT);
@@ -132,25 +135,25 @@ static void handle_route_rtl(struct route* route, int left_input, int left_islan
 			route->current_train.location == LOCATION_PRE_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED_INCOMING;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("Route %s: Island occupied incoming\n", route->config->route_name);
+		LOG_INF("Route %s: Island occupied incoming", route->config->route_name);
 	}else if(left_island_input == 1 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("Route %s: island occupied\n", route->config->route_name);
+		LOG_INF("Route %s: island occupied", route->config->route_name);
 	}else if(left_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("Route %s: post island occupied incoming\n", route->config->route_name);
+		LOG_INF("Route %s: post island occupied incoming", route->config->route_name);
 	}else if(left_input == 1 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED;
 		route->current_train.last_seen_millis = k_uptime_get();
-		printf("Route %s: post island occupied\n", route->config->route_name);
+		LOG_INF("Route %s: post island occupied", route->config->route_name);
 	}else if(left_input == 0 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED){
-		printf("Route %s: train out RTL\n", route->config->route_name);
+		LOG_INF("Route %s: train out RTL", route->config->route_name);
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
 		k_timer_start(&route->reactivation_timeout, K_MSEC(5000), K_NO_WAIT);
@@ -169,7 +172,7 @@ static void crossing_gate_handle_single_route(struct route* route){
 //	unsigned long millis_diff = k_uptime_get() - route->current_train.last_seen_millis;
 //	unsigned long time_since_route_clear = k_uptime_get() - route->time_cleared_ms;
 
-	printf("Route %s: left: %d left island: %d right island: %d right: %d\n",
+	LOG_INF("Route %s: left: %d left island: %d right island: %d right: %d",
 			route->config->route_name,
 			left_input,
 			left_island_input,
@@ -198,10 +201,10 @@ static void crossing_gate_handle_single_route(struct route* route){
 		route->current_train.location = LOCATION_PRE_ISLAND_OCCUPIED;
 		if(left_input){
 			route->current_train.direction = DIRECTION_LTR;
-			printf("Route %s: Incoming train LTR\n", route->config->route_name);
+			LOG_INF("Route %s: Incoming train LTR", route->config->route_name);
 		}else{
 			route->current_train.direction = DIRECTION_RTL;
-			printf("Route %s: Incoming train RTL\n", route->config->route_name);
+			LOG_INF("Route %s: Incoming train RTL", route->config->route_name);
 		}
 
 		k_timer_start(&route->timeout, K_MSEC(15000), K_NO_WAIT);
@@ -246,7 +249,7 @@ static void crossing_gate_flash(){
 		crossing_gate_state.gate_flash_state = expectedGateFlashState;
 
 		if(crossing_gate_state.gate_flash_state == FLASH_ON){
-			printf("Flash on\n");
+			LOG_INF("Flash on");
 			crossing_gate_lower_arms();
 		}else if(crossing_gate_state.gate_flash_state == FLASH_OFF){
 			crossing_gate_raise_arms();
@@ -304,14 +307,14 @@ void crossing_gate_timer_expired(struct k_timer* timer_id){
 	}
 
 	if(route == NULL){
-		printf("Unable to find route for timer??\n");
+		LOG_ERR("Unable to find route for timer??");
 		return;
 	}
 
 	k_timer_stop(timer_id);
 
 	if(route->current_train.location != LOCATION_UNOCCUPIED){
-		printf("Route %s: timeout\n", route->config->route_name);
+		LOG_WRN("Route %s: timeout", route->config->route_name);
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
 		k_timer_start(&route->reactivation_timeout, K_MSEC(5000), K_NO_WAIT);

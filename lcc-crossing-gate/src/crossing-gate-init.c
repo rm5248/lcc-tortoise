@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <zephyr/kernel.h>
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/led.h>
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/storage/flash_map.h>
@@ -20,6 +21,9 @@
 struct crossing_gate crossing_gate_state = {
 		.gate_flash_state = FLASH_OFF,
 		.timeout_millis = 25000,
+		.blue_button = GPIO_DT_SPEC_GET(DT_NODELABEL(blue_switch), gpios),
+		.gold_button = GPIO_DT_SPEC_GET(DT_NODELABEL(gold_switch), gpios),
+		.config_mode = CONFIG_MODE_NORMAL,
 //		.crossing_routes = {0},
 		.inputs = {
 				GPIO_DT_SPEC_GET(DT_NODELABEL(in0), gpios),
@@ -78,6 +82,14 @@ static void input_change(const struct device *dev, struct gpio_callback *cb,
 	}
 
 	k_msgq_put(&crossing_gate_state.pin_change_msgq, &real_pin, K_NO_WAIT);
+}
+
+static void init_button(const struct gpio_dt_spec* button){
+	if (!gpio_is_ready_dt(button)) {
+		return;
+	}
+	gpio_pin_configure_dt(button, GPIO_INPUT);
+	gpio_pin_interrupt_configure_dt(button, GPIO_INT_EDGE_BOTH);
 }
 
 static void init_input(const struct gpio_dt_spec* in, struct gpio_callback* cb_data){
@@ -144,6 +156,9 @@ void crossing_gate_load_config(){
 	partition_util_load(FIXED_PARTITION_ID(segment_250),
 			&crossing_gate_state.general_config,
 			sizeof(crossing_gate_state.general_config));
+	partition_util_load(FIXED_PARTITION_ID(segment_249),
+			&crossing_gate_state.pwm_config,
+			sizeof(crossing_gate_state.pwm_config));
 
 	// Now that we have loaded the config, we need to update our data structures in RAM so
 	// that they are pointed at the correct things
@@ -238,6 +253,9 @@ void crossing_gate_init(){
 	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.inputs); x++){
 		init_input(&crossing_gate_state.inputs[x], &cb_data[x]);
 	}
+
+	init_button(&crossing_gate_state.blue_button);
+	init_button(&crossing_gate_state.gold_button);
 
 	for(int x = 0; x < 2; x++){
 		init_tortoise(&crossing_gate_state.tortoise_control[x]);

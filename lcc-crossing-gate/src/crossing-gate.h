@@ -15,6 +15,13 @@
 
 #define NUM_ROUTES 16
 
+enum ConfigMode {
+	CONFIG_MODE_NORMAL = 0,
+	CONFIG_MODE_GRIDCONNECT = 1,
+	CONFIG_MODE_FACTORY_RESET = 2,
+	CONFIG_MODE_MAX = 2,
+};
+
 enum GateFlashState{
 	FLASH_OFF,
 	FLASH_ON,
@@ -153,6 +160,18 @@ struct crossing_gate{
 	const struct device* led_pwm;
 
 	const struct gpio_dt_spec tortoise_power;
+
+	// Buttons
+	const struct gpio_dt_spec blue_button;
+	const struct gpio_dt_spec gold_button;
+
+	// Button press tracking
+	uint32_t blue_button_press;
+	uint32_t blue_button_press_diff;
+	uint32_t gold_button_press;
+	uint32_t gold_button_press_diff;
+	enum ConfigMode config_mode;
+	uint8_t gridconnect_mode;
 
 	int pin_changemsgq_buffer[10];
 	struct k_msgq pin_change_msgq;
