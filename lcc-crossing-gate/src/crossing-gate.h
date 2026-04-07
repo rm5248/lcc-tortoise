@@ -147,7 +147,6 @@ _Static_assert(sizeof(struct pwm_output_segment) == 16 * 6);
  */
 struct crossing_gate{
 	enum GateFlashState gate_flash_state;
-	unsigned long timeout_millis;
 	struct route crossing_routes[NUM_ROUTES];
 	struct lcc_context* lcc_ctx;
 

@@ -88,6 +88,11 @@ static void blink_gates(){
 K_THREAD_DEFINE(gate_blink, 512, blink_gates, NULL, NULL, NULL,
 		7, 0, 0);
 
+static void route_update_train_seen(struct route* route){
+	LOG_DBG("Route %s: updating train seen.  Timeout ms: %d", route->config->route_name, crossing_gate_state.general_config.timeout * 1000);
+	k_timer_start(&route->timeout, K_MSEC(crossing_gate_state.general_config.timeout * 1000), K_NO_WAIT);
+}
+
 static void handle_route_ltr(struct route* route, int left_input, int left_island_input, int right_island_input, int right_input){
 	unsigned long time_since_last_change = k_uptime_get() - route->current_train.last_seen_millis;
 	if(time_since_last_change < 500){
@@ -98,22 +103,22 @@ static void handle_route_ltr(struct route* route, int left_input, int left_islan
 	if(left_island_input == 1 &&
 			route->current_train.location == LOCATION_PRE_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED_INCOMING;
-		k_timer_start(&route->timeout, K_MSEC(crossing_gate_state.timeout_millis), K_NO_WAIT);
+		route_update_train_seen(route);
 		LOG_INF("Route %s: Island occupied incoming", route->config->route_name);
 	}else if(right_island_input == 1 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
-		k_timer_start(&route->timeout, K_MSEC(crossing_gate_state.timeout_millis), K_NO_WAIT);
+		route_update_train_seen(route);
 		LOG_INF("Route %s: island occupied", route->config->route_name);
 	}else if(right_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
-		k_timer_start(&route->timeout, K_MSEC(crossing_gate_state.timeout_millis), K_NO_WAIT);
+		route_update_train_seen(route);
 		LOG_INF("Route %s: post island occupied incoming", route->config->route_name);
 	}else if(right_input == 1 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED;
-		k_timer_start(&route->timeout, K_MSEC(crossing_gate_state.timeout_millis), K_NO_WAIT);
+		route_update_train_seen(route);
 		LOG_INF("Route %s: post island occupied", route->config->route_name);
 	}else if(right_input == 0 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED){
@@ -134,22 +139,22 @@ static void handle_route_rtl(struct route* route, int left_input, int left_islan
 	if(right_island_input == 1 &&
 			route->current_train.location == LOCATION_PRE_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED_INCOMING;
-		k_timer_start(&route->timeout, K_MSEC(crossing_gate_state.timeout_millis), K_NO_WAIT);
+		route_update_train_seen(route);
 		LOG_INF("Route %s: Island occupied incoming", route->config->route_name);
 	}else if(left_island_input == 1 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
-		k_timer_start(&route->timeout, K_MSEC(crossing_gate_state.timeout_millis), K_NO_WAIT);
+		route_update_train_seen(route);
 		LOG_INF("Route %s: island occupied", route->config->route_name);
 	}else if(left_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
-		k_timer_start(&route->timeout, K_MSEC(crossing_gate_state.timeout_millis), K_NO_WAIT);
+		route_update_train_seen(route);
 		LOG_INF("Route %s: post island occupied incoming", route->config->route_name);
 	}else if(left_input == 1 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED;
-		k_timer_start(&route->timeout, K_MSEC(crossing_gate_state.timeout_millis), K_NO_WAIT);
+		route_update_train_seen(route);
 		LOG_INF("Route %s: post island occupied", route->config->route_name);
 	}else if(left_input == 0 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED){

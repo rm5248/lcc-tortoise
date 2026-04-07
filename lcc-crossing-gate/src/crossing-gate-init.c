@@ -20,7 +20,6 @@
 // The global singleton instance
 struct crossing_gate crossing_gate_state = {
 		.gate_flash_state = FLASH_OFF,
-		.timeout_millis = 25000,
 		.blue_button = GPIO_DT_SPEC_GET(DT_NODELABEL(blue_switch), gpios),
 		.gold_button = GPIO_DT_SPEC_GET(DT_NODELABEL(gold_switch), gpios),
 		.config_mode = CONFIG_MODE_NORMAL,
