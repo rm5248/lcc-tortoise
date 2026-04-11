@@ -30,6 +30,7 @@ target_sources(app PRIVATE
 	${lcc-sources}
 	../common/firmware_upgrade.c
 	../common/partition_utils.c
+	../common/configuration_flusher.c
 )
 target_include_directories(app PRIVATE
 	${TRAINUTILS_DIR}/LCC

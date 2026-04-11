@@ -12,6 +12,7 @@
 #include <assert.h>
 
 #include "crossing-gate-structs.h"
+#include "configuration_flusher.h"
 
 #define NUM_ROUTES 16
 
@@ -185,6 +186,8 @@ struct crossing_gate{
 	struct routes_segment routes_config;
 	//Segmetn 249
 	struct pwm_output_segment pwm_config;
+
+	struct configuration_flusher config_flusher;
 };
 
 extern struct crossing_gate crossing_gate_state;

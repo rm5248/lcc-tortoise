@@ -246,6 +246,11 @@ static void init_can_txrx(){
 }
 
 static void memory_space_written(struct lcc_memory_map* map, uint8_t space){
+	configuration_flusher_set_dirty(&crossing_gate_state.config_flusher, space);
+}
+
+static void write_dirty_segment(int space){
+	LOG_INF("Writing dirty segment %d", space);
 	if(space == 250){
 		partition_util_save(FIXED_PARTITION_ID(segment_250),
 				&crossing_gate_state.general_config,
@@ -270,6 +275,7 @@ static void memory_space_written(struct lcc_memory_map* map, uint8_t space){
 }
 
 static void reboot(struct lcc_memory_context* ctx){
+	configuration_flusher_force_write_if_dirty(&crossing_gate_state.config_flusher);
 	sys_reboot(SYS_REBOOT_COLD);
 }
 
@@ -794,6 +800,9 @@ int main(void)
 	lcc_memory_set_factory_reset_function(mem_ctx, factory_reset);
 
 	firmware_upgrade_init(ctx);
+
+	configuration_flusher_init(&crossing_gate_state.config_flusher, memory_segments, ARRAY_SIZE(memory_segments));
+	configuration_flusher_set_write_callback(&crossing_gate_state.config_flusher, write_dirty_segment);
 
 	int stat = lcc_context_generate_alias( ctx );
 	if(stat < 0){
