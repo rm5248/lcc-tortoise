@@ -44,13 +44,13 @@ static void blink_gates(){
 		}else if(crossing_gate_state.gate_flash_state == FLASH_OFF){
 			// Ramp down until everything is off
 			if(led1_brightness){
-				led_set_brightness(crossing_gate_state.led_pwm, 0, real_led1_brightness);
 				led1_brightness--;
 			}
 			if(led2_brightness){
-				led_set_brightness(crossing_gate_state.led_pwm, 1, real_led2_brightness);
 				led2_brightness--;
 			}
+			led_set_brightness(crossing_gate_state.led_pwm, 0, real_led1_brightness);
+			led_set_brightness(crossing_gate_state.led_pwm, 1, real_led2_brightness);
 			k_sleep(K_MSEC(2));
 		}else{
 			led_set_brightness(crossing_gate_state.led_pwm, 0, real_led1_brightness);
