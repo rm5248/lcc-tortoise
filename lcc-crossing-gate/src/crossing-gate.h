@@ -172,6 +172,7 @@ struct crossing_gate{
 	uint32_t gold_button_press_diff;
 	enum ConfigMode config_mode;
 	uint8_t gridconnect_mode;
+	struct lcc_gridconnect* gridconnect;
 
 	int pin_changemsgq_buffer[10];
 	struct k_msgq pin_change_msgq;

@@ -11,6 +11,7 @@
 #include <zephyr/drivers/eeprom.h>
 #include <zephyr/drivers/led.h>
 #include <zephyr/drivers/pwm.h>
+#include <zephyr/drivers/uart.h>
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/device.h>
 #include <zephyr/sys/reboot.h>
@@ -30,6 +31,7 @@ LOG_MODULE_REGISTER(crossing_gate_main, LOG_LEVEL_DBG);
 #include "lcc-event.h"
 #include "lcc-memory.h"
 #include "lcc-memory-map.h"
+#include "lcc-gridconnect.h"
 #include "partition_utils.h"
 
 /*
@@ -51,11 +53,22 @@ k_tid_t tx_thread_tid;
 CAN_MSGQ_DEFINE(rx_msgq, 55);
 CAN_MSGQ_DEFINE(tx_msgq, 24);
 
+K_MSGQ_DEFINE(gc_rx_msgq, sizeof(uint8_t), 64, 4);
+
 static uint32_t last_tx_can_msg = 0;
 static uint32_t last_rx_can_msg = 0;
 const struct gpio_dt_spec blue_led = GPIO_DT_SPEC_GET(DT_NODELABEL(blue_led), gpios);
 const struct gpio_dt_spec gold_led = GPIO_DT_SPEC_GET(DT_NODELABEL(gold_led), gpios);
 const struct gpio_dt_spec green_led = GPIO_DT_SPEC_GET(DT_NODELABEL(green_led), gpios);
+const struct device* const uart_dev = DEVICE_DT_GET(DT_NODELABEL(usart3));
+
+#define UART_ASYNC_BUF_SIZE 64
+struct uart_rx_data{
+	uint8_t rx_buf[UART_ASYNC_BUF_SIZE];
+	uint8_t rx_len;
+};
+static struct uart_rx_data uart_rx_buf[2];
+static uint8_t uart_rx_buf_idx;
 
 const struct lcc_memory_segment memory_segments[] = {
 	{
@@ -158,6 +171,10 @@ K_THREAD_DEFINE(blue_blink, 256, blink_led_blue, NULL, NULL, NULL,
 K_THREAD_DEFINE(gold_blink, 256, blink_led_gold, NULL, NULL, NULL,
 		7, 0, 0);
 
+static void handle_console_thread();
+K_THREAD_DEFINE(console_reader, 256, handle_console_thread, NULL, NULL, NULL,
+		7, 0, 0);
+
 char *state_to_str(enum can_state state)
 {
 	switch (state) {
@@ -179,8 +196,11 @@ char *state_to_str(enum can_state state)
 static void can_frame_send_thread(void *unused1, void *unused2, void *unused3)
 {
 	static struct can_frame tx_frame;
+	struct lcc_can_frame lcc_frame = {0};
 	struct can_bus_err_cnt err_cnt = {0, 0};
 	enum can_state state;
+	char serial_tx[32];
+	int stat;
 
 	while(1){
 		if(k_msgq_get(&tx_msgq, &tx_frame, K_FOREVER) == 0){
@@ -192,6 +212,22 @@ static void can_frame_send_thread(void *unused1, void *unused2, void *unused3)
 
 			if(state == CAN_STATE_BUS_OFF){
 				LOG_WRN("CAN bus off, dropping packet");
+				continue;
+			}
+
+			if(crossing_gate_state.gridconnect_mode){
+				// Only send out on the serial port
+				lcc_frame.can_id = tx_frame.id;
+				lcc_frame.can_len = tx_frame.dlc;
+				memcpy(lcc_frame.data, tx_frame.data, 8);
+				stat = lcc_canframe_to_gridconnect(&lcc_frame, serial_tx, sizeof(serial_tx));
+				if(stat < 0){
+					printf("Bad CAN frame\n");
+					continue;
+				}
+				printf("%s\r\n", serial_tx);
+				// Sleep so that the bytes can all be transmitted over the UART
+				k_sleep(K_MSEC(5));
 				continue;
 			}
 
@@ -474,8 +510,6 @@ static void handle_button_press(){
 				k_thread_suspend(gold_blink);
 				// Wait for the last log messages to be written and then disable the logging backend
 				log_flush();
-//				printf("backend: %p\n", log_backend_get_by_name("log_backend_uart0"));
-//				printf("backend: %p\n", log_backend_get(0));
 				log_backend_disable(log_backend_get(0));
 			}else{
 				k_thread_resume(gold_blink);
@@ -520,11 +554,32 @@ static void handle_button_press(){
 	}
 }
 
+static void gridconnect_frame_parsed(struct lcc_gridconnect* gc, struct lcc_can_frame* frame){
+	lcc_context_incoming_frame(lcc_gridconnect_user_data(gc), frame);
+}
+
+static void handle_console_thread(){
+	k_sleep(K_MSEC(500));
+
+
+	while(true){
+		if(!crossing_gate_state.gridconnect_mode){
+			k_sleep(K_MSEC(500));
+			continue;
+		}
+
+//		lcc_gridconnect_incoming_data(crossing_gate_state.gridconnect, console_data, strlen(console_data));
+	}
+}
+
 static void main_loop(struct lcc_context* ctx){
-	struct k_poll_event poll_data[2];
+	struct k_poll_event poll_data[3];
 	struct k_timer alias_timer;
 	struct can_frame rx_frame;
 	struct lcc_can_frame lcc_rx;
+
+	lcc_gridconnect_set_userdata(crossing_gate_state.gridconnect, ctx);
+	lcc_gridconnect_set_frame_parsed(crossing_gate_state.gridconnect, gridconnect_frame_parsed);
 
 	k_poll_event_init(&poll_data[0],
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
@@ -534,6 +589,10 @@ static void main_loop(struct lcc_context* ctx){
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
 			K_POLL_MODE_NOTIFY_ONLY,
 			&crossing_gate_state.pin_change_msgq);
+	k_poll_event_init(&poll_data[2],
+			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
+			K_POLL_MODE_NOTIFY_ONLY,
+			&gc_rx_msgq);
 
 	k_timer_init(&alias_timer, NULL, NULL);
 	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
@@ -543,6 +602,11 @@ static void main_loop(struct lcc_context* ctx){
 		if(poll_data[0].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
 			// Receive a CAN frame if there is any
 			while(k_msgq_get(&rx_msgq, &rx_frame, K_NO_WAIT) == 0){
+				if(crossing_gate_state.gridconnect_mode){
+					// we are in gridconnect mode, drop it like it's hot
+					continue;
+				}
+
 				memset(&lcc_rx, 0, sizeof(lcc_rx));
 				lcc_rx.can_id = rx_frame.id;
 				lcc_rx.can_len = rx_frame.dlc;
@@ -561,17 +625,34 @@ static void main_loop(struct lcc_context* ctx){
 				// generate the correct event ID for this pin changing
 				int val = gpio_pin_get_dt(&crossing_gate_state.inputs[pin]);
 				if(val){
-					struct lcc_event_ctx* evt_ctx = lcc_context_get_event_context(ctx);
+					struct lcc_event_context* evt_ctx = lcc_context_get_event_context(ctx);
 					uint64_t produced_event = __builtin_bswap64(crossing_gate_state.general_events.inputs[pin].BE_input_activated_event);
 					lcc_event_produce_event(evt_ctx, produced_event);
 				}else{
-					struct lcc_event_ctx* evt_ctx = lcc_context_get_event_context(ctx);
+					struct lcc_event_context* evt_ctx = lcc_context_get_event_context(ctx);
 					uint64_t produced_event = __builtin_bswap64(crossing_gate_state.general_events.inputs[pin].BE_input_deactivated_event);
 					lcc_event_produce_event(evt_ctx, produced_event);
 				}
 			}
 
 			crossing_gate_update();
+		}else if(poll_data[2].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
+			uint8_t byte;
+			static char buf[64] = {0};
+			int off = 0;
+
+			while(k_msgq_get(&gc_rx_msgq, &byte, K_NO_WAIT) == 0){
+				buf[off++] = byte;
+				buf[off] = 0;
+//				for(int x = 0; x < uart_rx_buf[queue_ready].rx_len; x++){
+//					printf("%c", uart_rx_buf[queue_ready].rx_buf[x]);
+//				}
+//				lcc_gridconnect_incoming_data(crossing_gate_state.gridconnect, &uart_rx_buf[queue_ready].rx_buf, uart_rx_buf[queue_ready].rx_len);
+			}
+
+			printf("buf: %s\n", buf);
+
+			poll_data[2].state = K_POLL_STATE_NOT_READY;
 		}
 
 		if(k_timer_status_get(&alias_timer) > 0 &&
@@ -735,9 +816,38 @@ void do_servo(){
 #endif
 }
 
+static void uart_async_callback(const struct device *dev,
+				struct uart_event *evt,
+				void *user_data)
+{
+	switch (evt->type) {
+	case UART_RX_RDY:
+		for (size_t i = 0; i < evt->data.rx.len; i++) {
+			uint8_t byte = evt->data.rx.buf[evt->data.rx.offset + i];
+			k_msgq_put(&gc_rx_msgq, &byte, K_NO_WAIT);
+		}
+		break;
+	case UART_RX_BUF_REQUEST:
+		uart_rx_buf_idx = (uart_rx_buf_idx + 1) % 2;
+		uart_rx_buf_rsp(dev, uart_rx_buf[uart_rx_buf_idx].rx_buf,
+				sizeof(uart_rx_buf[uart_rx_buf_idx].rx_buf));
+		break;
+	case UART_RX_BUF_RELEASED:
+		break;
+	case UART_RX_DISABLED:
+		uart_rx_buf_idx = 0;
+		uart_rx_enable(dev, uart_rx_buf[0].rx_buf, sizeof(uart_rx_buf[0].rx_buf), 1000);
+		break;
+	default:
+		break;
+	}
+}
+
 int main(void)
 {
 	int ret;
+
+	k_thread_suspend(console_reader);
 
 	// Sleep for a bit before we start to allow power to become stable.
 	// This is probably not needed, but it shouldn't hurt.
@@ -748,6 +858,11 @@ int main(void)
 	init_led(&green_led);
 	init_led(&blue_led);
 	init_led(&gold_led);
+
+	// debug gridconnect
+	// NOTE: current problem is that we seem to be dropping bytes on receive occasionally.
+//	crossing_gate_state.gridconnect_mode = 1;
+//	log_backend_disable(log_backend_get(0));
 
 //	pwm_foobar();
 //	do_servo();
@@ -816,6 +931,11 @@ int main(void)
 	gpio_init_callback(&gold_button_cb_data, gold_button_pressed, BIT(crossing_gate_state.gold_button.pin));
 	gpio_add_callback(crossing_gate_state.gold_button.port, &gold_button_cb_data);
 
+	uart_rx_buf_idx = 0;
+	uart_callback_set(uart_dev, uart_async_callback, NULL);
+	uart_rx_enable(uart_dev, uart_rx_buf[0].rx_buf, sizeof(uart_rx_buf[0].rx_buf), 1000);
+
+	k_thread_resume(console_reader);
 	main_loop(ctx);
 
 	return 0;

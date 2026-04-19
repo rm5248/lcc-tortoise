@@ -10,6 +10,7 @@
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/pinctrl/stm32-pinctrl.h>
 #include <zephyr/dt-bindings/pinctrl/stm32-pinctrl-common.h>
+#include <zephyr/dt-bindings/dma/stm32_dma.h>
 
 /* CPU: STM32G0B1KE
  * FLASH: 512k
@@ -166,6 +167,18 @@
 	pinctrl-0 = <&usart3_tx_pb8 &usart3_rx_pb9>;
 	pinctrl-names = "default";
 	current-speed = <115200>;
+	status = "okay";
+	/* DMAMUX slot 55 = USART3_TX, slot 54 = USART3_RX (STM32G0B1 RM Table 54) */
+	dmas = <&dma1 1 55 STM32_DMA_PERIPH_TX>,
+	       <&dma1 2 54 STM32_DMA_PERIPH_RX>;
+	dma-names = "tx", "rx";
+};
+
+&dma1 {
+	status = "okay";
+};
+
+&dmamux1 {
 	status = "okay";
 };
 
