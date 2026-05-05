@@ -110,7 +110,7 @@ static void handle_route_ltr(struct route* route, int left_input, int left_islan
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
 		route_update_train_seen(route);
 		LOG_INF("Route %s: island occupied", route->config->route_name);
-	}else if(right_island_input == 0 &&
+	}else if(right_island_input == 0 && left_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
 		route_update_train_seen(route);
@@ -146,7 +146,7 @@ static void handle_route_rtl(struct route* route, int left_input, int left_islan
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
 		route_update_train_seen(route);
 		LOG_INF("Route %s: island occupied", route->config->route_name);
-	}else if(left_island_input == 0 &&
+	}else if(left_island_input == 0 && right_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
 		route_update_train_seen(route);
@@ -225,6 +225,13 @@ static void crossing_gate_handle_single_route(struct route* route){
 		handle_route_rtl(route, left_input, left_island_input, right_island_input, right_input);
 	}else if(route->current_train.direction == DIRECTION_LTR){
 		handle_route_ltr(route, left_input, left_island_input, right_island_input, right_input);
+	}
+
+	// Keep refreshing the timeout while the island is actively occupied so a long
+	// train that spans the crossing doesn't trigger a spurious timeout-based gate raise.
+	if(route->current_train.location == LOCATION_ISLAND_OCCUPIED &&
+			(left_island_input || right_island_input)){
+		route_update_train_seen(route);
 	}
 }
 
