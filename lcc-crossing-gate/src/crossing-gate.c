@@ -286,7 +286,11 @@ void crossing_gate_update(){
 }
 
 void crossing_gate_incoming_event(uint64_t event_id){
-
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.crossing_routes); x++){
+		for(int input = 0; input < ARRAY_SIZE(crossing_gate_state.crossing_routes[x].switch_inputs); input++){
+			switch_input_handle_event(&crossing_gate_state.crossing_routes[x].switch_inputs[input], event_id);
+		}
+	}
 }
 
 void crossing_gate_raise_arms(){
