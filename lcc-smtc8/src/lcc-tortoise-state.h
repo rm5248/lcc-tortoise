@@ -16,14 +16,16 @@
 #include "switch-tracker.h"
 
 struct lcc_context;
+struct lcc_gridconnect;
 struct dcc_decoder;
 struct dcc_packet_parser;
 
-enum ButtonControlState{
-	BUTTON_CONTROL_NORMAL = 0,
-	BUTTON_CONTROL_DCC_ADDR_PROG = 1,
-	BUTTON_CONTROL_FACTORY_RESET = 2,
-	BUTTON_CONTROL_MAX = 2,
+enum ConfigMode{
+	CONFIG_MODE_NORMAL = 0,
+	CONFIG_MODE_DCC_ADDR_PROG = 1,
+	CONFIG_MODE_FACTORY_RESET = 2,
+	CONFIG_MODE_GRIDCONNECT = 3,
+	CONFIG_MODE_MAX = 3,
 };
 
 /**
@@ -53,7 +55,7 @@ struct lcc_tortoise_state{
 	uint32_t gold_button_press;
 	uint32_t gold_button_press_diff;
 	uint8_t allow_new_command;
-	enum ButtonControlState button_control;
+	enum ConfigMode button_control;
 	uint8_t tort_output_current_idx;
 
 	uint8_t save_tortoise_pos_on_shutdown;
@@ -66,6 +68,10 @@ struct lcc_tortoise_state{
 	// should we disable all commands to the outputs?
 	uint8_t disable_outputs_voltage_out_of_range;
 	uint32_t disable_outputs_start_time;
+
+	// Gridconnect mode
+	struct lcc_gridconnect* gridconnect;
+	uint8_t gridconnect_mode;
 };
 
 struct global_config{

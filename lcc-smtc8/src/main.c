@@ -9,11 +9,13 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/can.h>
 #include <zephyr/drivers/eeprom.h>
+#include <zephyr/drivers/uart.h>
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/device.h>
 #include <zephyr/sys/reboot.h>
 #include <zephyr/console/console.h>
 #include <zephyr/dfu/mcuboot.h>
+#include <zephyr/logging/log_ctrl.h>
 #include "dcc-decode-stm32.h"
 
 #include "lcc-tortoise-state.h"
@@ -28,6 +30,7 @@
 #include "lcc-common.h"
 #include "lcc-event.h"
 #include "lcc-memory.h"
+#include "lcc-gridconnect.h"
 
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
@@ -65,9 +68,21 @@ k_tid_t tx_thread_tid;
 CAN_MSGQ_DEFINE(rx_msgq, 55);
 CAN_MSGQ_DEFINE(tx_msgq, 24);
 
+K_MSGQ_DEFINE(gc_rx_msgq, sizeof(uint8_t), 64, 4);
+
+const struct device* const uart_dev = DEVICE_DT_GET(DT_NODELABEL(usart2));
+
+#define UART_ASYNC_BUF_SIZE 64
+struct uart_rx_data{
+	uint8_t rx_buf[UART_ASYNC_BUF_SIZE];
+	uint8_t rx_len;
+};
+static struct uart_rx_data uart_rx_buf[2];
+static uint8_t uart_rx_buf_idx;
+
 static void blink_led_green(){
 	while(1){
-		if(lcc_tortoise_state.button_control != BUTTON_CONTROL_NORMAL){
+		if(lcc_tortoise_state.button_control != CONFIG_MODE_NORMAL){
 			// LED should be on, wink off once every three seconds
 			gpio_pin_set_dt(&lcc_tortoise_state.green_led, 1);
 			k_sleep(K_MSEC(3000));
@@ -100,7 +115,7 @@ static void blink_led_green(){
 static void blink_led_blue(){
 	while(1){
 
-		if(lcc_tortoise_state.button_control != BUTTON_CONTROL_NORMAL){
+		if(lcc_tortoise_state.button_control != CONFIG_MODE_NORMAL){
 			// LED should blink with the mode, waiting two seconds between blinks
 			for(int x = 0; x < lcc_tortoise_state.button_control; x++){
 				gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 1);
@@ -175,8 +190,11 @@ char *state_to_str(enum can_state state)
 static void can_frame_send_thread(void *unused1, void *unused2, void *unused3)
 {
 	static struct can_frame tx_frame;
+	struct lcc_can_frame lcc_frame = {0};
 	struct can_bus_err_cnt err_cnt = {0, 0};
 	enum can_state state;
+	char serial_tx[32];
+	int stat;
 
 	while(1){
 		if(k_msgq_get(&tx_msgq, &tx_frame, K_FOREVER) == 0){
@@ -191,7 +209,21 @@ static void can_frame_send_thread(void *unused1, void *unused2, void *unused3)
 				continue;
 			}
 
-			int stat = can_send(can_dev, &tx_frame, K_FOREVER, NULL, NULL );
+			if(lcc_tortoise_state.gridconnect_mode){
+				lcc_frame.can_id = tx_frame.id;
+				lcc_frame.can_len = tx_frame.dlc;
+				memcpy(lcc_frame.data, tx_frame.data, 8);
+				stat = lcc_canframe_to_gridconnect(&lcc_frame, serial_tx, sizeof(serial_tx));
+				if(stat < 0){
+					printf("Bad CAN frame\n");
+					continue;
+				}
+				printf("%s\r\n", serial_tx);
+				k_sleep(K_MSEC(5));
+				continue;
+			}
+
+			stat = can_send(can_dev, &tx_frame, K_FOREVER, NULL, NULL );
 			if(stat < 0){
 				printf("Unable to send: %d\n", stat);
 			}
@@ -583,7 +615,7 @@ static enum lcc_consumer_state query_consumer_state(struct lcc_context* ctx, uin
 }
 
 static void accy_cb(struct dcc_packet_parser* parser, uint16_t accy_number, enum dcc_accessory_direction accy_dir){
-	if(lcc_tortoise_state.button_control == BUTTON_CONTROL_DCC_ADDR_PROG){
+	if(lcc_tortoise_state.button_control == CONFIG_MODE_DCC_ADDR_PROG){
 		struct tortoise* current_tort = &lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx];
 		struct tortoise_config* config = current_tort->config;
 		int current_accy_number = __builtin_bswap16(config->BE_accessory_number);
@@ -750,13 +782,13 @@ static void handle_button_press(){
 	// First check the blue button for being held down, since that will get us into or out of the configuration mode
 	if(lcc_tortoise_state.blue_button_press != 0 && lcc_tortoise_state.allow_new_command){
 		int diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - lcc_tortoise_state.blue_button_press);
-		if(diff > 5000 && (lcc_tortoise_state.button_control == BUTTON_CONTROL_NORMAL)){
-			lcc_tortoise_state.button_control = BUTTON_CONTROL_DCC_ADDR_PROG;
+		if(diff > 5000 && (lcc_tortoise_state.button_control == CONFIG_MODE_NORMAL)){
+			lcc_tortoise_state.button_control = CONFIG_MODE_DCC_ADDR_PROG;
 			lcc_tortoise_state.tort_output_current_idx = 0;
 			lcc_tortoise_state.allow_new_command = 0;
 			tortoise_disable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
-		}else if(diff > 2000 && (lcc_tortoise_state.button_control != BUTTON_CONTROL_NORMAL)){
-			lcc_tortoise_state.button_control = BUTTON_CONTROL_NORMAL;
+		}else if(diff > 2000 && (lcc_tortoise_state.button_control != CONFIG_MODE_NORMAL)){
+			lcc_tortoise_state.button_control = CONFIG_MODE_NORMAL;
 			lcc_tortoise_state.allow_new_command = 0;
 			tortoise_enable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
 			k_wakeup(blue_blink);
@@ -765,7 +797,7 @@ static void handle_button_press(){
 		}
 	}
 
-	if(lcc_tortoise_state.button_control == BUTTON_CONTROL_NORMAL){
+	if(lcc_tortoise_state.button_control == CONFIG_MODE_NORMAL){
 		// Nothing more to do here, not in configuration mode
 		return;
 	}
@@ -773,12 +805,12 @@ static void handle_button_press(){
 	if(lcc_tortoise_state.blue_button_press_diff > 50 &&
 			lcc_tortoise_state.blue_button_press_diff < 2000){
 		lcc_tortoise_state.blue_button_press_diff = 0;
-		if(lcc_tortoise_state.button_control == BUTTON_CONTROL_MAX){
-			lcc_tortoise_state.button_control = BUTTON_CONTROL_DCC_ADDR_PROG;
+		if(lcc_tortoise_state.button_control == CONFIG_MODE_MAX){
+			lcc_tortoise_state.button_control = CONFIG_MODE_DCC_ADDR_PROG;
 			lcc_tortoise_state.tort_output_current_idx = 0;
 			tortoise_disable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
 		}else{
-			if(lcc_tortoise_state.button_control == BUTTON_CONTROL_DCC_ADDR_PROG){
+			if(lcc_tortoise_state.button_control == CONFIG_MODE_DCC_ADDR_PROG){
 				tortoise_enable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
 			}
 			lcc_tortoise_state.button_control++;
@@ -786,17 +818,31 @@ static void handle_button_press(){
 		k_wakeup(blue_blink);
 	}
 
-	if(lcc_tortoise_state.gold_button_press_diff != 0){
+	if(lcc_tortoise_state.gold_button_press_diff > 50 &&
+			lcc_tortoise_state.gold_button_press_diff < 1000){
 		lcc_tortoise_state.gold_button_press_diff = 0;
-		if(lcc_tortoise_state.button_control == BUTTON_CONTROL_DCC_ADDR_PROG){
+		if(lcc_tortoise_state.button_control == CONFIG_MODE_DCC_ADDR_PROG){
 			tortoise_enable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
 			lcc_tortoise_state.tort_output_current_idx++;
 			if(lcc_tortoise_state.tort_output_current_idx > 7){
 				lcc_tortoise_state.tort_output_current_idx = 0;
 			}
 			tortoise_disable_outputs(&lcc_tortoise_state.tortoises[lcc_tortoise_state.tort_output_current_idx]);
+		}else if(lcc_tortoise_state.button_control == CONFIG_MODE_GRIDCONNECT){
+			lcc_tortoise_state.gridconnect_mode = !lcc_tortoise_state.gridconnect_mode;
+			if(lcc_tortoise_state.gridconnect_mode){
+				k_thread_suspend(gold_blink);
+				log_flush();
+				log_backend_disable(log_backend_get(0));
+				gpio_pin_set_dt(&lcc_tortoise_state.gold_led, 1);
+			}else{
+				gpio_pin_set_dt(&lcc_tortoise_state.gold_led, 0);
+				const struct log_backend* backend = log_backend_get(0);
+				log_backend_enable(backend, backend->cb->ctx, LOG_LEVEL_DBG);
+				k_thread_resume(gold_blink);
+			}
 		}
-	}else if(lcc_tortoise_state.gold_button_press && lcc_tortoise_state.button_control == BUTTON_CONTROL_FACTORY_RESET){
+	}else if(lcc_tortoise_state.gold_button_press && lcc_tortoise_state.button_control == CONFIG_MODE_FACTORY_RESET){
 		int diff = k_cyc_to_ms_ceil32(k_cycle_get_32() - lcc_tortoise_state.gold_button_press);
 		if(diff > 2000){
 			lcc_tortoise_state.blue_button_press = 0;
@@ -820,7 +866,7 @@ static void handle_button_press(){
 				}
 			}
 
-			lcc_tortoise_state.button_control = BUTTON_CONTROL_NORMAL;
+			lcc_tortoise_state.button_control = CONFIG_MODE_NORMAL;
 			lcc_tortoise_state.allow_new_command = 0;
 			gpio_pin_set_dt(&lcc_tortoise_state.blue_led, 0);
 			gpio_pin_set_dt(&lcc_tortoise_state.gold_led, 0);
@@ -913,12 +959,46 @@ static void check_for_turnout_changes(){
 	}
 }
 
+static void uart_async_callback(const struct device *dev,
+				struct uart_event *evt,
+				void *user_data)
+{
+	switch (evt->type) {
+	case UART_RX_RDY:
+		for (size_t i = 0; i < evt->data.rx.len; i++) {
+			uint8_t byte = evt->data.rx.buf[evt->data.rx.offset + i];
+			k_msgq_put(&gc_rx_msgq, &byte, K_NO_WAIT);
+		}
+		break;
+	case UART_RX_BUF_REQUEST:
+		uart_rx_buf_idx = (uart_rx_buf_idx + 1) % 2;
+		uart_rx_buf_rsp(dev, uart_rx_buf[uart_rx_buf_idx].rx_buf,
+				sizeof(uart_rx_buf[uart_rx_buf_idx].rx_buf));
+		break;
+	case UART_RX_BUF_RELEASED:
+		break;
+	case UART_RX_DISABLED:
+		uart_rx_buf_idx = 0;
+		uart_rx_enable(dev, uart_rx_buf[0].rx_buf, sizeof(uart_rx_buf[0].rx_buf), 1000);
+		break;
+	default:
+		break;
+	}
+}
+
+static void gridconnect_frame_parsed(struct lcc_gridconnect* gc, struct lcc_can_frame* frame){
+	lcc_context_incoming_frame(lcc_gridconnect_user_data(gc), frame);
+}
+
 static void main_loop(){
-	struct k_poll_event poll_data[2];
+	struct k_poll_event poll_data[3];
 	struct k_timer alias_timer;
 	struct can_frame rx_frame;
 	struct lcc_context* ctx = lcc_tortoise_state.lcc_context;
 	struct k_timer output_check_timer;
+
+	lcc_gridconnect_set_userdata(lcc_tortoise_state.gridconnect, ctx);
+	lcc_gridconnect_set_frame_parsed(lcc_tortoise_state.gridconnect, gridconnect_frame_parsed);
 
 	k_poll_event_init(&poll_data[0],
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
@@ -928,6 +1008,10 @@ static void main_loop(){
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
 			K_POLL_MODE_NOTIFY_ONLY,
 			&dcc_decode_ctx.readings);
+	k_poll_event_init(&poll_data[2],
+			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
+			K_POLL_MODE_NOTIFY_ONLY,
+			&gc_rx_msgq);
 
 	k_timer_init(&alias_timer, NULL, NULL);
 	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
@@ -939,6 +1023,9 @@ static void main_loop(){
 		if(poll_data[0].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
 			// Receive a CAN frame if there is any
 			while(k_msgq_get(&rx_msgq, &rx_frame, K_NO_WAIT) == 0){
+				if(lcc_tortoise_state.gridconnect_mode){
+					continue;
+				}
 				memset(&lcc_rx, 0, sizeof(lcc_rx));
 				lcc_rx.can_id = rx_frame.id;
 				lcc_rx.can_len = rx_frame.dlc;
@@ -956,6 +1043,12 @@ static void main_loop(){
 				}
 			}
 			poll_data[1].state = K_POLL_STATE_NOT_READY;
+		}else if(poll_data[2].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
+			uint8_t byte;
+			while(k_msgq_get(&gc_rx_msgq, &byte, K_NO_WAIT) == 0){
+				lcc_gridconnect_incoming_data(lcc_tortoise_state.gridconnect, &byte, 1);
+			}
+			poll_data[2].state = K_POLL_STATE_NOT_READY;
 		}
 
 		if(k_timer_status_get(&alias_timer) > 0 &&
@@ -1156,6 +1249,12 @@ int main(void)
 	gpio_add_callback(lcc_tortoise_state.gold_button.port, &gold_button_cb_data);
 	gpio_init_callback(&blue_button_cb_data, blue_button_pressed, BIT(lcc_tortoise_state.blue_button.pin));
 	gpio_add_callback(lcc_tortoise_state.blue_button.port, &blue_button_cb_data);
+
+	lcc_tortoise_state.gridconnect = lcc_gridconnect_new();
+
+	uart_rx_buf_idx = 0;
+	uart_callback_set(uart_dev, uart_async_callback, NULL);
+	uart_rx_enable(uart_dev, uart_rx_buf[0].rx_buf, sizeof(uart_rx_buf[0].rx_buf), 1000);
 
 //	check_eeprom();
 

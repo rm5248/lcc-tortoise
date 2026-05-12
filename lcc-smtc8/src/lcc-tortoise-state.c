@@ -114,7 +114,7 @@ static int init_button(const struct gpio_dt_spec* button){
 
 int lcc_tortoise_state_init(){
 	lcc_tortoise_state.blue_button_press = 0;
-	lcc_tortoise_state.button_control = BUTTON_CONTROL_NORMAL;
+	lcc_tortoise_state.button_control = CONFIG_MODE_NORMAL;
 	lcc_tortoise_state.allow_new_command = 1;
 	lcc_tortoise_state.disable_outputs_voltage_out_of_range = 0;
 
