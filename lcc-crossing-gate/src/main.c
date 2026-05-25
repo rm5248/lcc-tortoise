@@ -53,8 +53,6 @@ k_tid_t tx_thread_tid;
 CAN_MSGQ_DEFINE(rx_msgq, 55);
 CAN_MSGQ_DEFINE(tx_msgq, 24);
 
-K_MSGQ_DEFINE(gc_rx_msgq, sizeof(uint8_t), 64, 4);
-
 static uint32_t last_tx_can_msg = 0;
 static uint32_t last_rx_can_msg = 0;
 const struct gpio_dt_spec blue_led = GPIO_DT_SPEC_GET(DT_NODELABEL(blue_led), gpios);
@@ -65,10 +63,20 @@ const struct device* const uart_dev = DEVICE_DT_GET(DT_NODELABEL(usart3));
 #define UART_ASYNC_BUF_SIZE 64
 struct uart_rx_data{
 	uint8_t rx_buf[UART_ASYNC_BUF_SIZE];
-	uint8_t rx_len;
+	uint8_t in_use;
 };
-static struct uart_rx_data uart_rx_buf[2];
-static uint8_t uart_rx_buf_idx;
+
+struct uart_rx_chunk{
+	uint8_t data[UART_ASYNC_BUF_SIZE];
+	uint8_t len;
+};
+K_MSGQ_DEFINE(gc_rx_msgq, sizeof(struct uart_rx_chunk), 8, 4);
+
+struct uart_dma_info{
+	struct uart_rx_data uart_rx_buf[3];
+};
+
+static struct uart_dma_info uart_dma;
 
 const struct lcc_memory_segment memory_segments[] = {
 	{
@@ -637,20 +645,11 @@ static void main_loop(struct lcc_context* ctx){
 
 			crossing_gate_update();
 		}else if(poll_data[2].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
-			uint8_t byte;
-			static char buf[64] = {0};
-			int off = 0;
+			struct uart_rx_chunk chunk;
 
-			while(k_msgq_get(&gc_rx_msgq, &byte, K_NO_WAIT) == 0){
-				buf[off++] = byte;
-				buf[off] = 0;
-//				for(int x = 0; x < uart_rx_buf[queue_ready].rx_len; x++){
-//					printf("%c", uart_rx_buf[queue_ready].rx_buf[x]);
-//				}
-//				lcc_gridconnect_incoming_data(crossing_gate_state.gridconnect, &uart_rx_buf[queue_ready].rx_buf, uart_rx_buf[queue_ready].rx_len);
+			while(k_msgq_get(&gc_rx_msgq, &chunk, K_NO_WAIT) == 0){
+				lcc_gridconnect_incoming_data(crossing_gate_state.gridconnect, chunk.data, chunk.len);
 			}
-
-			printf("buf: %s\n", buf);
 
 			poll_data[2].state = K_POLL_STATE_NOT_READY;
 		}
@@ -763,7 +762,7 @@ void pwm_foobar(){
 }
 
 void do_servo(){
-#if 0
+#if 1
 	static const struct pwm_dt_spec servo = PWM_DT_SPEC_GET(DT_NODELABEL(servo));
 	static const uint32_t min_pulse = DT_PROP(DT_NODELABEL(servo), min_pulse);
 	static const uint32_t max_pulse = DT_PROP(DT_NODELABEL(servo), max_pulse);
@@ -820,23 +819,41 @@ static void uart_async_callback(const struct device *dev,
 				struct uart_event *evt,
 				void *user_data)
 {
+	struct uart_dma_info* uart_dma = user_data;
+	struct uart_rx_chunk chunk;
+
 	switch (evt->type) {
 	case UART_RX_RDY:
-		for (size_t i = 0; i < evt->data.rx.len; i++) {
-			uint8_t byte = evt->data.rx.buf[evt->data.rx.offset + i];
-			k_msgq_put(&gc_rx_msgq, &byte, K_NO_WAIT);
-		}
+		chunk.len = MIN(evt->data.rx.len, sizeof(chunk.data));
+		memcpy(chunk.data, evt->data.rx.buf + evt->data.rx.offset, chunk.len);
+		k_msgq_put(&gc_rx_msgq, &chunk, K_NO_WAIT);
 		break;
 	case UART_RX_BUF_REQUEST:
-		uart_rx_buf_idx = (uart_rx_buf_idx + 1) % 2;
-		uart_rx_buf_rsp(dev, uart_rx_buf[uart_rx_buf_idx].rx_buf,
-				sizeof(uart_rx_buf[uart_rx_buf_idx].rx_buf));
+		for(int x = 0; x < ARRAY_SIZE(uart_dma->uart_rx_buf); x++){
+			if(uart_dma->uart_rx_buf[x].in_use == 0){
+				uart_dma->uart_rx_buf[x].in_use = 1;
+				uart_rx_buf_rsp(dev, uart_dma->uart_rx_buf[x].rx_buf,
+						sizeof(uart_dma->uart_rx_buf[x].rx_buf));
+				break;
+			}
+		}
 		break;
 	case UART_RX_BUF_RELEASED:
+		for(int x = 0; x < ARRAY_SIZE(uart_dma->uart_rx_buf); x++){
+			if(uart_dma->uart_rx_buf[x].rx_buf == evt->data.rx_buf.buf){
+				uart_dma->uart_rx_buf[x].in_use = 0;
+			}
+		}
 		break;
 	case UART_RX_DISABLED:
-		uart_rx_buf_idx = 0;
-		uart_rx_enable(dev, uart_rx_buf[0].rx_buf, sizeof(uart_rx_buf[0].rx_buf), 1000);
+		for(int x = 0; x < ARRAY_SIZE(uart_dma->uart_rx_buf); x++){
+			if(uart_dma->uart_rx_buf[x].in_use == 0){
+				uart_dma->uart_rx_buf[x].in_use = 1;
+				uart_rx_enable(dev, uart_dma->uart_rx_buf[x].rx_buf,
+						sizeof(uart_dma->uart_rx_buf[x].rx_buf), 1000);
+				break;
+			}
+		}
 		break;
 	default:
 		break;
@@ -858,11 +875,6 @@ int main(void)
 	init_led(&green_led);
 	init_led(&blue_led);
 	init_led(&gold_led);
-
-	// debug gridconnect
-	// NOTE: current problem is that we seem to be dropping bytes on receive occasionally.
-//	crossing_gate_state.gridconnect_mode = 1;
-//	log_backend_disable(log_backend_get(0));
 
 //	pwm_foobar();
 //	do_servo();
@@ -931,9 +943,10 @@ int main(void)
 	gpio_init_callback(&gold_button_cb_data, gold_button_pressed, BIT(crossing_gate_state.gold_button.pin));
 	gpio_add_callback(crossing_gate_state.gold_button.port, &gold_button_cb_data);
 
-	uart_rx_buf_idx = 0;
-	uart_callback_set(uart_dev, uart_async_callback, NULL);
-	uart_rx_enable(uart_dev, uart_rx_buf[0].rx_buf, sizeof(uart_rx_buf[0].rx_buf), 1000);
+	memset(&uart_dma, 0, sizeof(uart_dma));
+	uart_callback_set(uart_dev, uart_async_callback, &uart_dma);
+	uart_dma.uart_rx_buf[0].in_use = 1;
+	uart_rx_enable(uart_dev, uart_dma.uart_rx_buf[0].rx_buf, sizeof(uart_dma.uart_rx_buf[0].rx_buf), 1000);
 
 	k_thread_resume(console_reader);
 	main_loop(ctx);
