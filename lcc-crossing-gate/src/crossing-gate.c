@@ -88,8 +88,33 @@ static void blink_gates(){
 K_THREAD_DEFINE(gate_blink, 512, blink_gates, NULL, NULL, NULL,
 		7, 0, 0);
 
-static void route_update_train_seen(struct route* route){
-	LOG_DBG("Route %s: updating train seen.  Timeout ms: %d", route->config->route_name, crossing_gate_state.general_config.timeout * 1000);
+static void route_update_train_seen(struct route* route, int location){
+	const char* train_location = "unknown";
+	switch(location){
+	case LOCATION_UNOCCUPIED:
+		train_location = "unoccupied";
+		break;
+	case LOCATION_PRE_ISLAND_OCCUPIED:
+		train_location = "pre-island";
+		break;
+	case LOCATION_ISLAND_OCCUPIED_INCOMING:
+		train_location = "island occupied incoming";
+		break;
+	case LOCATION_ISLAND_OCCUPIED:
+		train_location = "island occupied";
+		break;
+	case LOCATION_POST_ISLAND_OCCUPIED_INCOMING:
+		train_location = "post-island occupied incoming";
+		break;
+	case LOCATION_POST_ISLAND_OCCUPIED:
+		train_location = "post island";
+		break;
+	}
+
+	LOG_DBG("Route %s: updating train seen.  Current location: %s Timeout ms: %d", 
+		route->config->route_name,
+		train_location,
+		crossing_gate_state.general_config.timeout * 1000);
 	k_timer_start(&route->timeout, K_MSEC(crossing_gate_state.general_config.timeout * 1000), K_NO_WAIT);
 }
 
@@ -103,23 +128,19 @@ static void handle_route_ltr(struct route* route, int left_input, int left_islan
 	if(left_island_input == 1 &&
 			route->current_train.location == LOCATION_PRE_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED_INCOMING;
-		route_update_train_seen(route);
-		LOG_INF("Route %s: Island occupied incoming", route->config->route_name);
+		route_update_train_seen(route, route->current_train.location);
 	}else if(right_island_input == 1 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
-		route_update_train_seen(route);
-		LOG_INF("Route %s: island occupied", route->config->route_name);
+		route_update_train_seen(route, route->current_train.location);
 	}else if(right_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
-		route_update_train_seen(route);
-		LOG_INF("Route %s: post island occupied incoming", route->config->route_name);
+		route_update_train_seen(route, route->current_train.location);
 	}else if(right_input == 1 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED;
-		route_update_train_seen(route);
-		LOG_INF("Route %s: post island occupied", route->config->route_name);
+		route_update_train_seen(route, route->current_train.location);
 	}else if(right_input == 0 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED){
 		LOG_INF("Route %s: train out LTR", route->config->route_name);
@@ -139,23 +160,19 @@ static void handle_route_rtl(struct route* route, int left_input, int left_islan
 	if(right_island_input == 1 &&
 			route->current_train.location == LOCATION_PRE_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED_INCOMING;
-		route_update_train_seen(route);
-		LOG_INF("Route %s: Island occupied incoming", route->config->route_name);
+		route_update_train_seen(route, route->current_train.location);
 	}else if(left_island_input == 1 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
-		route_update_train_seen(route);
-		LOG_INF("Route %s: island occupied", route->config->route_name);
+		route_update_train_seen(route, route->current_train.location);
 	}else if(left_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
-		route_update_train_seen(route);
-		LOG_INF("Route %s: post island occupied incoming", route->config->route_name);
+		route_update_train_seen(route, route->current_train.location);
 	}else if(left_input == 1 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED_INCOMING){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED;
-		route_update_train_seen(route);
-		LOG_INF("Route %s: post island occupied", route->config->route_name);
+		route_update_train_seen(route, route->current_train.location);
 	}else if(left_input == 0 &&
 			route->current_train.location == LOCATION_POST_ISLAND_OCCUPIED){
 		LOG_INF("Route %s: train out RTL", route->config->route_name);
@@ -184,9 +201,9 @@ static void crossing_gate_handle_single_route(struct route* route){
 			right_island_input,
 			right_input);
 
-	LOG_DBG("Location: %d reactivation timeout: %d",
-		route->current_train.location,
-		k_timer_status_get(&route->reactivation_timeout));
+	// LOG_DBG("Location: %d reactivation timeout: %d",
+	// 	route->current_train.location,
+	// 	k_timer_status_get(&route->reactivation_timeout));
 
 	// First check to see if this is a new train coming into the route
 	if((left_input || right_input) &&
@@ -196,10 +213,14 @@ static void crossing_gate_handle_single_route(struct route* route){
 		// Let's see if this route is valid or not
 		for(int x = 0; x < sizeof(route->switch_inputs) / sizeof(route->switch_inputs[0]); x++){
 			if(!switch_input_enabled(&route->switch_inputs[x])){
+				LOG_DBG("Route: %s input %d not enabled", route->config->route_name, x);
 				continue;
 			}
-			if(switch_input_value(&route->switch_inputs[x]) != route->config->switch_inputs[x].polarity){
+			if(switch_input_value(&route->switch_inputs[x]) != route->config->switch_inputs[x].position_for_route){
 				// The switch is not set to the right position for this route to be active
+				LOG_DBG("Route: %s switch %d not in correct location",
+					route->config->route_name,
+					x);
 				return;
 			}
 		}
@@ -210,11 +231,11 @@ static void crossing_gate_handle_single_route(struct route* route){
 		route->current_train.location = LOCATION_PRE_ISLAND_OCCUPIED;
 		if(left_input){
 			route->current_train.direction = DIRECTION_LTR;
-			route_update_train_seen(route);
+			route_update_train_seen(route, route->current_train.location);
 			LOG_INF("Route %s: Incoming train LTR", route->config->route_name);
 		}else{
 			route->current_train.direction = DIRECTION_RTL;
-			route_update_train_seen(route);
+			route_update_train_seen(route, route->current_train.location);
 			LOG_INF("Route %s: Incoming train RTL", route->config->route_name);
 		}
 

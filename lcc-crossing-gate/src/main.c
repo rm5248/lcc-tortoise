@@ -265,6 +265,11 @@ static int lcc_write_cb(struct lcc_context*, struct lcc_can_frame* lcc_frame){
 }
 
 static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
+	for(int route_num = 0; route_num < ARRAY_SIZE(crossing_gate_state.crossing_routes); route_num++){
+		for(int switch_input = 0; switch_input < ARRAY_SIZE(crossing_gate_state.crossing_routes->switch_inputs); switch_input++){
+			switch_input_handle_event(&crossing_gate_state.crossing_routes[route_num].switch_inputs[switch_input], event_id);
+		}
+	}
 }
 
 static void init_can_txrx(){
