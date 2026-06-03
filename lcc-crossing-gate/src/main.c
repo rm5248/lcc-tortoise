@@ -922,6 +922,7 @@ int main(void)
 
 	lcc_event_set_incoming_event_function(evt_ctx, incoming_event);
 	lcc_event_add_event_consumed_query_fn(evt_ctx, query_consumer_state);
+	lcc_event_set_listen_all_events(evt_ctx, 1);
 
 	lcc_datagram_context_new(ctx);
 	struct lcc_memory_context* mem_ctx = lcc_memory_new(ctx);

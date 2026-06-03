@@ -8,10 +8,14 @@
 #include <string.h>
 #include <stdio.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/util.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/led.h>
 #include <zephyr/drivers/pwm.h>
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_DECLARE(crossing_gate, LOG_LEVEL_DBG);
 
 #include "crossing-gate-init.h"
 #include "crossing-gate.h"
@@ -142,6 +146,58 @@ static void init_single_route(int route_num){
 	}
 }
 
+static int sensors_share_input(struct sensor_config* a, struct sensor_config* b){
+	if(!a->sensor_enabled || !b->sensor_enabled){
+		return 0;
+	}
+	if(a->sensor_type == 0 && b->sensor_type == 0){
+		return a->sensor_input == b->sensor_input;
+	}
+	// Event-based: check if any event IDs overlap
+	if(a->BE_event_sensor_on != 0 &&
+			(a->BE_event_sensor_on == b->BE_event_sensor_on ||
+			 a->BE_event_sensor_on == b->BE_event_sensor_off)){
+		return 1;
+	}
+	if(a->BE_event_sensor_off != 0 &&
+			(a->BE_event_sensor_off == b->BE_event_sensor_on ||
+			 a->BE_event_sensor_off == b->BE_event_sensor_off)){
+		return 1;
+	}
+	return 0;
+}
+
+static void crossing_gate_compute_neighbors(){
+	for(int i = 0; i < NUM_ROUTES; i++){
+		crossing_gate_state.crossing_routes[i].neighbor_routes_mask = 0;
+	}
+
+	for(int i = 0; i < NUM_ROUTES; i++){
+		struct route_config* cfg_i = &crossing_gate_state.routes_config.all_routes[i];
+		if(!cfg_i->route_enabled) continue;
+
+		for(int j = i + 1; j < NUM_ROUTES; j++){
+			struct route_config* cfg_j = &crossing_gate_state.routes_config.all_routes[j];
+			if(!cfg_j->route_enabled) continue;
+
+			int is_neighbor = 0;
+			for(int si = 0; si < ARRAY_SIZE(cfg_i->inputs) && !is_neighbor; si++){
+				for(int sj = 0; sj < ARRAY_SIZE(cfg_j->inputs) && !is_neighbor; sj++){
+					if(sensors_share_input(&cfg_i->inputs[si], &cfg_j->inputs[sj])){
+						is_neighbor = 1;
+					}
+				}
+			}
+
+			if(is_neighbor){
+				crossing_gate_state.crossing_routes[i].neighbor_routes_mask |= (1 << j);
+				crossing_gate_state.crossing_routes[j].neighbor_routes_mask |= (1 << i);
+				LOG_DBG("Routes %d and %d share a sensor: neighbor inhibit enabled", i, j);
+			}
+		}
+	}
+}
+
 void crossing_gate_load_config(){
 	partition_util_load(FIXED_PARTITION_ID(segment_253),
 			&crossing_gate_state.routes_config,
@@ -164,6 +220,8 @@ void crossing_gate_load_config(){
 	for(int route_num = 0; route_num < ARRAY_SIZE(crossing_gate_state.crossing_routes); route_num++){
 		init_single_route(route_num);
 	}
+
+	crossing_gate_compute_neighbors();
 }
 
 void crossing_gate_set_default_values(uint64_t base_event_id){

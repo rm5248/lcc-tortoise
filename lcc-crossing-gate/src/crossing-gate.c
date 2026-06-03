@@ -88,6 +88,18 @@ static void blink_gates(){
 K_THREAD_DEFINE(gate_blink, 512, blink_gates, NULL, NULL, NULL,
 		7, 0, 0);
 
+static void start_neighbor_reactivation(struct route* route){
+	for(int x = 0; x < NUM_ROUTES; x++){
+		if(!(route->neighbor_routes_mask & (1 << x))){
+			continue;
+		}
+		struct route* neighbor = &crossing_gate_state.crossing_routes[x];
+		if(neighbor->current_train.location == LOCATION_UNOCCUPIED){
+			k_timer_start(&neighbor->reactivation_timeout, K_MSEC(5000), K_NO_WAIT);
+		}
+	}
+}
+
 static void route_update_train_seen(struct route* route, int location){
 	const char* train_location = "unknown";
 	switch(location){
@@ -147,6 +159,7 @@ static void handle_route_ltr(struct route* route, int left_input, int left_islan
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
 		k_timer_start(&route->reactivation_timeout, K_MSEC(5000), K_NO_WAIT);
+		start_neighbor_reactivation(route);
 	}
 }
 
@@ -179,6 +192,7 @@ static void handle_route_rtl(struct route* route, int left_input, int left_islan
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
 		k_timer_start(&route->reactivation_timeout, K_MSEC(5000), K_NO_WAIT);
+		start_neighbor_reactivation(route);
 	}
 }
 
@@ -350,6 +364,7 @@ void crossing_gate_timer_expired(struct k_timer* timer_id){
 		route->current_train.location = LOCATION_UNOCCUPIED;
 		route->current_train.direction = DIRECTION_UNKNOWN;
 		k_timer_start(&route->reactivation_timeout, K_MSEC(5000), K_NO_WAIT);
+		start_neighbor_reactivation(route);
 
 		int data = 0xFFFF;
 		k_msgq_put(&crossing_gate_state.pin_change_msgq, &data, K_NO_WAIT);
