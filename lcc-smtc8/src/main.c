@@ -919,6 +919,7 @@ static void main_loop(){
 	struct can_frame rx_frame;
 	struct lcc_context* ctx = lcc_tortoise_state.lcc_context;
 	struct k_timer output_check_timer;
+	int initialized_power_handling = 0;
 
 	k_poll_event_init(&poll_data[0],
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
@@ -932,7 +933,7 @@ static void main_loop(){
 	k_timer_init(&alias_timer, NULL, NULL);
 	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
 	k_timer_init(&output_check_timer, NULL, NULL);
-	k_timer_start(&output_check_timer, K_MSEC(250), K_NO_WAIT);
+	k_timer_start(&output_check_timer, K_MSEC(500), K_NO_WAIT);
 
 	while (1) {
 		int rc = k_poll(poll_data, ARRAY_SIZE(poll_data), K_MSEC(250));
@@ -970,17 +971,17 @@ static void main_loop(){
 		      lcc_context_generate_alias(ctx);
 		    }else{
 		      printf("Claimed alias %X\n", lcc_context_alias(ctx) );
-
-				// initialize our low power handling.
-				// We do this right after we have an alias, since logically nothing will have changed
-				// until we are actually able to process commands from some other device on the network.
-				powerhandle_init();
-				powerhandle_check_if_save_required();
 		    }
 		}
 
 		handle_button_press();
 		if(k_timer_status_get(&output_check_timer) > 0){
+			if(!initialized_power_handling){
+				initialized_power_handling = 1;
+				powerhandle_init();
+				powerhandle_check_if_save_required();
+			}
+
 			check_for_turnout_changes();
 			k_timer_start(&output_check_timer, K_MSEC(250), K_NO_WAIT);
 
