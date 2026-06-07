@@ -32,8 +32,6 @@
 #include "dcc-decoder.h"
 #include "dcc-packet-parser.h"
 
-#define VERSION_STR "1.3.0"
-
 /*
  * Address Space / storage information
  * 253 = basic config space.  This is stored in RAM during run-time.
@@ -1026,7 +1024,7 @@ static void check_eeprom(){
 
 static void splash(){
 	printf("LCC SMTC-8\n");
-	printf("  Version: " VERSION_STR);
+	printf("  Version: " CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
 	printf("  Rev: R" CONFIG_BOARD_REVISION "\n");
 
 	struct mcuboot_img_header versions[2];
@@ -1111,7 +1109,7 @@ int main(void)
 			"Snowball Creek Electronics",
 			"SMTC-8",
 			"R" CONFIG_BOARD_REVISION,
-			VERSION_STR);
+			CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
 	lcc_context_set_simple_node_name_description(ctx,
 			global_config.node_name,
 			global_config.node_description);
