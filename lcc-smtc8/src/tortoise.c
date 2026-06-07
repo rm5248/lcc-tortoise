@@ -124,7 +124,7 @@ int tortoise_set_position(struct tortoise* tort, enum tortoise_position position
 
 	tort->desired_position = position;
 
-	return 0;
+	return 1;
 }
 
 static int tortoise_set_position_force(struct tortoise* tort, enum tortoise_position position){
