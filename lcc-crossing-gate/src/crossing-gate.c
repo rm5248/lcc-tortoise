@@ -222,7 +222,7 @@ static void crossing_gate_handle_single_route(struct route* route){
 	// First check to see if this is a new train coming into the route
 	if((left_input || right_input) &&
 			route->current_train.location == LOCATION_UNOCCUPIED &&
-			k_timer_status_get(&route->reactivation_timeout) == 0){
+			route->can_be_activated){
 		// There is a new train coming into the route.
 		// Let's see if this route is valid or not
 		for(int x = 0; x < sizeof(route->switch_inputs) / sizeof(route->switch_inputs[0]); x++){
@@ -369,4 +369,23 @@ void crossing_gate_timer_expired(struct k_timer* timer_id){
 		int data = 0xFFFF;
 		k_msgq_put(&crossing_gate_state.pin_change_msgq, &data, K_NO_WAIT);
 	}
+}
+
+void crossing_gate_reactivation_expired(struct k_timer* timer_id){
+	struct route* route = NULL;
+
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.crossing_routes); x++){
+		if(&(crossing_gate_state.crossing_routes[x].reactivation_timeout) == timer_id){
+			route = &crossing_gate_state.crossing_routes[x];
+		}
+	}
+
+	if(route == NULL){
+		LOG_ERR("Unable to find route for timer??");
+		return;
+	}
+
+	k_timer_stop(timer_id);
+
+	route->can_be_activated = 1;
 }

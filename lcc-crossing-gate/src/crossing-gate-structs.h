@@ -85,6 +85,7 @@ struct route{
 	struct k_timer timeout;
 	struct k_timer reactivation_timeout;
 	uint16_t neighbor_routes_mask;
+	int can_be_activated;
 };
 
 void sensor_input_init(struct sensor_input* input, struct gpio_dt_spec* gpio);

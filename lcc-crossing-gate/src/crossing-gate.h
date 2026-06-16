@@ -209,5 +209,6 @@ void crossing_gate_raise_arms();
 void crossing_gate_lower_arms();
 
 void crossing_gate_timer_expired(struct k_timer* timer_id);
+void crossing_gate_reactivation_expired(struct k_timer* timer_id);
 
 #endif /* LCC_CROSSING_GATE_SRC_CROSSING_GATE_H_ */
