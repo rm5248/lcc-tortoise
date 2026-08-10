@@ -160,6 +160,8 @@ struct crossing_gate{
 	const struct device* led_pwm;
 
 	const struct gpio_dt_spec tortoise_power;
+	const struct gpio_dt_spec power_5v;
+	const struct gpio_dt_spec ext_i2c_enable;
 
 	// Buttons
 	const struct gpio_dt_spec blue_button;

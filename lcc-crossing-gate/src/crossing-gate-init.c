@@ -17,6 +17,20 @@
 
 LOG_MODULE_DECLARE(crossing_gate, LOG_LEVEL_DBG);
 
+static const struct device *gpio_expander_ext = DEVICE_DT_GET(DT_NODELABEL(gpio_expander_ext));
+
+static void init_external_gpio_expanders(void)
+{
+	if (device_init(gpio_expander_ext) != 0) {
+		LOG_ERR("External GPIO expander init failed");
+		return;
+	}
+	for (int i = 0; i < 8; i++) {
+		int val = gpio_pin_get(gpio_expander_ext, i);
+		LOG_DBG("Ext GPIO P%d: %d", i, val);
+	}
+}
+
 #include "crossing-gate-init.h"
 #include "crossing-gate.h"
 #include "partition_utils.h"
@@ -64,6 +78,8 @@ struct crossing_gate crossing_gate_state = {
 		},
 		.led_pwm = DEVICE_DT_GET(DT_COMPAT_GET_ANY_STATUS_OKAY(pwm_leds)),
 		.tortoise_power = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), tortoise_power_gpios),
+		.power_5v = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), power_5v_gpios),
+		.ext_i2c_enable = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), ext_i2c_enable_gpios),
 };
 
 static struct gpio_callback cb_data[8];
@@ -319,15 +335,25 @@ void crossing_gate_init(){
 		init_tortoise(&crossing_gate_state.tortoise_control[x]);
 	}
 
-	// Enable the power supply for the tortoises
+	// Enable the power supply for the tortoises (PA1)
 	gpio_pin_configure_dt(&crossing_gate_state.tortoise_power, GPIO_OUTPUT);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_power, 1);
+
+	// Enable 5V power supply (PA2)
+	gpio_pin_configure_dt(&crossing_gate_state.power_5v, GPIO_OUTPUT);
+	gpio_pin_set_dt(&crossing_gate_state.power_5v, 1);
+
+	// Enable external I2C bus (PA4)
+	gpio_pin_configure_dt(&crossing_gate_state.ext_i2c_enable, GPIO_OUTPUT);
+	gpio_pin_set_dt(&crossing_gate_state.ext_i2c_enable, 1);
 
 	crossing_gate_raise_arms();
 
 	gpio_pin_configure_dt(&crossing_gate_state.bell.enable, GPIO_OUTPUT);
 
 	crossing_gate_state.gridconnect = lcc_gridconnect_new();
+
+	init_external_gpio_expanders();
 
 	// Configure our PWM LED outputs
 //	gpio_pin_configure_dt(&crossing_gate_state.led[0], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
