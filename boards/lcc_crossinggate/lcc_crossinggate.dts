@@ -204,15 +204,14 @@
 	clock-frequency = <I2C_BITRATE_STANDARD>;
 
 	/* Internal TCA9534: sensor inputs in0-in7.
-	 * nxp,pca9538 is register-compatible with the TCA9534.
 	 */
-	gpio_expander: pca9538@20 {
-		compatible = "nxp,pca9538";
-		reg = <0x20>;
+	gpio_expander: tca9534@38 {
+		compatible = "ti,tca9538";
+		reg = <0x38>;
 		gpio-controller;
 		#gpio-cells = <2>;
 		ngpios = <8>;
-		int-gpios = <&gpioa 3 GPIO_ACTIVE_LOW>;
+		nint-gpios = <&gpioa 3 GPIO_ACTIVE_LOW>;
 	};
 
 	/* External TCA9534: optional additional GPIO expanders

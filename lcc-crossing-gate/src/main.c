@@ -331,9 +331,17 @@ static void reboot(struct lcc_memory_context* ctx){
 static void factory_reset(struct lcc_memory_context* ctx){
 	crossing_gate_set_default_values(crossing_gate_state.general_config.base_event_id);
 
-	partition_util_save(FIXED_PARTITION_ID(segment_253),
-			&crossing_gate_state.routes_config,
-			sizeof(crossing_gate_state.routes_config));
+	// for some reason that I cannot determine, the first time we try to write to flash
+	// after writing the LCC ID does not work.  try it a few times
+	for(int count = 0; count < 10; count++){
+		int stat = partition_util_save(FIXED_PARTITION_ID(segment_253),
+				&crossing_gate_state.routes_config,
+				sizeof(crossing_gate_state.routes_config));
+		if(stat == 0){
+			break;
+		}
+		k_sleep(K_MSEC(25));
+	}
 	partition_util_save(FIXED_PARTITION_ID(segment_252),
 			&crossing_gate_state.general_events,
 			sizeof(crossing_gate_state.general_events));
@@ -406,7 +414,7 @@ static uint64_t load_lcc_id(){
 			printf("console line: %s\n", console_data);
 			new_id = strtoull(console_data, NULL, 16);
 			new_id = new_id & 0xFFFF;
-			new_id = new_id | (0x02020200ull << 16);
+			new_id = new_id | (0x02020203ull << 16);
 			lcc_node_id_to_dotted_format(new_id, id_buffer, sizeof(id_buffer));
 
 			printf("New node ID will be %s.  Type 'y'<ENTER> to accept\n", id_buffer);
@@ -420,9 +428,6 @@ static uint64_t load_lcc_id(){
 
 		flash_area_write(lcc_storage_area, 0, &ret, sizeof(ret));
 
-		crossing_gate_state.general_config.base_event_id = ret << 16;
-		// Do a 'factory reset' to make sure everything is initialized
-		factory_reset(NULL);
 		do_reboot = 1;
 	}
 
@@ -430,6 +435,10 @@ out:
 	flash_area_close(lcc_storage_area);
 
 	if(do_reboot){
+		crossing_gate_state.general_config.base_event_id = ret << 16;
+		// Do a 'factory reset' to make sure everything is initialized
+		factory_reset(NULL);
+
 		printf("Birthing complete, rebooting...\n");
 		sys_reboot(SYS_REBOOT_COLD);
 	}

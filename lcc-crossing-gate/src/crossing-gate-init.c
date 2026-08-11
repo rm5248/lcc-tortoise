@@ -285,29 +285,29 @@ void crossing_gate_set_default_values(uint64_t base_event_id){
 
 	// Now that we have initialized everything to sane values, set up two routes
 	// Route 1 uses inputs 1-4, and Route 2 uses inputs 5-8
-	struct route* route1 = &crossing_gate_state.crossing_routes[0];
-	route1->config->route_enabled = 1;
-	strcpy(route1->config->route_name, "Track 1");
-	route1->sensors[0].config->sensor_enabled = 1;
-	route1->sensors[0].config->sensor_input = 0;
-	route1->sensors[1].config->sensor_enabled = 1;
-	route1->sensors[1].config->sensor_input = 1;
-	route1->sensors[2].config->sensor_enabled = 1;
-	route1->sensors[2].config->sensor_input = 2;
-	route1->sensors[3].config->sensor_enabled = 1;
-	route1->sensors[3].config->sensor_input = 3;
+	struct route_config* route1 = &crossing_gate_state.routes_config.all_routes[0];
+	route1->route_enabled = 1;
+	strcpy(route1->route_name, "Track 1");
+	route1->inputs[0].sensor_enabled = 1;
+	route1->inputs[0].sensor_input = 0;
+	route1->inputs[1].sensor_enabled = 1;
+	route1->inputs[1].sensor_input = 1;
+	route1->inputs[2].sensor_enabled = 1;
+	route1->inputs[2].sensor_input = 2;
+	route1->inputs[3].sensor_enabled = 1;
+	route1->inputs[3].sensor_input = 3;
 
-	struct route* route2 = &crossing_gate_state.crossing_routes[1];
-	route2->config->route_enabled = 1;
-	strcpy(route2->config->route_name, "Track 2");
-	route2->sensors[0].config->sensor_enabled = 1;
-	route2->sensors[0].config->sensor_input = 4;
-	route2->sensors[1].config->sensor_enabled = 1;
-	route2->sensors[1].config->sensor_input = 5;
-	route2->sensors[2].config->sensor_enabled = 1;
-	route2->sensors[2].config->sensor_input = 6;
-	route2->sensors[3].config->sensor_enabled = 1;
-	route2->sensors[3].config->sensor_input = 7;
+	struct route_config* route2 = &crossing_gate_state.routes_config.all_routes[1];
+	route2->route_enabled = 1;
+	strcpy(route2->route_name, "Track 2");
+	route2->inputs[0].sensor_enabled = 1;
+	route2->inputs[0].sensor_input = 4;
+	route2->inputs[1].sensor_enabled = 1;
+	route2->inputs[1].sensor_input = 5;
+	route2->inputs[2].sensor_enabled = 1;
+	route2->inputs[2].sensor_input = 6;
+	route2->inputs[3].sensor_enabled = 1;
+	route2->inputs[3].sensor_input = 7;
 }
 
 void crossing_gate_init(){
@@ -353,7 +353,7 @@ void crossing_gate_init(){
 
 	crossing_gate_state.gridconnect = lcc_gridconnect_new();
 
-	init_external_gpio_expanders();
+//	init_external_gpio_expanders();
 
 	// Configure our PWM LED outputs
 //	gpio_pin_configure_dt(&crossing_gate_state.led[0], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
