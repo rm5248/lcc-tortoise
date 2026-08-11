@@ -72,6 +72,7 @@ void computer_to_can_init(struct computer_to_can* computer_to_can, const struct 
 		printf("ERROR spawning tx thread\n");
 	}
 
+printf("init array size %d\n", ARRAY_SIZE(computer_to_can->parsed_frames));
 	k_msgq_init(&computer_to_can->parsed_msgq, computer_to_can->parsed_frames, sizeof(struct can_frame), ARRAY_SIZE(computer_to_can->parsed_frames));
 	k_sem_init(&computer_to_can->parse_sem, 0, 1);
 	computer_to_can->parse_thread_tid = k_thread_create(&computer_to_can->parse_thread_data,
