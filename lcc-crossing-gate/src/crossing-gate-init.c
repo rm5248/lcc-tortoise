@@ -19,18 +19,6 @@ LOG_MODULE_DECLARE(crossing_gate, LOG_LEVEL_DBG);
 
 static const struct device *gpio_expander_ext = DEVICE_DT_GET(DT_NODELABEL(gpio_expander_ext));
 
-static void init_external_gpio_expanders(void)
-{
-	if (device_init(gpio_expander_ext) != 0) {
-		LOG_ERR("External GPIO expander init failed");
-		return;
-	}
-	for (int i = 0; i < 8; i++) {
-		int val = gpio_pin_get(gpio_expander_ext, i);
-		LOG_DBG("Ext GPIO P%d: %d", i, val);
-	}
-}
-
 #include "crossing-gate-init.h"
 #include "crossing-gate.h"
 #include "partition_utils.h"
@@ -80,9 +68,27 @@ struct crossing_gate crossing_gate_state = {
 		.tortoise_power = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), tortoise_power_gpios),
 		.power_5v = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), power_5v_gpios),
 		.ext_i2c_enable = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), ext_i2c_enable_gpios),
+		.external_inputs = {
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin0), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin1), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin2), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin3), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin4), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin5), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin6), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin7), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin8), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin9), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin10), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin11), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin12), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin13), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin14), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin15), gpios),
+		},
 };
 
-static struct gpio_callback cb_data[8];
+static struct gpio_callback cb_data[24];
 
 static void input_change(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
@@ -90,7 +96,7 @@ static void input_change(const struct device *dev, struct gpio_callback *cb,
 	int real_pin = -1;
 
 	// Map between the bitmask and our pin input
-	for(int bit_num = 0; bit_num < 8; bit_num++){
+	for(int bit_num = 0; bit_num < 16; bit_num++){
 		if(pins == BIT(bit_num)){
 			real_pin = bit_num;
 		}
@@ -98,6 +104,10 @@ static void input_change(const struct device *dev, struct gpio_callback *cb,
 
 	if(real_pin < 0){
 		return;
+	}
+
+	if(dev == gpio_expander_ext){
+		real_pin += 8;
 	}
 
 	k_msgq_put(&crossing_gate_state.pin_change_msgq, &real_pin, K_NO_WAIT);
@@ -211,6 +221,17 @@ static void crossing_gate_compute_neighbors(){
 				LOG_DBG("Routes %d and %d share a sensor: neighbor inhibit enabled", i, j);
 			}
 		}
+	}
+}
+
+static void init_external_gpio_expanders(void)
+{
+	if (device_init(gpio_expander_ext) != 0) {
+		LOG_ERR("External GPIO expander init failed");
+		return;
+	}
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.external_inputs); x++){
+		init_input(&crossing_gate_state.external_inputs[x], &cb_data[x + 8]);
 	}
 }
 
@@ -353,7 +374,7 @@ void crossing_gate_init(){
 
 	crossing_gate_state.gridconnect = lcc_gridconnect_new();
 
-//	init_external_gpio_expanders();
+	init_external_gpio_expanders();
 
 	// Configure our PWM LED outputs
 //	gpio_pin_configure_dt(&crossing_gate_state.led[0], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);

@@ -123,6 +123,72 @@
 			label = "in7";
 			gpios = <&gpio_expander 7 GPIO_ACTIVE_LOW>;
 		};
+
+		// external inputs
+		extin0: extinput0 {
+			label = "extin0";
+			gpios = <&gpio_expander_ext 0 GPIO_ACTIVE_LOW>;
+		};
+		extin1: extinput1 {
+			label = "extin1";
+			gpios = <&gpio_expander_ext 1 GPIO_ACTIVE_LOW>;
+		};
+		extin2: extinput2 {
+			label = "extin2";
+			gpios = <&gpio_expander_ext 2 GPIO_ACTIVE_LOW>;
+		};
+		extin3: extinput3 {
+			label = "extin3";
+			gpios = <&gpio_expander_ext 3 GPIO_ACTIVE_LOW>;
+		};
+		extin4: extinput4 {
+			label = "extin4";
+			gpios = <&gpio_expander_ext 4 GPIO_ACTIVE_LOW>;
+		};
+		extin5: extinput5 {
+			label = "extin5";
+			gpios = <&gpio_expander_ext 5 GPIO_ACTIVE_LOW>;
+		};
+		extin6: extinput6 {
+			label = "extin6";
+			gpios = <&gpio_expander_ext 6 GPIO_ACTIVE_LOW>;
+		};
+		extin7: extinput7 {
+			label = "extin7";
+			gpios = <&gpio_expander_ext 7 GPIO_ACTIVE_LOW>;
+		};
+		extin8: extinput8 {
+			label = "extin8";
+			gpios = <&gpio_expander_ext 8 GPIO_ACTIVE_LOW>;
+		};
+		extin9: extinput9 {
+			label = "extin9";
+			gpios = <&gpio_expander_ext 9 GPIO_ACTIVE_LOW>;
+		};
+		extin10: extinput10 {
+			label = "extin10";
+			gpios = <&gpio_expander_ext 10 GPIO_ACTIVE_LOW>;
+		};
+		extin11: extinput11 {
+			label = "extin11";
+			gpios = <&gpio_expander_ext 11 GPIO_ACTIVE_LOW>;
+		};
+		extin12: extinput12 {
+			label = "extin12";
+			gpios = <&gpio_expander_ext 12 GPIO_ACTIVE_LOW>;
+		};
+		extin13: extinput13 {
+			label = "extin13";
+			gpios = <&gpio_expander_ext 13 GPIO_ACTIVE_LOW>;
+		};
+		extin14: extinput14 {
+			label = "extin14";
+			gpios = <&gpio_expander_ext 14 GPIO_ACTIVE_LOW>;
+		};
+		extin15: extinput15 {
+			label = "extin15";
+			gpios = <&gpio_expander_ext 15 GPIO_ACTIVE_LOW>;
+		};
 	};
 };
 
@@ -214,16 +280,16 @@
 		nint-gpios = <&gpioa 3 GPIO_ACTIVE_LOW>;
 	};
 
-	/* External TCA9534: optional additional GPIO expanders
+	/* External PCF857x: optional additional GPIO expanders
 	 * on the external I2C bus (enabled by ext-i2c-enable-gpios / PA4).
 	 * Uses deferred-init so the firmware controls when to initialize it.
 	 */
-	gpio_expander_ext: pca9538@21 {
-		compatible = "nxp,pca9538";
-		reg = <0x21>;
+	gpio_expander_ext: pcf857x@20 {
+		compatible = "nxp,pcf857x";
+		reg = <0x20>;
 		gpio-controller;
 		#gpio-cells = <2>;
-		ngpios = <8>;
+		ngpios = <16>;
 		status = "okay";
 		zephyr,deferred-init;
 		int-gpios = <&gpioa 12 GPIO_ACTIVE_LOW>;

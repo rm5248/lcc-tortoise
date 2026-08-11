@@ -191,6 +191,8 @@ struct crossing_gate{
 	struct pwm_output_segment pwm_config;
 
 	struct configuration_flusher config_flusher;
+
+	const struct gpio_dt_spec external_inputs[16];
 };
 
 extern struct crossing_gate crossing_gate_state;
