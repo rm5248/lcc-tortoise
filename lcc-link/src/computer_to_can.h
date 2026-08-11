@@ -12,7 +12,7 @@ struct computer_to_can{
 	uint8_t ring_buffer_incoming[1024];
 	struct ring_buf ringbuf_incoming;
 	struct can_frame tx_msgq_data[55];
-	struct can_frame parsed_frames[12];
+	struct can_frame parsed_frames[55];
 	struct k_msgq tx_msgq;
 	struct k_msgq parsed_msgq;
 	k_tid_t tx_thread_tid;
