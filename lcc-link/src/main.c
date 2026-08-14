@@ -45,6 +45,11 @@ USBD_DESC_PRODUCT_DEFINE(lcc_link_product, "LCC Link");
 USBD_DESC_CONFIG_DEFINE(lcc_link_fs_cfg_desc, "FS Configuration");
 USBD_CONFIGURATION_DEFINE(lcc_link_fs_config, 0, 100, &lcc_link_fs_cfg_desc);
 
+struct tx_remain_buffer{
+	uint8_t buffer[64];
+	int len;
+};
+
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
 const struct device *const can_usb_dev = DEVICE_DT_GET(DT_NODELABEL(cdc_acm_can));
 const struct device *const dcc_usb_dev = DEVICE_DT_GET(DT_NODELABEL(cdc_acm_dcc));
@@ -59,6 +64,7 @@ static uint32_t last_tx_can_msg = 0;
 struct lcc_context* lcc_ctx = NULL;
 struct dcc_decoder_stm32 dcc_decode_ctx;
 struct lcc_link_config lcc_link_data;
+struct tx_remain_buffer tx_remain;
 
 static void blink_status_led();
 static void blink_activity_led();
@@ -106,6 +112,7 @@ static void memory_space_written(struct lcc_memory_map* map, uint8_t space);
 
 static void irq_handler_can_usb(const struct device *dev, void *user_data){
 	static uint8_t buffer[64];
+	struct tx_remain_buffer* remain_buffer = user_data;
 
 	while (uart_irq_update(dev) && uart_irq_is_pending(dev)) {
 		if (uart_irq_rx_ready(dev)) {
@@ -115,30 +122,38 @@ static void irq_handler_can_usb(const struct device *dev, void *user_data){
 				if (recv_len < 0) {
 //						LOG_ERR("Failed to read UART FIFO");
 					recv_len = 0;
-				};
+				}
 
 				rb_len = computer_to_can_append_data(&computer_to_can, buffer, recv_len);
 				if (rb_len < recv_len) {
-					printf("Drop %u bytes", recv_len - rb_len);
+					printf("Drop %u rx bytes.  recv len %d rb len %d\n", recv_len - rb_len, recv_len, rb_len);
 				}
 		}
 
 		if (uart_irq_tx_ready(dev)) {
 			int rb_len, send_len;
 
-			rb_len = ring_buf_get(&can_to_computer.ringbuf_outgoing, buffer, sizeof(buffer));
-			if (!rb_len) {
-//				printf("Ring buffer empty, disable TX IRQ");
-				uart_irq_tx_disable(dev);
-				continue;
+			if(remain_buffer->len){
+				rb_len = remain_buffer->len;
+				memcpy(buffer, remain_buffer->buffer, rb_len);
+			}else{
+				rb_len = ring_buf_get(&can_to_computer.ringbuf_outgoing, buffer, sizeof(buffer));
+				if (!rb_len) {
+	//				printf("Ring buffer empty, disable TX IRQ");
+					uart_irq_tx_disable(dev);
+					continue;
+				}
 			}
 
 			send_len = uart_fifo_fill(dev, buffer, rb_len);
 			if (send_len < rb_len) {
-				printf("Drop %d bytes\n", rb_len - send_len);
+				int bytes_remain = rb_len - send_len;
+				memcpy(remain_buffer->buffer, buffer + sizeof(buffer) - bytes_remain, bytes_remain);
+				remain_buffer->len = bytes_remain;
+			}else{
+				// data was able to be transmitted
+				memset(remain_buffer, 0, sizeof(struct tx_remain_buffer));
 			}
-
-//			printf("ringbuf -> tty fifo %d bytes\n", send_len);
 		}
 	}
 }
@@ -649,7 +664,8 @@ int main(void)
 	computer_to_can_init(&computer_to_can, can_dev);
 	can_to_computer_init(&can_to_computer, can_dev, can_usb_dev);
 
-	uart_irq_callback_set(can_usb_dev, irq_handler_can_usb);
+	memset(&tx_remain, 0, sizeof(tx_remain));
+	uart_irq_callback_user_data_set(can_usb_dev, irq_handler_can_usb, &tx_remain);
 	uart_irq_rx_enable(can_usb_dev);
 
 	init_dcc();
