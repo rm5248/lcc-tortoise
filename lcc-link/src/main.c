@@ -34,6 +34,8 @@
 #include "dcc-packet-parser.h"
 #include "lcc-link-config.h"
 
+#include "app_version.h"
+
 USBD_DEVICE_DEFINE(lcc_link_usbd,
 		   DEVICE_DT_GET(DT_NODELABEL(zephyr_udc0)),
 		   0x0483, 0x5740);
@@ -397,7 +399,7 @@ out:
 
 static void splash(){
 	printf("LCC-Link starting up\n");
-	printf("  Version: " CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION "\n");
+	printf("  Version: " APP_VERSION_STRING "\n");
 
 	struct mcuboot_img_header versions[2];
 	struct mcuboot_img_sem_ver semver[2] = {0};
@@ -684,7 +686,7 @@ int main(void)
 			"Snowball Creek Electronics",
 			"LCC-Link",
 			"R1",
-			CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
+			APP_VERSION_STRING);
 
 
 	lcc_context_set_write_function(lcc_ctx, lcc_write_cb, 0);

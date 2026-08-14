@@ -1,6 +1,8 @@
 #ifndef CDI_H
 #define CDI_H
 
+#include "app_version.h"
+
 const char cdi[] = {
 "<?xml version='1.0'?> \
 <cdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/schema/cdi/1/1/cdi.xsd'> \
@@ -8,7 +10,7 @@ const char cdi[] = {
 <manufacturer>Snowball Creek Electronics</manufacturer> \
 <model>LCC-Link</model> \
 <hardwareVersion>R1</hardwareVersion> \
-<softwareVersion>" CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION "</softwareVersion> \
+<softwareVersion>" APP_VERSION_STRING "</softwareVersion> \
 </identification> \
 <acdi/> \
 <segment space='251'> \
