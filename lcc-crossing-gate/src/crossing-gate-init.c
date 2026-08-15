@@ -17,6 +17,8 @@
 
 LOG_MODULE_DECLARE(crossing_gate, LOG_LEVEL_DBG);
 
+static const struct device *gpio_expander_ext = DEVICE_DT_GET(DT_NODELABEL(gpio_expander_ext));
+
 #include "crossing-gate-init.h"
 #include "crossing-gate.h"
 #include "partition_utils.h"
@@ -64,9 +66,29 @@ struct crossing_gate crossing_gate_state = {
 		},
 		.led_pwm = DEVICE_DT_GET(DT_COMPAT_GET_ANY_STATUS_OKAY(pwm_leds)),
 		.tortoise_power = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), tortoise_power_gpios),
+		.power_5v = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), power_5v_gpios),
+		.ext_i2c_enable = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), ext_i2c_enable_gpios),
+		.external_inputs = {
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin0), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin1), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin2), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin3), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin4), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin5), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin6), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin7), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin8), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin9), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin10), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin11), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin12), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin13), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin14), gpios),
+				GPIO_DT_SPEC_GET(DT_NODELABEL(extin15), gpios),
+		},
 };
 
-static struct gpio_callback cb_data[8];
+static struct gpio_callback cb_data[24];
 
 static void input_change(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
@@ -74,7 +96,7 @@ static void input_change(const struct device *dev, struct gpio_callback *cb,
 	int real_pin = -1;
 
 	// Map between the bitmask and our pin input
-	for(int bit_num = 0; bit_num < 8; bit_num++){
+	for(int bit_num = 0; bit_num < 16; bit_num++){
 		if(pins == BIT(bit_num)){
 			real_pin = bit_num;
 		}
@@ -82,6 +104,10 @@ static void input_change(const struct device *dev, struct gpio_callback *cb,
 
 	if(real_pin < 0){
 		return;
+	}
+
+	if(dev == gpio_expander_ext){
+		real_pin += 8;
 	}
 
 	k_msgq_put(&crossing_gate_state.pin_change_msgq, &real_pin, K_NO_WAIT);
@@ -198,6 +224,17 @@ static void crossing_gate_compute_neighbors(){
 	}
 }
 
+static void init_external_gpio_expanders(void)
+{
+	if (device_init(gpio_expander_ext) != 0) {
+		LOG_ERR("External GPIO expander init failed");
+		return;
+	}
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.external_inputs); x++){
+		init_input(&crossing_gate_state.external_inputs[x], &cb_data[x + 8]);
+	}
+}
+
 void crossing_gate_load_config(){
 	partition_util_load(FIXED_PARTITION_ID(segment_253),
 			&crossing_gate_state.routes_config,
@@ -269,29 +306,29 @@ void crossing_gate_set_default_values(uint64_t base_event_id){
 
 	// Now that we have initialized everything to sane values, set up two routes
 	// Route 1 uses inputs 1-4, and Route 2 uses inputs 5-8
-	struct route* route1 = &crossing_gate_state.crossing_routes[0];
-	route1->config->route_enabled = 1;
-	strcpy(route1->config->route_name, "Track 1");
-	route1->sensors[0].config->sensor_enabled = 1;
-	route1->sensors[0].config->sensor_input = 0;
-	route1->sensors[1].config->sensor_enabled = 1;
-	route1->sensors[1].config->sensor_input = 1;
-	route1->sensors[2].config->sensor_enabled = 1;
-	route1->sensors[2].config->sensor_input = 2;
-	route1->sensors[3].config->sensor_enabled = 1;
-	route1->sensors[3].config->sensor_input = 3;
+	struct route_config* route1 = &crossing_gate_state.routes_config.all_routes[0];
+	route1->route_enabled = 1;
+	strcpy(route1->route_name, "Track 1");
+	route1->inputs[0].sensor_enabled = 1;
+	route1->inputs[0].sensor_input = 0;
+	route1->inputs[1].sensor_enabled = 1;
+	route1->inputs[1].sensor_input = 1;
+	route1->inputs[2].sensor_enabled = 1;
+	route1->inputs[2].sensor_input = 2;
+	route1->inputs[3].sensor_enabled = 1;
+	route1->inputs[3].sensor_input = 3;
 
-	struct route* route2 = &crossing_gate_state.crossing_routes[1];
-	route2->config->route_enabled = 1;
-	strcpy(route2->config->route_name, "Track 2");
-	route2->sensors[0].config->sensor_enabled = 1;
-	route2->sensors[0].config->sensor_input = 4;
-	route2->sensors[1].config->sensor_enabled = 1;
-	route2->sensors[1].config->sensor_input = 5;
-	route2->sensors[2].config->sensor_enabled = 1;
-	route2->sensors[2].config->sensor_input = 6;
-	route2->sensors[3].config->sensor_enabled = 1;
-	route2->sensors[3].config->sensor_input = 7;
+	struct route_config* route2 = &crossing_gate_state.routes_config.all_routes[1];
+	route2->route_enabled = 1;
+	strcpy(route2->route_name, "Track 2");
+	route2->inputs[0].sensor_enabled = 1;
+	route2->inputs[0].sensor_input = 4;
+	route2->inputs[1].sensor_enabled = 1;
+	route2->inputs[1].sensor_input = 5;
+	route2->inputs[2].sensor_enabled = 1;
+	route2->inputs[2].sensor_input = 6;
+	route2->inputs[3].sensor_enabled = 1;
+	route2->inputs[3].sensor_input = 7;
 }
 
 void crossing_gate_init(){
@@ -319,15 +356,25 @@ void crossing_gate_init(){
 		init_tortoise(&crossing_gate_state.tortoise_control[x]);
 	}
 
-	// Enable the power supply for the tortoises
+	// Enable the power supply for the tortoises (PA1)
 	gpio_pin_configure_dt(&crossing_gate_state.tortoise_power, GPIO_OUTPUT);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_power, 1);
+
+	// Enable 5V power supply (PA2)
+	gpio_pin_configure_dt(&crossing_gate_state.power_5v, GPIO_OUTPUT);
+	gpio_pin_set_dt(&crossing_gate_state.power_5v, 1);
+
+	// Enable external I2C bus (PA4)
+	gpio_pin_configure_dt(&crossing_gate_state.ext_i2c_enable, GPIO_OUTPUT);
+	gpio_pin_set_dt(&crossing_gate_state.ext_i2c_enable, 1);
 
 	crossing_gate_raise_arms();
 
 	gpio_pin_configure_dt(&crossing_gate_state.bell.enable, GPIO_OUTPUT);
 
 	crossing_gate_state.gridconnect = lcc_gridconnect_new();
+
+	init_external_gpio_expanders();
 
 	// Configure our PWM LED outputs
 //	gpio_pin_configure_dt(&crossing_gate_state.led[0], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
@@ -342,17 +389,8 @@ void crossing_gate_init(){
 //	strcpy(crossing_gate_state.crossing_routes[0].config->route_name, "Route 1");
 }
 
-static void init_single_pwm(int idx){
-	int zero_value = 0;
-	if(crossing_gate_state.pwm_config.pwm_configs[idx].polarity == 1){
-		zero_value = 100;
-	}
-
-	led_set_brightness(crossing_gate_state.led_pwm, idx, zero_value);
-}
-
 void crossing_gate_do_pwm_config(){
 	for(int x = 0; x < 6; x++){
-		init_single_pwm(x);
+		led_set_brightness(crossing_gate_state.led_pwm, x, 0);
 	}
 }

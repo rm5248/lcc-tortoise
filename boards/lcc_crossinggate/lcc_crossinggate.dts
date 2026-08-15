@@ -34,6 +34,8 @@
 	zephyr,user {
 		sound-gpios = <&gpiob 2 GPIO_ACTIVE_HIGH>;
 		tortoise-power-gpios = <&gpioa 1 GPIO_ACTIVE_HIGH>;
+		power-5v-gpios = <&gpioa 2 GPIO_ACTIVE_HIGH>;
+		ext-i2c-enable-gpios = <&gpioa 4 GPIO_ACTIVE_HIGH>;
 	};
 
 	leds: leds {
@@ -121,6 +123,72 @@
 			label = "in7";
 			gpios = <&gpio_expander 7 GPIO_ACTIVE_LOW>;
 		};
+
+		// external inputs
+		extin0: extinput0 {
+			label = "extin0";
+			gpios = <&gpio_expander_ext 0 GPIO_ACTIVE_LOW>;
+		};
+		extin1: extinput1 {
+			label = "extin1";
+			gpios = <&gpio_expander_ext 1 GPIO_ACTIVE_LOW>;
+		};
+		extin2: extinput2 {
+			label = "extin2";
+			gpios = <&gpio_expander_ext 2 GPIO_ACTIVE_LOW>;
+		};
+		extin3: extinput3 {
+			label = "extin3";
+			gpios = <&gpio_expander_ext 3 GPIO_ACTIVE_LOW>;
+		};
+		extin4: extinput4 {
+			label = "extin4";
+			gpios = <&gpio_expander_ext 4 GPIO_ACTIVE_LOW>;
+		};
+		extin5: extinput5 {
+			label = "extin5";
+			gpios = <&gpio_expander_ext 5 GPIO_ACTIVE_LOW>;
+		};
+		extin6: extinput6 {
+			label = "extin6";
+			gpios = <&gpio_expander_ext 6 GPIO_ACTIVE_LOW>;
+		};
+		extin7: extinput7 {
+			label = "extin7";
+			gpios = <&gpio_expander_ext 7 GPIO_ACTIVE_LOW>;
+		};
+		extin8: extinput8 {
+			label = "extin8";
+			gpios = <&gpio_expander_ext 8 GPIO_ACTIVE_LOW>;
+		};
+		extin9: extinput9 {
+			label = "extin9";
+			gpios = <&gpio_expander_ext 9 GPIO_ACTIVE_LOW>;
+		};
+		extin10: extinput10 {
+			label = "extin10";
+			gpios = <&gpio_expander_ext 10 GPIO_ACTIVE_LOW>;
+		};
+		extin11: extinput11 {
+			label = "extin11";
+			gpios = <&gpio_expander_ext 11 GPIO_ACTIVE_LOW>;
+		};
+		extin12: extinput12 {
+			label = "extin12";
+			gpios = <&gpio_expander_ext 12 GPIO_ACTIVE_LOW>;
+		};
+		extin13: extinput13 {
+			label = "extin13";
+			gpios = <&gpio_expander_ext 13 GPIO_ACTIVE_LOW>;
+		};
+		extin14: extinput14 {
+			label = "extin14";
+			gpios = <&gpio_expander_ext 14 GPIO_ACTIVE_LOW>;
+		};
+		extin15: extinput15 {
+			label = "extin15";
+			gpios = <&gpio_expander_ext 15 GPIO_ACTIVE_LOW>;
+		};
 	};
 };
 
@@ -195,23 +263,36 @@
 };
 */
 
-&spi1 {
-	pinctrl-0 = <&spi1_sck_pa5
-		     &spi1_miso_pa6 &spi1_mosi_pa12>;
+&i2c1 {
+	pinctrl-0 = <&i2c1_scl_pb6 &i2c1_sda_pb7>;
 	pinctrl-names = "default";
 	status = "okay";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
 
-	cs-gpios = <&gpioa 2 GPIO_ACTIVE_LOW>;
-
-	gpio_expander: mcp23s08@0 {
-		compatible = "microchip,mcp23s08";
-		spi-max-frequency = <1000000>;
-		reg = <0x0>;
+	/* Internal TCA9534: sensor inputs in0-in7.
+	 */
+	gpio_expander: tca9534@38 {
+		compatible = "ti,tca9538";
+		reg = <0x38>;
 		gpio-controller;
 		#gpio-cells = <2>;
 		ngpios = <8>;
-		reset-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
-		int-gpios = <&gpioa 3 GPIO_ACTIVE_LOW>;
+		nint-gpios = <&gpioa 3 GPIO_ACTIVE_LOW>;
+	};
+
+	/* External PCF857x: optional additional GPIO expanders
+	 * on the external I2C bus (enabled by ext-i2c-enable-gpios / PA4).
+	 * Uses deferred-init so the firmware controls when to initialize it.
+	 */
+	gpio_expander_ext: pcf857x@20 {
+		compatible = "nxp,pcf857x";
+		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		ngpios = <16>;
+		status = "okay";
+		zephyr,deferred-init;
+		int-gpios = <&gpioa 12 GPIO_ACTIVE_LOW>;
 	};
 };
 
@@ -285,14 +366,14 @@
 / {
 	tortoise0: tort0 {
 		compatible = "tortoise-output";
-		gpios = <&gpiob 4 GPIO_ACTIVE_HIGH>,
-		        <&gpiob 5 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpioa 5 GPIO_ACTIVE_HIGH>,
+		        <&gpioa 6 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
 	tortoise1: tort1 {
 		compatible = "tortoise-output";
-		gpios = <&gpiob 6 GPIO_ACTIVE_HIGH>,
-		        <&gpiob 7 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpiob 4 GPIO_ACTIVE_HIGH>,
+		        <&gpiob 5 GPIO_ACTIVE_HIGH>;
 		status = "okay";
         };
 };
