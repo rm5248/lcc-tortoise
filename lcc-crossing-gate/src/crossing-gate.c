@@ -146,6 +146,7 @@ static void handle_route_ltr(struct route* route, int left_input, int left_islan
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
 		route_update_train_seen(route, route->current_train.location);
 	}else if(right_island_input == 0 &&
+			left_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
 		route_update_train_seen(route, route->current_train.location);
@@ -179,6 +180,7 @@ static void handle_route_rtl(struct route* route, int left_input, int left_islan
 		route->current_train.location = LOCATION_ISLAND_OCCUPIED;
 		route_update_train_seen(route, route->current_train.location);
 	}else if(left_island_input == 0 &&
+			right_island_input == 0 &&
 			route->current_train.location == LOCATION_ISLAND_OCCUPIED){
 		route->current_train.location = LOCATION_POST_ISLAND_OCCUPIED_INCOMING;
 		route_update_train_seen(route, route->current_train.location);
@@ -261,6 +263,13 @@ static void crossing_gate_handle_single_route(struct route* route){
 	}else if(route->current_train.direction == DIRECTION_LTR){
 		handle_route_ltr(route, left_input, left_island_input, right_island_input, right_input);
 	}
+
+	// Keep refreshing the time out while the island is actively occupied so a long
+	// train that spans the crossing doesn't trigger a spurious timeout gate raise
+	if(route->current_train.location == LOCATION_ISLAND_OCCUPIED &&
+			(left_island_input || right_island_input)){
+		route_update_train_seen(route, route->current_train.location);
+	}
 }
 
 /**
@@ -314,7 +323,11 @@ void crossing_gate_update(){
 }
 
 void crossing_gate_incoming_event(uint64_t event_id){
-
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.crossing_routes); x++){
+		for(int input = 0; input < ARRAY_SIZE(crossing_gate_state.crossing_routes[x].switch_inputs); input++){
+			switch_input_handle_event(&crossing_gate_state.crossing_routes[x].switch_inputs[input], event_id);
+		}
+	}
 }
 
 void crossing_gate_raise_arms(){
