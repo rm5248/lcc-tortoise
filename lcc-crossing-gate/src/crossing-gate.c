@@ -15,71 +15,94 @@
 
 LOG_MODULE_REGISTER(crossing_gate, LOG_LEVEL_DBG);
 
-static int real_brightness(int led_idx, int current_brightness){
-	if(crossing_gate_state.pwm_config.pwm_configs[led_idx].polarity == 1){
+static int real_brightness(struct pwm_bank* bank, int current_brightness){
+	if(bank->config->polarity == CROSSINGGATE_PWM_POLARITY_REVERSED){
 		return 100 - current_brightness;
 	}
 	return current_brightness;
 }
 
+/**
+ * Change the LED brightness for both outputs at once
+ */
+static void change_led_brightness(struct pwm_bank* bank, int phasea_bright, int phaseb_bright){
+	int real_phasea_brightness;
+	int real_phaseb_brightness;
+
+	real_phasea_brightness = real_brightness(bank, phasea_bright);
+	real_phaseb_brightness = real_brightness(bank, phaseb_bright);
+
+	if(bank->config->output1_usage == PWM_OUTPUT_LED_PHASE_A){
+		led_set_brightness(bank->led_pwm, 0, real_phasea_brightness);
+	}else if(bank->config->output1_usage == PWM_OUTPUT_LED_PHASE_B){
+		led_set_brightness(bank->led_pwm, 0, real_phaseb_brightness);
+	}
+
+	if(bank->config->output2_usage == PWM_OUTPUT_LED_PHASE_A){
+		led_set_brightness(bank->led_pwm, 1, real_phasea_brightness);
+	}else if(bank->config->output2_usage == PWM_OUTPUT_LED_PHASE_B){
+		led_set_brightness(bank->led_pwm, 1, real_phaseb_brightness);
+	}
+}
+
 static void blink_gates(){
 	k_sleep(K_MSEC(20));
-	int led1_brightness = 0;
-	int led2_brightness = 0;
+	int phasea_brightness = 0;
+	int phaseb_brightness = 0;
 	int dir = 0;
-	int real_led1_brightness;
-	int real_led2_brightness;
 
 	while(1){
-		// Take our polarity into account
-		real_led1_brightness = real_brightness(0, led1_brightness);
-		real_led2_brightness = real_brightness(1, led2_brightness);
+		for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.pwm_banks); x++){
+			change_led_brightness(&crossing_gate_state.pwm_banks[x], phasea_brightness, phaseb_brightness);
+		}
 
 		if(crossing_gate_state.gate_flash_state == FLASH_OFF &&
-						led1_brightness == 0 &&
-						led2_brightness == 0){
+						phasea_brightness == 0 &&
+						phaseb_brightness == 0){
 					k_sleep(K_MSEC(100));
 					dir = 1;
 					continue;
 		}else if(crossing_gate_state.gate_flash_state == FLASH_OFF){
 			// Ramp down until everything is off
-			if(led1_brightness){
-				led1_brightness--;
+			if(phasea_brightness){
+				phasea_brightness--;
 			}
-			if(led2_brightness){
-				led2_brightness--;
+			if(phaseb_brightness){
+				phaseb_brightness--;
 			}
-			led_set_brightness(crossing_gate_state.led_pwm, 0, real_led1_brightness);
-			led_set_brightness(crossing_gate_state.led_pwm, 1, real_led2_brightness);
+			for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.pwm_banks); x++){
+				change_led_brightness(&crossing_gate_state.pwm_banks[x], phasea_brightness, phaseb_brightness);
+			}
 			k_sleep(K_MSEC(2));
 		}else{
-			led_set_brightness(crossing_gate_state.led_pwm, 0, real_led1_brightness);
-			led_set_brightness(crossing_gate_state.led_pwm, 1, real_led2_brightness);
+			for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.pwm_banks); x++){
+				change_led_brightness(&crossing_gate_state.pwm_banks[x], phasea_brightness, phaseb_brightness);
+			}
 
 			if(dir){
-				led1_brightness++;
-				led2_brightness--;
-				if(led1_brightness >= 100){
+				phasea_brightness++;
+				phaseb_brightness--;
+				if(phasea_brightness >= 100){
 					dir = 0;
 				}
-				if(led2_brightness < 0){
-					led2_brightness = 0;
+				if(phaseb_brightness < 0){
+					phaseb_brightness = 0;
 				}
 			}else{
-				led1_brightness--;
-				led2_brightness++;
-				if(led1_brightness <= 0){
+				phasea_brightness--;
+				phaseb_brightness++;
+				if(phasea_brightness <= 0){
 					dir = 1;
 				}
-				if(led2_brightness > 100){
-					led2_brightness = 100;
+				if(phaseb_brightness > 100){
+					phaseb_brightness = 100;
 				}
 			}
 		}
 
 		k_sleep(K_MSEC(2));
 		if(crossing_gate_state.gate_flash_state == FLASH_ON &&
-				(led1_brightness == 0 || led1_brightness == 100)){
+				(phasea_brightness == 0 || phasea_brightness == 100)){
 			k_sleep(K_MSEC(250));
 		}
 	}
@@ -308,8 +331,6 @@ static void crossing_gate_flash(){
 		}else if(crossing_gate_state.gate_flash_state == FLASH_OFF){
 			LOG_INF("Tracks not occupied: flash off");
 			crossing_gate_raise_arms();
-			led_set_brightness(crossing_gate_state.led_pwm, 0, 0);
-			led_set_brightness(crossing_gate_state.led_pwm, 1, 0);
 		}
 	}
 }

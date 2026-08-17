@@ -38,8 +38,10 @@ LOG_MODULE_REGISTER(crossing_gate_main, LOG_LEVEL_DBG);
  * Address Space / storage information
  * 253 = basic config space.  This is stored in RAM during run-time.
  *   If it changes, it is written to the config_partition location
+ * 252 = Events config
  * 251 = node name/description.  This is stored in the global_partition
- * 249 = firmware version header information
+ * 250 = General config
+ * 249 = LED/servo config
  */
 
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
@@ -776,10 +778,14 @@ void pwm_foobar(){
 }
 
 void do_servo(){
-#if 1
-	static const struct pwm_dt_spec servo = PWM_DT_SPEC_GET(DT_NODELABEL(servo));
-	static const uint32_t min_pulse = DT_PROP(DT_NODELABEL(servo), min_pulse);
-	static const uint32_t max_pulse = DT_PROP(DT_NODELABEL(servo), max_pulse);
+#if 0
+	static const struct pwm_dt_spec servo1 = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(servo_bank_1), 0);
+	static const struct pwm_dt_spec servo2 = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(servo_bank_1), 1);
+	static const uint32_t min_pulse = DT_PROP(DT_NODELABEL(servo_bank_1), min_pulse);
+	static const uint32_t max_pulse = DT_PROP(DT_NODELABEL(servo_bank_1), max_pulse);
+
+	gpio_pin_configure_dt(&crossing_gate_state.power_5v, GPIO_OUTPUT);
+	gpio_pin_set_dt(&crossing_gate_state.power_5v, 1);
 
 	#define STEP PWM_USEC(100)
 
@@ -794,18 +800,26 @@ void do_servo(){
 
 		printf("Servomotor control\n");
 
-		if (!pwm_is_ready_dt(&servo)) {
-			printk("Error: PWM device %s is not ready\n", servo.dev->name);
+		if (!pwm_is_ready_dt(&servo1)) {
+			printk("Error: PWM device %s is not ready\n", servo1.dev->name);
 			return;
 		}
 
 		while (1) {
-			printf("set pulse width %dns\n", pulse_width/1000);
-			ret = pwm_set_pulse_dt(&servo, pulse_width);
+			int pulse_width_ns = pulse_width * 1000;
+
+			printf("set pulse width %dns\n", pulse_width_ns);
+			ret = pwm_set_pulse_dt(&servo1, pulse_width_ns);
 			if (ret < 0) {
 				printk("Error %d: failed to set pulse width\n", ret);
 				return;
 			}
+			ret = pwm_set_pulse_dt(&servo2, pulse_width_ns);
+			if (ret < 0) {
+				printk("Error %d: failed to set pulse width\n", ret);
+				return;
+			}
+
 
 			if (dir == DOWN) {
 				if (pulse_width <= min_pulse) {
@@ -827,6 +841,111 @@ void do_servo(){
 //			k_sleep(K_MSEC(500));
 		}
 #endif
+}
+
+void servo_led_example(int bank, int bank_type){
+	// type 0 = LED, type 1 = servo
+	//
+	// All three banks use PWM_MSEC(1) in the DTS, which is correct for LED mode.
+	// For servo mode we bypass the pwm-leds device and call pwm_set() directly
+	// with PWM_MSEC(20) so we don't disturb the other banks' LED period.
+
+	gpio_pin_configure_dt(&crossing_gate_state.power_5v, GPIO_OUTPUT);
+	gpio_pin_set_dt(&crossing_gate_state.power_5v, 1);
+
+	static const struct device *led_banks[] = {
+		DEVICE_DT_GET(DT_NODELABEL(pwm_bank_1)),
+		DEVICE_DT_GET(DT_NODELABEL(pwm_bank_2)),
+		DEVICE_DT_GET(DT_NODELABEL(pwm_bank_3)),
+	};
+
+	// Raw PWM specs pulled from the led_out child nodes.  We use these in servo
+	// mode to reach the underlying pwm1/pwm2/pwm3 devices at an arbitrary period.
+	static const struct pwm_dt_spec servo_ch[3][2] = {
+		{
+			PWM_DT_SPEC_GET(DT_NODELABEL(led_out1)),
+			PWM_DT_SPEC_GET(DT_NODELABEL(led_out2)),
+		},
+		{
+			PWM_DT_SPEC_GET(DT_NODELABEL(led_out3)),
+			PWM_DT_SPEC_GET(DT_NODELABEL(led_out4)),
+		},
+		{
+			PWM_DT_SPEC_GET(DT_NODELABEL(led_out5)),
+			PWM_DT_SPEC_GET(DT_NODELABEL(led_out6)),
+		},
+	};
+
+	if (bank < 1 || bank > 3) {
+		return;
+	}
+
+	int idx = bank - 1;
+
+	if (bank_type == 0) {
+		// LED mode – use the pwm-leds API.  The period (PWM_MSEC(1)) is set
+		// in the DTS; led_set_brightness takes a 0-100 percentage.
+		const struct device *dev = led_banks[idx];
+
+		if (!device_is_ready(dev)) {
+			LOG_ERR("LED bank %d not ready", bank);
+			return;
+		}
+
+		// Example: fade the two outputs in opposite directions.
+		int brightness = 0;
+		int dir = 1;
+		for (int i = 0; i < 200000; i++) {
+			led_set_brightness(dev, 0, brightness);
+			led_set_brightness(dev, 1, 100 - brightness);
+
+			brightness += dir;
+			if (brightness >= 100) {
+				dir = -1;
+			} else if (brightness <= 0) {
+				dir = 1;
+				printf("swap led dir\n");
+			}
+			k_sleep(K_MSEC(15));
+		}
+	} else {
+		// Servo mode – bypass pwm-leds and drive raw PWM at 20 ms period.
+		const struct pwm_dt_spec *ch = servo_ch[idx];
+
+		if (!pwm_is_ready_dt(&ch[0]) || !pwm_is_ready_dt(&ch[1])) {
+			LOG_ERR("Servo bank %d not ready", bank);
+			return;
+		}
+
+		const uint32_t period  = PWM_MSEC(20);
+		const uint32_t min_pulse = PWM_USEC(700);
+		const uint32_t max_pulse = PWM_USEC(2500);
+		const uint32_t step    = PWM_USEC(100);
+
+		uint32_t pulse = min_pulse;
+		int dir = 1;
+
+		// Sweep both outputs through the servo range.
+		for (int i = 0; i < 100000; i++) {
+			// Use pwm_set() (not pwm_set_pulse_dt) so we can specify the
+			// 20 ms servo period instead of the 1 ms period in the DTS.
+			pwm_set(ch[0].dev, ch[0].channel, period, pulse, ch[0].flags);
+			pwm_set(ch[1].dev, ch[1].channel, period, pulse, ch[1].flags);
+
+			if (dir > 0) {
+				pulse += step;
+				if (pulse >= max_pulse) {
+					dir = -1;
+				}
+			} else {
+				pulse -= step;
+				if (pulse <= min_pulse) {
+					dir = 1;
+				}
+			}
+			k_sleep(K_MSEC(1000));
+		}
+	}
 }
 
 static void uart_async_callback(const struct device *dev,
@@ -892,6 +1011,7 @@ int main(void)
 
 //	pwm_foobar();
 //	do_servo();
+//	servo_led_example(1, 1);
 
 	if (!device_is_ready(can_dev)) {
 		LOG_ERR("CAN: Device %s not ready.", can_dev->name);

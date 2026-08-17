@@ -64,7 +64,51 @@ struct crossing_gate crossing_gate_state = {
 //				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out2), gpios),
 //				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out3), gpios),
 		},
-		.led_pwm = DEVICE_DT_GET(DT_COMPAT_GET_ANY_STATUS_OKAY(pwm_leds)),
+		.pwm_banks = {
+				{
+					.led_pwm = DEVICE_DT_GET(DT_NODELABEL(pwm_bank_1)),
+					.servo_ch = {
+							PWM_DT_SPEC_GET(DT_NODELABEL(led_out1)),
+							PWM_DT_SPEC_GET(DT_NODELABEL(led_out2)),
+					},
+					.config = NULL,
+				},
+				{
+					.led_pwm = DEVICE_DT_GET(DT_NODELABEL(pwm_bank_2)),
+					.servo_ch = {
+							PWM_DT_SPEC_GET(DT_NODELABEL(led_out3)),
+							PWM_DT_SPEC_GET(DT_NODELABEL(led_out4)),
+					},
+					.config = NULL,
+				},
+				{
+					.led_pwm = DEVICE_DT_GET(DT_NODELABEL(pwm_bank_3)),
+					.servo_ch = {
+							PWM_DT_SPEC_GET(DT_NODELABEL(led_out5)),
+							PWM_DT_SPEC_GET(DT_NODELABEL(led_out6)),
+					},
+					.config = NULL,
+				},
+		},
+//		.led_pwm = {
+//				DEVICE_DT_GET(DT_NODELABEL(pwm_bank_1)),
+//				DEVICE_DT_GET(DT_NODELABEL(pwm_bank_2)),
+//				DEVICE_DT_GET(DT_NODELABEL(pwm_bank_3)),
+//		},
+//		.servo_ch = {
+//				{
+//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out1)),
+//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out2)),
+//				},
+//				{
+//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out3)),
+//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out4)),
+//				},
+//				{
+//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out5)),
+//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out6)),
+//				},
+//		},
 		.tortoise_power = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), tortoise_power_gpios),
 		.power_5v = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), power_5v_gpios),
 		.ext_i2c_enable = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), ext_i2c_enable_gpios),
@@ -301,6 +345,7 @@ void crossing_gate_set_default_values(uint64_t base_event_id){
 
 	// Segment 249
 	memset(&crossing_gate_state.pwm_config, 0, sizeof(struct pwm_output_segment));
+	crossing_gate_state.pwm_config.pwm_configs[1].usage = 2;
 
 	crossing_gate_state.general_config.base_event_id = base_event_id;
 
@@ -334,9 +379,6 @@ void crossing_gate_set_default_values(uint64_t base_event_id){
 void crossing_gate_init(){
 	k_msgq_init(&crossing_gate_state.pin_change_msgq, (char*)crossing_gate_state.pin_changemsgq_buffer, sizeof(int), 10);
 
-	led_set_brightness(crossing_gate_state.led_pwm, 0, 0);
-	led_set_brightness(crossing_gate_state.led_pwm, 1, 0);
-
 	memset(crossing_gate_state.crossing_routes, 0, sizeof(crossing_gate_state.crossing_routes));
 	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.crossing_routes); x++){
 		k_timer_init(&crossing_gate_state.crossing_routes[x].timeout, crossing_gate_timer_expired, NULL);
@@ -349,8 +391,8 @@ void crossing_gate_init(){
 		init_input(&crossing_gate_state.inputs[x], &cb_data[x]);
 	}
 
-	init_button(&crossing_gate_state.blue_button);
-	init_button(&crossing_gate_state.gold_button);
+//	init_button(&crossing_gate_state.blue_button);
+//	init_button(&crossing_gate_state.gold_button);
 
 	for(int x = 0; x < 2; x++){
 		init_tortoise(&crossing_gate_state.tortoise_control[x]);
@@ -390,7 +432,22 @@ void crossing_gate_init(){
 }
 
 void crossing_gate_do_pwm_config(){
-	for(int x = 0; x < 6; x++){
-		led_set_brightness(crossing_gate_state.led_pwm, x, 0);
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.pwm_config.pwm_configs); x++){
+		struct pwm_bank* bank = &crossing_gate_state.pwm_banks[x];
+		struct pwm_output_config* cfg = &crossing_gate_state.pwm_config.pwm_configs[x];
+		int is_led = cfg->usage == 0;
+		bank->config = cfg;
+		LOG_DBG("Bank %d is set for %s", x,  is_led ? "LED" : "Servo");
+
+		if(is_led){
+			// Turn the LED off
+			led_set_brightness(bank->led_pwm, 0, 0);
+		}else{
+			// Set the servo to an initial state
+			const struct pwm_dt_spec *ch = bank->servo_ch;
+
+			pwm_set(ch[0].dev, ch[0].channel, PWM_MSEC(20), PWM_USEC(cfg->up_position), ch[0].flags);
+			pwm_set(ch[1].dev, ch[1].channel, PWM_MSEC(20), PWM_USEC(cfg->up_position), ch[1].flags);
+		}
 	}
 }

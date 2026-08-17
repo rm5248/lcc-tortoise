@@ -9,6 +9,7 @@
 #define LCC_CROSSING_GATE_SRC_CROSSING_GATE_H_
 
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/pwm.h>
 #include <assert.h>
 
 #include "crossing-gate-structs.h"
@@ -34,6 +35,22 @@ enum BellRingType{
 	BELL_RING_RAISE,
 	BELL_RING_LOWER_AND_RAISE,
 	BELL_RING_WHILE_FLASH,
+};
+
+enum PWMBankUsage{
+	PWM_BANK_LED = 0,
+	PWM_BANK_SERVO = 1,
+};
+
+enum PWMPolarity{
+	CROSSINGGATE_PWM_POLARITY_NORMAL = 0,
+	CROSSINGGATE_PWM_POLARITY_REVERSED = 1,
+};
+
+enum PWMOutputType {
+	PWM_OUTPUT_LED_PHASE_A = 0,
+	PWM_OUTPUT_LED_PHASE_B = 1,
+	PWM_OUTPUT_GATE_CONTROL = 20,
 };
 
 struct tortoise {
@@ -131,17 +148,29 @@ _Static_assert(sizeof(struct general_config_segment) == 64);
 struct pwm_output_config{
 	uint8_t usage;
 	uint8_t polarity;
-	uint8_t reserved[14];
+	uint8_t output1_usage;
+	uint8_t output2_usage;
+	uint16_t min_pulse_width;
+	uint16_t max_pulse_width;
+	uint16_t up_position;
+	uint16_t down_position;
+	uint8_t reserved[20];
 };
-_Static_assert(sizeof(struct pwm_output_config) == 16);
+_Static_assert(sizeof(struct pwm_output_config) == 32);
 
 /**
  * PWM configuration - segment 249
  */
 struct pwm_output_segment {
-	struct pwm_output_config pwm_configs[6];
+	struct pwm_output_config pwm_configs[3];
 };
-_Static_assert(sizeof(struct pwm_output_segment) == 16 * 6);
+_Static_assert(sizeof(struct pwm_output_segment) == 32 * 3);
+
+struct pwm_bank{
+	struct device* led_pwm;
+	struct pwm_dt_spec servo_ch[2];
+	struct pwm_output_config* config;
+};
 
 /**
  * Holds the global instance data for the crossing gate controller
@@ -156,8 +185,7 @@ struct crossing_gate{
 	const struct tortoise tortoise_control[2];
 	struct bell bell;
 	const struct gpio_dt_spec led[3];
-	// LEDs for the crossing gates
-	const struct device* led_pwm;
+	struct pwm_bank pwm_banks[3];
 
 	const struct gpio_dt_spec tortoise_power;
 	const struct gpio_dt_spec power_5v;
