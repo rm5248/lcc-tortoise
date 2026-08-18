@@ -8,13 +8,15 @@
 #ifndef LCC_CROSSING_GATE_SRC_CDI_H_
 #define LCC_CROSSING_GATE_SRC_CDI_H_
 
+#include "app_version.h"
+
 const char* CDI_XML = "<?xml version='1.0'?> \
 <cdi xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='http://openlcb.org/schema/cdi/1/1/cdi.xsd'> \
 <identification> \
 <manufacturer>Snowball Creek Electronics</manufacturer> \
 <model>Crossing Gate Controller</model> \
 <hardwareVersion>P2</hardwareVersion> \
-<softwareVersion>1.0</softwareVersion> \
+<softwareVersion>" APP_VERSION_STRING "</softwareVersion> \
 </identification> \
 <acdi/> \
 <segment space='251'> \

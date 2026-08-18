@@ -19,6 +19,7 @@
 #include <zephyr/dfu/mcuboot.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_ctrl.h>
+#include "app_version.h"
 
 LOG_MODULE_REGISTER(crossing_gate_main, LOG_LEVEL_DBG);
 
@@ -695,7 +696,7 @@ static int tx_queue_size_cb(struct lcc_context*){
 
 static void splash(){
 	printf("LCC Crossing Gate Controller\n");
-	printf("  Version: " CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
+	printf("  Version: " APP_VERSION_STRING);
 	printf("  Rev: R" CONFIG_BOARD_REVISION "\n");
 
 	struct mcuboot_img_header versions[2];
@@ -1044,7 +1045,7 @@ int main(void)
 			"Snowball Creek Electronics",
 			"Crossing Gate Controller",
 			"R" CONFIG_BOARD_REVISION,
-			CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
+			APP_VERSION_STRING);
 
 	lcc_context_set_write_function( ctx, lcc_write_cb, tx_queue_size_cb );
 	struct lcc_event_context* evt_ctx = lcc_event_new(ctx);
