@@ -402,10 +402,6 @@ void crossing_gate_init(){
 	gpio_pin_configure_dt(&crossing_gate_state.tortoise_power, GPIO_OUTPUT);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_power, 1);
 
-	// Enable 5V power supply (PA2)
-	gpio_pin_configure_dt(&crossing_gate_state.power_5v, GPIO_OUTPUT);
-	gpio_pin_set_dt(&crossing_gate_state.power_5v, 1);
-
 	// Enable external I2C bus (PA4)
 	gpio_pin_configure_dt(&crossing_gate_state.ext_i2c_enable, GPIO_OUTPUT);
 	gpio_pin_set_dt(&crossing_gate_state.ext_i2c_enable, 1);
@@ -446,8 +442,18 @@ void crossing_gate_do_pwm_config(){
 			// Set the servo to an initial state
 			const struct pwm_dt_spec *ch = bank->servo_ch;
 
-			pwm_set(ch[0].dev, ch[0].channel, PWM_MSEC(20), PWM_USEC(cfg->up_position), ch[0].flags);
-			pwm_set(ch[1].dev, ch[1].channel, PWM_MSEC(20), PWM_USEC(cfg->up_position), ch[1].flags);
+			bank->servo1_current_pos = __builtin_bswap16(cfg->BE_servo1_up_position);
+			bank->servo2_current_pos = __builtin_bswap16(cfg->BE_servo2_up_position);
+			pwm_set(ch[0].dev, ch[0].channel, PWM_MSEC(20), PWM_USEC(__builtin_bswap16(cfg->BE_servo1_up_position)), ch[0].flags);
+			pwm_set(ch[1].dev, ch[1].channel, PWM_MSEC(20), PWM_USEC(__builtin_bswap16(cfg->BE_servo2_up_position)), ch[1].flags);
 		}
+
+		k_timer_init(&bank->servo_timer, crossing_gate_servo_timer_expired, NULL);
+		k_timer_user_data_set(&bank->servo_timer, bank);
 	}
+
+	// Enable 5V power supply (PA2)
+	// We must configure the PWM outputs first, so that we don't blow out the servos
+	gpio_pin_configure_dt(&crossing_gate_state.power_5v, GPIO_OUTPUT);
+	gpio_pin_set_dt(&crossing_gate_state.power_5v, 1);
 }

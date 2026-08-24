@@ -150,10 +150,10 @@ struct pwm_output_config{
 	uint8_t polarity;
 	uint8_t output1_usage;
 	uint8_t output2_usage;
-	uint16_t min_pulse_width;
-	uint16_t max_pulse_width;
-	uint16_t up_position;
-	uint16_t down_position;
+	uint16_t BE_servo1_up_position;
+	uint16_t BE_servo1_down_position;
+	uint16_t BE_servo2_up_position;
+	uint16_t BE_servo2_down_position;
 	uint8_t reserved[20];
 };
 _Static_assert(sizeof(struct pwm_output_config) == 32);
@@ -170,6 +170,14 @@ struct pwm_bank{
 	struct device* led_pwm;
 	struct pwm_dt_spec servo_ch[2];
 	struct pwm_output_config* config;
+
+	// Servo related information
+	struct k_timer servo_timer;
+	int servo_direction;
+	uint16_t servo1_step;
+	uint16_t servo2_step;
+	uint16_t servo1_current_pos;
+	uint16_t servo2_current_pos;
 };
 
 /**
@@ -242,5 +250,6 @@ void crossing_gate_lower_arms();
 
 void crossing_gate_timer_expired(struct k_timer* timer_id);
 void crossing_gate_reactivation_expired(struct k_timer* timer_id);
+void crossing_gate_servo_timer_expired(struct k_timer* timer_id);
 
 #endif /* LCC_CROSSING_GATE_SRC_CROSSING_GATE_H_ */

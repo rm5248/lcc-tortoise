@@ -395,28 +395,40 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 </map> \
 </int> \
 <int size='2'> \
-<name>Min pulse width(us)</name> \
-<description>The minimum servo pulse time.  By convention, this is 1ms(1000us).  Other servos may use a different value</description> \
-<min>700</min> \
-<max>1500</max> \
-</int> \
-<int size='2'> \
-<name>Max pulse width(us)</name> \
-<description>The maximum servo pulse time.  By convention, this is 2ms(2000us).  Other servos may use a different value</description> \
-<min>1500</min> \
-<max>2500</max> \
-</int> \
-<int size='2'> \
-<name>Up position(us)</name> \
+<name>Servo 1 Up position(us)</name> \
 <description>The value to set the servo to in order to put the gates into the up position</description> \
 <min>700</min> \
 <max>2500</max> \
+<hints> \
+<slider divisions='100' immediate='yes'/> \
+</hints> \
 </int> \
 <int size='2'> \
-<name>Down position(us)</name> \
+<name>Servo 1 Down position(us)</name> \
 <description>The value to set the servo to in order to put the gates into the down position</description> \
 <min>700</min> \
 <max>2500</max> \
+<hints> \
+<slider divisions='100' immediate='yes'/> \
+</hints> \
+</int> \
+<int size='2'> \
+<name>Servo 2 Up position(us)</name> \
+<description>The value to set the servo to in order to put the gates into the up position</description> \
+<min>700</min> \
+<max>2500</max> \
+<hints> \
+<slider divisions='100' immediate='yes'/> \
+</hints> \
+</int> \
+<int size='2'> \
+<name>Servo 2 Down position(us)</name> \
+<description>The value to set the servo to in order to put the gates into the down position</description> \
+<min>700</min> \
+<max>2500</max> \
+<hints> \
+<slider divisions='100' immediate='yes'/> \
+</hints> \
 </int> \
 <!-- align to 32 bytes --> \
 <group offset='20'/> \

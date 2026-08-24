@@ -29,6 +29,11 @@ static void change_led_brightness(struct pwm_bank* bank, int phasea_bright, int 
 	int real_phasea_brightness;
 	int real_phaseb_brightness;
 
+	if(bank->config->usage == 1){
+		// Servo bank - ignore any LED brightness requests
+		return;
+	}
+
 	real_phasea_brightness = real_brightness(bank, phasea_bright);
 	real_phaseb_brightness = real_brightness(bank, phaseb_bright);
 
@@ -359,6 +364,28 @@ void crossing_gate_raise_arms(){
 
 	gpio_pin_set_dt(&crossing_gate_state.bell.enable, 0);
 
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.pwm_config.pwm_configs); x++){
+		struct pwm_bank* bank = &crossing_gate_state.pwm_banks[x];
+		struct pwm_output_config* cfg = &crossing_gate_state.pwm_config.pwm_configs[x];
+		const struct pwm_dt_spec *ch = bank->servo_ch;
+		int is_led = cfg->usage == 0;
+
+		if(is_led || cfg->output1_usage < 20){
+			continue;
+		}
+
+		bank->servo_direction = 1;
+		bank->servo1_step = 100;
+		bank->servo2_step = 100;
+		if(__builtin_bswap16(bank->config->BE_servo1_down_position) > __builtin_bswap16(bank->config->BE_servo1_up_position)){
+			bank->servo1_step = -100;
+		}
+		if(__builtin_bswap16(bank->config->BE_servo2_down_position) > __builtin_bswap16(bank->config->BE_servo2_up_position)){
+			bank->servo2_step = -100;
+		}
+		k_timer_start(&bank->servo_timer, K_MSEC(100), K_MSEC(100));
+	}
+
 	struct lcc_event_ctx* evt_ctx = lcc_context_get_event_context(crossing_gate_state.lcc_ctx);
 	uint64_t produced_event = __builtin_bswap64(crossing_gate_state.general_events.BE_gates_active_event);
 	lcc_event_produce_event(evt_ctx, produced_event);
@@ -371,6 +398,28 @@ void crossing_gate_lower_arms(){
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[1], 0);
 
 	gpio_pin_set_dt(&crossing_gate_state.bell.enable, 1);
+
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.pwm_config.pwm_configs); x++){
+		struct pwm_bank* bank = &crossing_gate_state.pwm_banks[x];
+		struct pwm_output_config* cfg = &crossing_gate_state.pwm_config.pwm_configs[x];
+		int is_led = cfg->usage == 0;
+		const struct pwm_dt_spec *ch = bank->servo_ch;
+
+		if(is_led || cfg->output1_usage < 20){
+			continue;
+		}
+
+		bank->servo_direction = 0;
+		bank->servo1_step = -100;
+		bank->servo2_step = -100;
+		if(__builtin_bswap16(bank->config->BE_servo1_down_position) > __builtin_bswap16(bank->config->BE_servo1_up_position)){
+			bank->servo1_step = 100;
+		}
+		if(__builtin_bswap16(bank->config->BE_servo2_down_position) > __builtin_bswap16(bank->config->BE_servo2_up_position)){
+			bank->servo2_step = 100;
+		}
+		k_timer_start(&bank->servo_timer, K_MSEC(100), K_MSEC(100));
+	}
 
 	struct lcc_event_ctx* evt_ctx = lcc_context_get_event_context(crossing_gate_state.lcc_ctx);
 	uint64_t produced_event = __builtin_bswap64(crossing_gate_state.general_events.BE_gates_inactive_event);
@@ -422,4 +471,38 @@ void crossing_gate_reactivation_expired(struct k_timer* timer_id){
 	k_timer_stop(timer_id);
 
 	route->can_be_activated = 1;
+}
+
+void crossing_gate_servo_timer_expired(struct k_timer* timer_id){
+	struct pwm_bank* bank = k_timer_user_data_get(timer_id);
+	const struct pwm_dt_spec *ch = bank->servo_ch;
+	int max_pwm1 = MAX(__builtin_bswap16(bank->config->BE_servo1_up_position), __builtin_bswap16(bank->config->BE_servo1_down_position));
+	int min_pwm1 = MIN(__builtin_bswap16(bank->config->BE_servo1_up_position), __builtin_bswap16(bank->config->BE_servo1_down_position));
+	int max_pwm2 = MAX(__builtin_bswap16(bank->config->BE_servo2_up_position), __builtin_bswap16(bank->config->BE_servo2_down_position));
+	int min_pwm2 = MIN(__builtin_bswap16(bank->config->BE_servo2_up_position), __builtin_bswap16(bank->config->BE_servo2_down_position));
+	int bank1_done = 0;
+	int bank2_done = 0;
+
+	bank->servo1_current_pos += bank->servo1_step;
+	bank->servo2_current_pos += bank->servo2_step;
+	if(bank->servo1_current_pos > max_pwm1){
+		bank->servo1_current_pos = max_pwm1;
+		bank1_done = 1;
+	}else if(bank->servo1_current_pos < min_pwm1){
+		bank->servo1_current_pos = min_pwm1;
+		bank1_done = 1;
+	}
+	if(bank->servo2_current_pos > max_pwm2){
+		bank->servo2_current_pos = max_pwm2;
+		bank2_done = 1;
+	}else if(bank->servo2_current_pos < min_pwm2){
+		bank->servo2_current_pos = min_pwm2;
+		bank2_done = 1;
+	}
+	pwm_set(ch[0].dev, ch[0].channel, PWM_MSEC(20), PWM_USEC(bank->servo1_current_pos), ch[0].flags);
+	pwm_set(ch[1].dev, ch[1].channel, PWM_MSEC(20), PWM_USEC(bank->servo2_current_pos), ch[1].flags);
+
+	if(bank1_done && bank2_done){
+		k_timer_stop(timer_id);
+	}
 }

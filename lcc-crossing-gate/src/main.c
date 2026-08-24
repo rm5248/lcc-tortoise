@@ -297,8 +297,47 @@ static void init_can_txrx(){
 	}
 }
 
-static void memory_space_written(struct lcc_memory_map* map, uint8_t space){
+static void memory_space_written(struct lcc_memory_map* map, uint8_t space, uint32_t offset, uint32_t len){
 	configuration_flusher_set_dirty(&crossing_gate_state.config_flusher, space);
+
+	if(space != 249){
+		return;
+	}
+
+	// If we are modifying a servo output, change the settings appropriately
+	int bank_number = 0;
+	int bank0_high = sizeof(struct pwm_output_config);
+	int bank1_high = sizeof(struct pwm_output_config) * 2;
+	int bank2_high = sizeof(struct pwm_output_config) * 3;
+	int bank_offset = 0;
+	if(offset >= 0 && offset < bank0_high){
+		bank_number = 0;
+	}else if(offset >= bank0_high && offset < bank1_high){
+		bank_number = 1;
+		bank_offset = bank0_high;
+	}else if(offset >= bank1_high && offset < bank2_high){
+		bank_number = 2;
+		bank_offset = bank1_high;
+	}else{
+		LOG_ERR("Unable to determine bank");
+		return;
+	}
+
+	struct pwm_bank* bank = &crossing_gate_state.pwm_banks[bank_number];
+	struct pwm_output_config* cfg = &crossing_gate_state.pwm_config.pwm_configs[bank_number];
+	const struct pwm_dt_spec *ch = bank->servo_ch;
+	int is_led = cfg->usage == 0;
+	if(is_led) return;
+
+	if((offset - bank_offset) == offsetof(struct pwm_output_config, BE_servo1_up_position)){
+		pwm_set(ch[0].dev, ch[0].channel, PWM_MSEC(20), PWM_USEC(__builtin_bswap16(cfg->BE_servo1_up_position)), ch[0].flags);
+	}else if((offset - bank_offset) == offsetof(struct pwm_output_config, BE_servo1_down_position)){
+		pwm_set(ch[0].dev, ch[0].channel, PWM_MSEC(20), PWM_USEC(__builtin_bswap16(cfg->BE_servo1_down_position)), ch[0].flags);
+	}else if((offset - bank_offset) == offsetof(struct pwm_output_config, BE_servo2_up_position)){
+		pwm_set(ch[1].dev, ch[1].channel, PWM_MSEC(20), PWM_USEC(__builtin_bswap16(cfg->BE_servo2_up_position)), ch[0].flags);
+	}else if((offset - bank_offset) == offsetof(struct pwm_output_config, BE_servo2_down_position)){
+		pwm_set(ch[1].dev, ch[1].channel, PWM_MSEC(20), PWM_USEC(__builtin_bswap16(cfg->BE_servo2_down_position)), ch[0].flags);
+	}
 }
 
 static void write_dirty_segment(int space){
