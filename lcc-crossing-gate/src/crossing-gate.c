@@ -376,7 +376,13 @@ void crossing_gate_raise_arms(){
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[0], 0);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[1], 1);
 
-	gpio_pin_set_dt(&crossing_gate_state.bell.enable, 0);
+	if(crossing_gate_state.general_config.bell_behavior == BELL_RING_RAISE ||
+			crossing_gate_state.general_config.bell_behavior == BELL_RING_LOWER_AND_RAISE){
+		gpio_pin_set_dt(&crossing_gate_state.bell.enable, 1);
+		k_timer_start(&crossing_gate_state.bell_disable_timer, K_MSEC(__builtin_bswap16(crossing_gate_state.general_config.bell_ring_time)), K_FOREVER);
+	}else if(crossing_gate_state.general_config.bell_behavior == BELL_RING_WHILE_FLASH){
+		gpio_pin_set_dt(&crossing_gate_state.bell.enable, 0);
+	}
 
 	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.pwm_config.pwm_configs); x++){
 		struct pwm_bank* bank = &crossing_gate_state.pwm_banks[x];
@@ -411,7 +417,13 @@ void crossing_gate_lower_arms(){
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[0], 1);
 	gpio_pin_set_dt(&crossing_gate_state.tortoise_control[1].gpios[1], 0);
 
-	gpio_pin_set_dt(&crossing_gate_state.bell.enable, 1);
+	if(crossing_gate_state.general_config.bell_behavior == BELL_RING_LOWER ||
+			crossing_gate_state.general_config.bell_behavior == BELL_RING_LOWER_AND_RAISE){
+		gpio_pin_set_dt(&crossing_gate_state.bell.enable, 1);
+		k_timer_start(&crossing_gate_state.bell_disable_timer, K_MSEC(__builtin_bswap16(crossing_gate_state.general_config.bell_ring_time)), K_FOREVER);
+	}else if(crossing_gate_state.general_config.bell_behavior == BELL_RING_WHILE_FLASH){
+		gpio_pin_set_dt(&crossing_gate_state.bell.enable, 1);
+	}
 
 	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.pwm_config.pwm_configs); x++){
 		struct pwm_bank* bank = &crossing_gate_state.pwm_banks[x];
@@ -519,4 +531,8 @@ void crossing_gate_servo_timer_expired(struct k_timer* timer_id){
 	if(bank1_done && bank2_done){
 		k_timer_stop(timer_id);
 	}
+}
+
+void crossing_gate_bell_timer_expired(struct k_timer* timer_id){
+	gpio_pin_set_dt(&crossing_gate_state.bell.enable, 0);
 }

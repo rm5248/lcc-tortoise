@@ -431,6 +431,8 @@ void crossing_gate_init(){
 	gpio_pin_configure_dt(&crossing_gate_state.bell.enable, GPIO_OUTPUT);
 
 	crossing_gate_state.gridconnect = lcc_gridconnect_new();
+
+	k_timer_init(&crossing_gate_state.bell_disable_timer, crossing_gate_bell_timer_expired, NULL);
 }
 
 void crossing_gate_do_pwm_config(){

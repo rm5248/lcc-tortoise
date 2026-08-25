@@ -233,6 +233,8 @@ struct crossing_gate{
 	struct configuration_flusher config_flusher;
 
 	const struct gpio_dt_spec external_inputs[16];
+
+	struct k_timer bell_disable_timer;
 };
 
 extern struct crossing_gate crossing_gate_state;
@@ -255,5 +257,6 @@ void crossing_gate_lower_arms();
 void crossing_gate_timer_expired(struct k_timer* timer_id);
 void crossing_gate_reactivation_expired(struct k_timer* timer_id);
 void crossing_gate_servo_timer_expired(struct k_timer* timer_id);
+void crossing_gate_bell_timer_expired(struct k_timer* timer_id);
 
 #endif /* LCC_CROSSING_GATE_SRC_CROSSING_GATE_H_ */
