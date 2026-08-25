@@ -59,11 +59,6 @@ struct crossing_gate crossing_gate_state = {
 				.time_millis = 0,
 				.ring_type = BELL_RING_NONE,
 		},
-		.led = {
-//				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out1), gpios),
-//				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out2), gpios),
-//				GPIO_DT_SPEC_GET(DT_NODELABEL(led_out3), gpios),
-		},
 		.pwm_banks = {
 				{
 					.led_pwm = DEVICE_DT_GET(DT_NODELABEL(pwm_bank_1)),
@@ -90,25 +85,6 @@ struct crossing_gate crossing_gate_state = {
 					.config = NULL,
 				},
 		},
-//		.led_pwm = {
-//				DEVICE_DT_GET(DT_NODELABEL(pwm_bank_1)),
-//				DEVICE_DT_GET(DT_NODELABEL(pwm_bank_2)),
-//				DEVICE_DT_GET(DT_NODELABEL(pwm_bank_3)),
-//		},
-//		.servo_ch = {
-//				{
-//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out1)),
-//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out2)),
-//				},
-//				{
-//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out3)),
-//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out4)),
-//				},
-//				{
-//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out5)),
-//					PWM_DT_SPEC_GET(DT_NODELABEL(led_out6)),
-//				},
-//		},
 		.tortoise_power = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), tortoise_power_gpios),
 		.power_5v = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), power_5v_gpios),
 		.ext_i2c_enable = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), ext_i2c_enable_gpios),

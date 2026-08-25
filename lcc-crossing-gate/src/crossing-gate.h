@@ -196,7 +196,6 @@ struct crossing_gate{
 	const struct gpio_dt_spec inputs[8];
 	const struct tortoise tortoise_control[2];
 	struct bell bell;
-	const struct gpio_dt_spec led[3];
 	struct pwm_bank pwm_banks[3];
 
 	const struct gpio_dt_spec tortoise_power;
