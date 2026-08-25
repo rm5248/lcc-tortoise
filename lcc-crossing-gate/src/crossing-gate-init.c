@@ -314,6 +314,7 @@ void crossing_gate_set_default_values(uint64_t base_event_id){
 	crossing_gate_state.general_config.timeout = 25;
 	crossing_gate_state.general_config.bell_behavior = 4;
 	crossing_gate_state.general_config.bell_ring_time = 0;
+	crossing_gate_state.general_config.external_gpio_expander = 0;
 
 	// Segment 251
 	memset(crossing_gate_state.node_info.description, 0, sizeof(crossing_gate_state.node_info.description));
@@ -349,7 +350,22 @@ void crossing_gate_set_default_values(uint64_t base_event_id){
 
 	// Segment 249
 	memset(&crossing_gate_state.pwm_config, 0, sizeof(struct pwm_output_segment));
-	crossing_gate_state.pwm_config.pwm_configs[1].usage = 2;
+	// PWM configuration: set sane default values for the servo positions
+	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.pwm_config.pwm_configs); x++){
+		crossing_gate_state.pwm_config.pwm_configs[x].BE_servo1_down_position = __builtin_bswap16(1000);
+		crossing_gate_state.pwm_config.pwm_configs[x].BE_servo1_up_position = __builtin_bswap16(2000);
+		crossing_gate_state.pwm_config.pwm_configs[x].BE_servo2_down_position = __builtin_bswap16(1000);
+		crossing_gate_state.pwm_config.pwm_configs[x].BE_servo2_up_position = __builtin_bswap16(2000);
+	}
+
+	// The first PWM bank defaults to LED control
+	crossing_gate_state.pwm_config.pwm_configs[0].output1_usage = 0;
+	crossing_gate_state.pwm_config.pwm_configs[0].output2_usage = 1;
+
+	// The second PWM bank defaults to servo control
+	crossing_gate_state.pwm_config.pwm_configs[1].usage = 1;
+	crossing_gate_state.pwm_config.pwm_configs[1].output1_usage = 20;
+	crossing_gate_state.pwm_config.pwm_configs[1].output2_usage = 20;
 
 	crossing_gate_state.general_config.base_event_id = base_event_id;
 
