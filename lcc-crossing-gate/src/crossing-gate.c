@@ -349,9 +349,23 @@ void crossing_gate_update(){
 }
 
 void crossing_gate_incoming_event(uint64_t event_id){
-	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.crossing_routes); x++){
-		for(int input = 0; input < ARRAY_SIZE(crossing_gate_state.crossing_routes[x].switch_inputs); input++){
-			switch_input_handle_event(&crossing_gate_state.crossing_routes[x].switch_inputs[input], event_id);
+	LOG_DBG("id: %llx activate: %llx", event_id, __builtin_bswap64(crossing_gate_state.general_events.BE_manual_gates_activate_event));
+	if(event_id == __builtin_bswap64(crossing_gate_state.general_events.BE_manual_gates_activate_event)){
+
+		// Find the first route that can be activated and activate it
+		for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.crossing_routes); x++){
+			struct route* route = &crossing_gate_state.crossing_routes[x];
+			if(!route->config->route_enabled || !route->can_be_activated){
+				continue;
+			}
+
+			route->current_train.last_seen_millis = k_uptime_get();
+			route->current_train.location = LOCATION_PRE_ISLAND_OCCUPIED;
+			route->current_train.direction = DIRECTION_RTL;
+			route_update_train_seen(route, route->current_train.location);
+			LOG_INF("Route %s: Manual activation", route->config->route_name);
+			crossing_gate_update();
+			break;
 		}
 	}
 }

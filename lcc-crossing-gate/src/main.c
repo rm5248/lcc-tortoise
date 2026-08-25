@@ -273,6 +273,8 @@ static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
 			switch_input_handle_event(&crossing_gate_state.crossing_routes[route_num].switch_inputs[switch_input], event_id);
 		}
 	}
+
+	crossing_gate_incoming_event(event_id);
 }
 
 static void init_can_txrx(){
