@@ -136,13 +136,17 @@ struct general_config_segment {
 	uint8_t timeout;
 	uint8_t bell_behavior;
 	uint16_t bell_ring_time;
-	uint32_t reserved[13];
+	uint8_t external_gpio_expander;
+	uint8_t res1;
+	uint8_t res2;
+	uint8_t res3;
+	uint32_t reserved[12];
 
 	// Hidden configuration values
 	uint64_t base_event_id;
 };
 _Static_assert(sizeof(struct general_config_segment) == 64);
-#define SIZEOF_GENERAL_CONFIG (4)
+#define SIZEOF_GENERAL_CONFIG (5)
 
 
 struct pwm_output_config{

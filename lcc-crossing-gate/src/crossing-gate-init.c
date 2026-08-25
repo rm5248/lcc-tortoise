@@ -268,8 +268,12 @@ static void crossing_gate_compute_neighbors(){
 	}
 }
 
-static void init_external_gpio_expanders(void)
+void crossing_gate_do_external_gpio_config(void)
 {
+	if(!crossing_gate_state.general_config.external_gpio_expander){
+		LOG_INF("External GPIO expander not configured: not initializing");
+		return;
+	}
 	if (device_init(gpio_expander_ext) != 0) {
 		LOG_ERR("External GPIO expander init failed");
 		return;
@@ -411,20 +415,6 @@ void crossing_gate_init(){
 	gpio_pin_configure_dt(&crossing_gate_state.bell.enable, GPIO_OUTPUT);
 
 	crossing_gate_state.gridconnect = lcc_gridconnect_new();
-
-	init_external_gpio_expanders();
-
-	// Configure our PWM LED outputs
-//	gpio_pin_configure_dt(&crossing_gate_state.led[0], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
-//	gpio_pin_configure_dt(&crossing_gate_state.led[1], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
-//	gpio_pin_configure_dt(&crossing_gate_state.led[2], GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW);
-
-	// statically configure a route for testing purposes
-//	crossing_gate_state.crossing_routes[0].sensors[0].sensor_gpio = &crossing_gate_state.inputs[0];
-//	crossing_gate_state.crossing_routes[0].sensors[1].sensor_gpio = &crossing_gate_state.inputs[1];
-//	crossing_gate_state.crossing_routes[0].sensors[2].sensor_gpio = &crossing_gate_state.inputs[2];
-//	crossing_gate_state.crossing_routes[0].sensors[3].sensor_gpio = &crossing_gate_state.inputs[3];
-//	strcpy(crossing_gate_state.crossing_routes[0].config->route_name, "Route 1");
 }
 
 void crossing_gate_do_pwm_config(){

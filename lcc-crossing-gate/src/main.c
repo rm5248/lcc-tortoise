@@ -1069,6 +1069,7 @@ int main(void)
 	uint64_t lcc_id = load_lcc_id();
 	crossing_gate_load_config();
 	crossing_gate_do_pwm_config();
+	crossing_gate_do_external_gpio_config();
 
 	struct lcc_context* ctx = lcc_context_new();
 	if(ctx == NULL){

@@ -115,6 +115,70 @@
 							<property>7</property>
 							<value>Input 8</value>
 						</relation>
+						<relation>
+							<property>8</property>
+							<value>External input 0</value>
+						</relation>
+						<relation>
+							<property>9</property>
+							<value>External input 1</value>
+						</relation>
+						<relation>
+							<property>10</property>
+							<value>External input 2</value>
+						</relation>
+						<relation>
+							<property>11</property>
+							<value>External input 3</value>
+						</relation>
+						<relation>
+							<property>12</property>
+							<value>External input 4</value>
+						</relation>
+						<relation>
+							<property>13</property>
+							<value>External input 5</value>
+						</relation>
+						<relation>
+							<property>14</property>
+							<value>External input 6</value>
+						</relation>
+						<relation>
+							<property>15</property>
+							<value>External input 7</value>
+						</relation>
+						<relation>
+							<property>16</property>
+							<value>External input 10</value>
+						</relation>
+						<relation>
+							<property>17</property>
+							<value>External input 11</value>
+						</relation>
+						<relation>
+							<property>18</property>
+							<value>External input 12</value>
+						</relation>
+						<relation>
+							<property>19</property>
+							<value>External input 13</value>
+						</relation>
+						<relation>
+							<property>20</property>
+							<value>External input 14</value>
+						</relation>
+						<relation>
+							<property>21</property>
+							<value>External input 15</value>
+						</relation>
+						<relation>
+							<property>22</property>
+							<value>External input 16</value>
+						</relation>
+						<relation>
+							<property>23</property>
+							<value>External input 17</value>
+						</relation>
 					</map>
 				</int>
 				<int size='1'>
@@ -210,6 +274,70 @@
 						<relation>
 							<property>7</property>
 							<value>Input 8</value>
+						</relation>
+						<relation>
+							<property>8</property>
+							<value>External input 0</value>
+						</relation>
+						<relation>
+							<property>9</property>
+							<value>External input 1</value>
+						</relation>
+						<relation>
+							<property>10</property>
+							<value>External input 2</value>
+						</relation>
+						<relation>
+							<property>11</property>
+							<value>External input 3</value>
+						</relation>
+						<relation>
+							<property>12</property>
+							<value>External input 4</value>
+						</relation>
+						<relation>
+							<property>13</property>
+							<value>External input 5</value>
+						</relation>
+						<relation>
+							<property>14</property>
+							<value>External input 6</value>
+						</relation>
+						<relation>
+							<property>15</property>
+							<value>External input 7</value>
+						</relation>
+						<relation>
+							<property>16</property>
+							<value>External input 10</value>
+						</relation>
+						<relation>
+							<property>17</property>
+							<value>External input 11</value>
+						</relation>
+						<relation>
+							<property>18</property>
+							<value>External input 12</value>
+						</relation>
+						<relation>
+							<property>19</property>
+							<value>External input 13</value>
+						</relation>
+						<relation>
+							<property>20</property>
+							<value>External input 14</value>
+						</relation>
+						<relation>
+							<property>21</property>
+							<value>External input 15</value>
+						</relation>
+						<relation>
+							<property>22</property>
+							<value>External input 16</value>
+						</relation>
+						<relation>
+							<property>23</property>
+							<value>External input 17</value>
 						</relation>
 					</map>
 				</int>
@@ -323,6 +451,20 @@
 			<description>Bell ring time(in milliseconds) when gates are raising/lowering</description>
 			<min>0</min>
 			<max>10000</max>
+		</int>
+		<int size='1'>
+			<name>External GPIO active</name>
+			<description>Configure the external GPIO expander.  Requires reboot to take effect.</description>
+			<map>
+				<relation>
+					<property>0</property>
+					<value>Disabled</value>
+				</relation>
+				<relation>
+					<property>1</property>
+					<value>Enabled</value>
+				</relation>
+			</map>
 		</int>
 	</segment>
 

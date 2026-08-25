@@ -15,6 +15,7 @@ void crossing_gate_init();
 void crossing_gate_load_config();
 
 void crossing_gate_do_pwm_config();
+void crossing_gate_do_external_gpio_config();
 
 /**
  * Set all values in RAM to their default settings.  EventIDs are
