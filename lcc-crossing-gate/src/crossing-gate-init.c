@@ -436,6 +436,9 @@ void crossing_gate_do_pwm_config(){
 		k_timer_user_data_set(&bank->servo_timer, bank);
 	}
 
+	// Wait a few milliseconds for the PWM to start doing its thing
+	k_sleep(K_MSEC(100));
+
 	// Enable 5V power supply (PA2)
 	// We must configure the PWM outputs first, so that we don't blow out the servos
 	gpio_pin_configure_dt(&crossing_gate_state.power_5v, GPIO_OUTPUT);
