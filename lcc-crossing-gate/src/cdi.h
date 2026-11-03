@@ -16,7 +16,7 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 <manufacturer>Snowball Creek Electronics</manufacturer> \
 <model>Crossing Gate Controller</model> \
 <hardwareVersion>P2</hardwareVersion> \
-<softwareVersion>" APP_VERSION_STRING "</softwareVersion> \
+<softwareVersion>1.0</softwareVersion> \
 </identification> \
 <acdi/> \
 <segment space='251'> \
@@ -539,8 +539,8 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 <int size='2'> \
 <name>Servo 1 Up position(us)</name> \
 <description>The value to set the servo to in order to put the gates into the up position</description> \
-<min>700</min> \
-<max>2500</max> \
+<min>1000</min> \
+<max>2000</max> \
 <hints> \
 <slider divisions='100' immediate='yes'/> \
 </hints> \
@@ -548,8 +548,8 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 <int size='2'> \
 <name>Servo 1 Down position(us)</name> \
 <description>The value to set the servo to in order to put the gates into the down position</description> \
-<min>700</min> \
-<max>2500</max> \
+<min>1000</min> \
+<max>2000</max> \
 <hints> \
 <slider divisions='100' immediate='yes'/> \
 </hints> \
@@ -557,8 +557,8 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 <int size='2'> \
 <name>Servo 2 Up position(us)</name> \
 <description>The value to set the servo to in order to put the gates into the up position</description> \
-<min>700</min> \
-<max>2500</max> \
+<min>1000</min> \
+<max>2000</max> \
 <hints> \
 <slider divisions='100' immediate='yes'/> \
 </hints> \
@@ -566,8 +566,8 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 <int size='2'> \
 <name>Servo 2 Down position(us)</name> \
 <description>The value to set the servo to in order to put the gates into the down position</description> \
-<min>700</min> \
-<max>2500</max> \
+<min>1000</min> \
+<max>2000</max> \
 <hints> \
 <slider divisions='100' immediate='yes'/> \
 </hints> \

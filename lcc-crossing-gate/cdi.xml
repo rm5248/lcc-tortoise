@@ -535,8 +535,8 @@
 			<int size='2'>
 				<name>Servo 1 Up position(us)</name>
 				<description>The value to set the servo to in order to put the gates into the up position</description>
-				<min>700</min>
-				<max>2500</max>
+				<min>1000</min>
+				<max>2000</max>
 				<hints>
 					<slider divisions='100' immediate='yes'/>
 				</hints>
@@ -544,8 +544,8 @@
 			<int size='2'>
 				<name>Servo 1 Down position(us)</name>
 				<description>The value to set the servo to in order to put the gates into the down position</description>
-				<min>700</min>
-				<max>2500</max>
+				<min>1000</min>
+				<max>2000</max>
 				<hints>
 					<slider divisions='100' immediate='yes'/>
 				</hints>
@@ -553,8 +553,8 @@
 			<int size='2'>
 				<name>Servo 2 Up position(us)</name>
 				<description>The value to set the servo to in order to put the gates into the up position</description>
-				<min>700</min>
-				<max>2500</max>
+				<min>1000</min>
+				<max>2000</max>
 				<hints>
 					<slider divisions='100' immediate='yes'/>
 				</hints>
@@ -562,8 +562,8 @@
 			<int size='2'>
 				<name>Servo 2 Down position(us)</name>
 				<description>The value to set the servo to in order to put the gates into the down position</description>
-				<min>700</min>
-				<max>2500</max>
+				<min>1000</min>
+				<max>2000</max>
 				<hints>
 					<slider divisions='100' immediate='yes'/>
 				</hints>
