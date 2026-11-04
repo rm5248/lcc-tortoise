@@ -568,8 +568,14 @@
 					<slider divisions='100' immediate='yes'/>
 				</hints>
 			</int>
+			<int size='1'>
+				<name>Servo speed</name>
+				<description>How fast the servo should move.  1 = slowest speed, 5 = fastest speed</description>
+				<min>1</min>
+				<max>5</max>
+			</int>
 			<!-- align to 32 bytes -->
-			<group offset='20'/>
+			<group offset='19'/>
 		</group>
 	</segment>
 

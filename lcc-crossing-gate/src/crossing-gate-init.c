@@ -332,6 +332,7 @@ void crossing_gate_set_default_values(uint64_t base_event_id){
 		crossing_gate_state.pwm_config.pwm_configs[x].BE_servo1_up_position = __builtin_bswap16(2000);
 		crossing_gate_state.pwm_config.pwm_configs[x].BE_servo2_down_position = __builtin_bswap16(1000);
 		crossing_gate_state.pwm_config.pwm_configs[x].BE_servo2_up_position = __builtin_bswap16(2000);
+		crossing_gate_state.pwm_config.pwm_configs[x].servo_speed = 3;
 	}
 
 	// The first PWM bank defaults to LED control

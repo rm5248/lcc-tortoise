@@ -387,23 +387,46 @@ void crossing_gate_raise_arms(){
 	for(int x = 0; x < ARRAY_SIZE(crossing_gate_state.pwm_config.pwm_configs); x++){
 		struct pwm_bank* bank = &crossing_gate_state.pwm_banks[x];
 		struct pwm_output_config* cfg = &crossing_gate_state.pwm_config.pwm_configs[x];
-		const struct pwm_dt_spec *ch = bank->servo_ch;
 		int is_led = cfg->usage == 0;
+		int step_size = 100;
+		int msec_step = 100;
 
 		if(is_led || cfg->output1_usage < 20){
 			continue;
 		}
 
+		switch(cfg->servo_speed){
+		case 1:
+			step_size = 50;
+			msec_step = 150;
+			break;
+		case 2:
+			step_size = 50;
+			msec_step = 100;
+			break;
+		case 3:
+		default:
+			break;
+		case 4:
+			step_size = 150;
+			msec_step = 100;
+			break;
+		case 5:
+			step_size = 150;
+			msec_step = 50;
+			break;
+		}
+
 		bank->servo_direction = 1;
-		bank->servo1_step = 100;
-		bank->servo2_step = 100;
+		bank->servo1_step = step_size;
+		bank->servo2_step = step_size;
 		if(__builtin_bswap16(bank->config->BE_servo1_down_position) > __builtin_bswap16(bank->config->BE_servo1_up_position)){
-			bank->servo1_step = -100;
+			bank->servo1_step = step_size * -1;
 		}
 		if(__builtin_bswap16(bank->config->BE_servo2_down_position) > __builtin_bswap16(bank->config->BE_servo2_up_position)){
-			bank->servo2_step = -100;
+			bank->servo2_step = step_size * -1;
 		}
-		k_timer_start(&bank->servo_timer, K_MSEC(100), K_MSEC(100));
+		k_timer_start(&bank->servo_timer, K_MSEC(msec_step), K_MSEC(msec_step));
 	}
 
 	struct lcc_event_ctx* evt_ctx = lcc_context_get_event_context(crossing_gate_state.lcc_ctx);
@@ -429,22 +452,45 @@ void crossing_gate_lower_arms(){
 		struct pwm_bank* bank = &crossing_gate_state.pwm_banks[x];
 		struct pwm_output_config* cfg = &crossing_gate_state.pwm_config.pwm_configs[x];
 		int is_led = cfg->usage == 0;
-		const struct pwm_dt_spec *ch = bank->servo_ch;
+		int step_size = -100;
+		int msec_step = 100;
 
 		if(is_led || cfg->output1_usage < 20){
 			continue;
 		}
 
+		switch(cfg->servo_speed){
+		case 1:
+			step_size = -50;
+			msec_step = 150;
+			break;
+		case 2:
+			step_size = -50;
+			msec_step = 100;
+			break;
+		case 3:
+		default:
+			break;
+		case 4:
+			step_size = -150;
+			msec_step = 100;
+			break;
+		case 5:
+			step_size = -150;
+			msec_step = 50;
+			break;
+		}
+
 		bank->servo_direction = 0;
-		bank->servo1_step = -100;
-		bank->servo2_step = -100;
+		bank->servo1_step = step_size;
+		bank->servo2_step = step_size;
 		if(__builtin_bswap16(bank->config->BE_servo1_down_position) > __builtin_bswap16(bank->config->BE_servo1_up_position)){
-			bank->servo1_step = 100;
+			bank->servo1_step = step_size * -1;
 		}
 		if(__builtin_bswap16(bank->config->BE_servo2_down_position) > __builtin_bswap16(bank->config->BE_servo2_up_position)){
-			bank->servo2_step = 100;
+			bank->servo2_step = step_size * -1;
 		}
-		k_timer_start(&bank->servo_timer, K_MSEC(100), K_MSEC(100));
+		k_timer_start(&bank->servo_timer, K_MSEC(msec_step), K_MSEC(msec_step));
 	}
 
 	struct lcc_event_ctx* evt_ctx = lcc_context_get_event_context(crossing_gate_state.lcc_ctx);

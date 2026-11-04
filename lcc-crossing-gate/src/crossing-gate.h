@@ -158,7 +158,8 @@ struct pwm_output_config{
 	uint16_t BE_servo1_down_position;
 	uint16_t BE_servo2_up_position;
 	uint16_t BE_servo2_down_position;
-	uint8_t reserved[20];
+	uint8_t servo_speed;
+	uint8_t reserved[19];
 };
 _Static_assert(sizeof(struct pwm_output_config) == 32);
 
