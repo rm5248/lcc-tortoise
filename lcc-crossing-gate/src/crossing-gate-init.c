@@ -388,8 +388,8 @@ void crossing_gate_init(){
 		init_input(&crossing_gate_state.inputs[x], &cb_data[x]);
 	}
 
-//	init_button(&crossing_gate_state.blue_button);
-//	init_button(&crossing_gate_state.gold_button);
+	init_button(&crossing_gate_state.blue_button);
+	init_button(&crossing_gate_state.gold_button);
 
 	for(int x = 0; x < 2; x++){
 		init_tortoise(&crossing_gate_state.tortoise_control[x]);

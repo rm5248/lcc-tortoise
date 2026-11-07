@@ -105,11 +105,11 @@
 
 		blue_switch: button_blue {
 			label = "blue_switch";
-			gpios = <&gpioa 14 (GPIO_ACTIVE_HIGH)>;
+			gpios = <&gpioa 13 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
 		};
 		gold_switch: button_gold {
 			label = "gold_switch";
-			gpios = <&gpioa 13 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			gpios = <&gpioa 14 (GPIO_ACTIVE_HIGH)>;
 		};
 
 	};
