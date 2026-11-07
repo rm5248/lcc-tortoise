@@ -16,7 +16,7 @@ const char* CDI_XML = "<?xml version='1.0'?> \
 <manufacturer>Snowball Creek Electronics</manufacturer> \
 <model>Crossing Gate Controller</model> \
 <hardwareVersion>P2</hardwareVersion> \
-<softwareVersion>1.0</softwareVersion> \
+<softwareVersion>" APP_VERSION_STRING "</softwareVersion> \
 </identification> \
 <acdi/> \
 <segment space='251'> \
