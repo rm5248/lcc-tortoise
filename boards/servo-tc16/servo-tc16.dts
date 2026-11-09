@@ -172,21 +172,22 @@ zephyr_udc0: &usb {
 		 * 12k reserved for app storage partition.
 		 * This is used for configuration data.
 		 */
-		config_partition: partition@6C000 {
-			label = "config";
+		segment_253: partition@6C000 {
+			label = "route_config";
 			reg = <0x0006C000 DT_SIZE_K(12)>;
 		};
+
+		segment_251: partition@6F000 {
+			label = "node_info";
+			reg = <0x0006F000 DT_SIZE_K(2)>;
+		};
+
 		/*
 		 * 2k for LCC ID data
 		 */
 		lcc_partition: partition@7F000 {
 			label = "lcc-partition";
 			reg = <0x0007F000 DT_SIZE_K(2)>;
-		};
-
-		global_partition: partition@7F800 {
-			label = "global-partition";
-			reg = <0x0007F800 DT_SIZE_K(2)>;
 		};
 	};
 };

@@ -16,6 +16,7 @@
 #include "dcc-decoder.h"
 
 #include "servo16-output-state.h"
+#include "configuration_flusher.h"
 
 struct lcc_event_context;
 
@@ -108,13 +109,14 @@ struct Servo16PlusState{
 	uint32_t last_rx_dcc_message;
 };
 
-struct Servo16PlusGlobalConfig {
+struct Servo16PlusNameDescription {
 	char node_name[64];
 	char node_description[64];
 };
 
 extern struct Servo16PlusState servo16_state;
-extern struct Servo16PlusGlobalConfig servo16_global;
+extern struct Servo16PlusNameDescription servo16_name_desc;
+extern struct configuration_flusher config_flusher;
 
 int init_state(uint64_t board_id);
 void init_all_daughterboards();

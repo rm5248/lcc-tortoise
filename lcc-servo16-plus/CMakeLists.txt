@@ -38,6 +38,8 @@ target_sources(app PRIVATE
 	../common/dcc-decode-stm32.c
 	../common/adc_utils.h
 	../common/adc_utils.c
+	../common/partition_utils.c
+	../common/configuration_flusher.c
 )
 target_include_directories(app PRIVATE
 	${TRAINUTILS_DIR}/LCC

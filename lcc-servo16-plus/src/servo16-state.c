@@ -44,7 +44,8 @@ struct Servo16PlusState servo16_state = {
 		.gold_button = GPIO_DT_SPEC_GET(DT_NODELABEL(gold_switch), gpios),
 };
 
-struct Servo16PlusGlobalConfig servo16_global = {0};
+struct Servo16PlusNameDescription servo16_name_desc = {0};
+struct configuration_flusher config_flusher = {0};
 
 static int init_led(const struct gpio_dt_spec* led){
 	if (!gpio_is_ready_dt(led)) {
@@ -136,68 +137,11 @@ void output_enable(){
 	gpio_pin_set_dt(&servo16_state.oe_pin, 1);
 }
 
-int save_config_to_flash(){
-	int ret = 0;
-	const struct flash_area* storage_area = NULL;
-	int id = FIXED_PARTITION_ID(config_partition);
-
-	if(flash_area_open(id, &storage_area) < 0){
-		return 1;
-	}
-
-	ret = flash_area_erase(storage_area, 0, sizeof(servo16_state.pwm_boards_config));
-	if(ret){
-		goto out;
-	}
-
-	int err = flash_area_write(storage_area, 0, servo16_state.pwm_boards_config, sizeof(servo16_state.pwm_boards_config));
-	if( err < 0){
-		ret = -1;
-	}
-
-out:
-	if(ret){
-		printf("Unable to save configs to flash: %d\n", err);
-	}
-	flash_area_close(storage_area);
-
-//	powerhandle_check_if_save_required();
-	return ret;
-}
-
-int save_globals_to_flash(){
-	int ret = 0;
-	const struct flash_area* storage_area = NULL;
-	int id = FIXED_PARTITION_ID(global_partition);
-
-	if(flash_area_open(id, &storage_area) < 0){
-		return 1;
-	}
-
-	ret = flash_area_erase(storage_area, 0, sizeof(servo16_global));
-	if(ret){
-		goto out;
-	}
-
-	int err = flash_area_write(storage_area, 0, &servo16_global, sizeof(servo16_global));
-	if( err < 0){
-		ret = -1;
-	}
-
-out:
-	if(ret){
-		printf("Unable to save global configs to flash: %d\n", err);
-	}
-	flash_area_close(storage_area);
-
-	return ret;
-}
-
 int load_config_from_flash(){
 	int ret = 0;
 	const struct flash_area* storage_area = NULL;
 	uint8_t buffer[8];
-	int id = FIXED_PARTITION_ID(config_partition);
+	int id = FIXED_PARTITION_ID(segment_253);
 
 	if(flash_area_open(id, &storage_area) < 0){
 		return 1;
@@ -231,7 +175,7 @@ int load_global_config_from_flash(){
 	int ret = 0;
 	const struct flash_area* storage_area = NULL;
 	uint8_t buffer[8];
-	int id = FIXED_PARTITION_ID(global_partition);
+	int id = FIXED_PARTITION_ID(segment_251);
 
 	if(flash_area_open(id, &storage_area) < 0){
 		return 1;
@@ -252,7 +196,7 @@ int load_global_config_from_flash(){
 		goto out;
 	}
 
-	if(flash_area_read(storage_area, 0, &servo16_global, sizeof(servo16_global)) < 0){
+	if(flash_area_read(storage_area, 0, &servo16_name_desc, sizeof(servo16_name_desc)) < 0){
 		goto out;
 	}
 

@@ -17,19 +17,24 @@
 #include <zephyr/console/console.h>
 #include <zephyr/dfu/mcuboot.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/logging/log.h>
 
 #include "firmware_upgrade.h"
 #include "lcc.h"
 #include "lcc-event.h"
 #include "lcc-memory.h"
+#include "lcc-memory-map.h"
 #include "servo16-config.h"
 #include "cdi.h"
 #include "pca9685_board.h"
 #include "servo16-output-state.h"
 #include "power-handler.h"
+#include "partition_utils.h"
 
 #include "dcc-packet-parser.h"
 #include "app_version.h"
+
+LOG_MODULE_REGISTER(servo16_main, LOG_LEVEL_DBG);
 
 const struct device *const can_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_canbus));
 static struct lcc_can_frame lcc_rx;
@@ -49,6 +54,32 @@ CAN_MSGQ_DEFINE(rx_msgq, 55);
 CAN_MSGQ_DEFINE(tx_msgq, 12);
 
 K_MSGQ_DEFINE(button_msgq, sizeof(uint8_t), 10, 1);
+
+static struct adc_readings power_readings;
+
+const struct lcc_memory_segment memory_segments[] = {
+	{
+		.space = 253,
+		.space_flags = 0,
+		.low_address = 0,
+		.high_address = sizeof(servo16_state.pwm_boards_config),
+		.memory = &servo16_state.pwm_boards_config,
+	},
+	{
+		// Voltage information
+		.space = 248,
+		.space_flags = LCC_MEMORY_FLAG_SPACE_READ_ONLY,
+		.high_address = sizeof(power_readings),
+		.memory = &power_readings,
+	},
+	{
+		.space = 251,
+		.space_flags = 0,
+		.high_address = sizeof(struct Servo16PlusNameDescription),
+		.memory = &servo16_name_desc,
+	},
+	{ .space = 0 },
+};
 
 static void blink_led_green();
 K_THREAD_DEFINE(green_blink, 512, blink_led_green, NULL, NULL, NULL,
@@ -163,6 +194,14 @@ static void init_can_txrx(){
 	}
 }
 
+static void update_power_readings(){
+	// Get a new reading and convert it to big-endian LCC format
+	powerhandle_current_volts_mv(&power_readings);
+	power_readings.current = __builtin_bswap32(power_readings.current);
+	power_readings.vin_mv = __builtin_bswap32(power_readings.vin_mv);
+	power_readings.volts_mv = __builtin_bswap32(power_readings.volts_mv);
+}
+
 static void reboot(struct lcc_memory_context* ctx){
 	sys_reboot(SYS_REBOOT_COLD);
 }
@@ -259,6 +298,7 @@ static void main_loop(){
 	uint8_t button_bytes[2];
 	enum btn_parse_state button_parse_state = BUTTON_BYTE0;
 	struct k_timer button_clear_timer;
+	struct k_timer query_power_timer;
 
 	k_poll_event_init(&poll_data[0],
 			K_POLL_TYPE_MSGQ_DATA_AVAILABLE,
@@ -276,6 +316,8 @@ static void main_loop(){
 	k_timer_init(&alias_timer, NULL, NULL);
 	k_timer_start(&alias_timer, K_MSEC(250), K_NO_WAIT);
 	k_timer_init(&button_clear_timer, NULL, NULL);
+	k_timer_init(&query_power_timer, NULL, NULL);
+	k_timer_start(&query_power_timer, K_MSEC(250), K_MSEC(250));
 
 	while (1) {
 		int rc = k_poll(poll_data, ARRAY_SIZE(poll_data), K_MSEC(250));
@@ -283,6 +325,10 @@ static void main_loop(){
 		if(k_timer_status_get(&button_clear_timer) > 0){
 			// Timer expired, clear out our parsing state for the button
 			button_parse_state = BUTTON_BYTE0;
+		}
+
+		if(k_timer_status_get(&query_power_timer) > 0){
+			update_power_readings();
 		}
 
 		if(poll_data[0].state == K_POLL_STATE_MSGQ_DATA_AVAILABLE){
@@ -419,108 +465,6 @@ static int test_servo(){
 	return 1;
 }
 
-void mem_address_space_information_query(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space){
-	if(address_space == 251){
-		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 64 + 64, 0, 0);
-	}else if(address_space == 253){
-		// basic config space
-		uint32_t upper_address = sizeof(servo16_state.pwm_boards_config);
-		lcc_memory_respond_information_query(ctx, alias, 1, address_space, upper_address, 0, 0);
-	}else if(address_space == 250){
-		// Global config
-//		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 1, 0, 0);
-	}else if(address_space == 249){
-		// Firmware versions
-//		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 16, 0, 0);
-	}else if(address_space == 248){
-		// voltage info
-		lcc_memory_respond_information_query(ctx, alias, 1, address_space, 12, 0, 0);
-	}else{
-		// This memory space does not exist: return an error
-		lcc_memory_respond_information_query(ctx, alias, 0, address_space, 0, 0, 0);
-	}
-}
-
-void mem_address_space_read(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, uint8_t read_count){
-	if(address_space == 253){
-		// Basic config space
-		if(starting_address + read_count > (sizeof(servo16_state.pwm_boards_config))){
-			// trying to read too much memory
-			lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
-			return;
-		}
-
-		uint8_t* config_as_u8 = (uint8_t*)servo16_state.pwm_boards_config;
-
-		lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, config_as_u8 + starting_address, read_count);
-	}else if(address_space == 251){
-		// node name/description.  This is stored at the start of the global partition.
-		if(starting_address + read_count > 128){
-			// trying to read too much memory
-			lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
-			return;
-		}
-
-		uint8_t* config_as_u8 = (uint8_t*)&servo16_global;
-
-		lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, config_as_u8 + starting_address, read_count);
-	}else if(address_space == 248){
-		// voltage information
-		struct adc_readings readings;
-
-		if(starting_address + read_count > (sizeof(readings))){
-			// trying to read too much memory
-			lcc_memory_respond_read_reply_fail(ctx, alias, address_space, 0, 0, NULL);
-			return;
-		}
-
-		powerhandle_current_volts_mv(&readings);
-		readings.current = __builtin_bswap32(readings.current);
-		readings.vin_mv = __builtin_bswap32(readings.vin_mv);
-		readings.volts_mv = __builtin_bswap32(readings.volts_mv);
-		uint8_t* readings_as_u8 = (uint8_t*)&readings;
-
-		lcc_memory_respond_read_reply_ok(ctx, alias, address_space, starting_address, readings_as_u8 + starting_address, read_count);
-	}
-}
-
-void mem_address_space_write(struct lcc_memory_context* ctx, uint16_t alias, uint8_t address_space, uint32_t starting_address, void* data, int data_len){
-	if(address_space == 253){
-		if((starting_address + data_len) > sizeof(servo16_state.pwm_boards_config)){
-			lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
-			return;
-		}
-		uint8_t* buffer_u8 = (uint8_t*)servo16_state.pwm_boards_config;
-
-		memcpy(buffer_u8 + starting_address, data, data_len);
-
-		// Write out to non-volatile memory
-		save_config_to_flash();
-
-		lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
-
-		// re-init events consumed
-		add_all_events_consumed(lcc_context_get_event_context(lcc_ctx));
-	}else if(address_space == 251){
-		if((starting_address + data_len) > 128){
-			lcc_memory_respond_write_reply_fail(ctx, alias, address_space, starting_address, 0, NULL);
-			return;
-		}
-		uint8_t* buffer_u8 = (uint8_t*)&servo16_global;
-
-		memcpy(buffer_u8 + starting_address, data, data_len);
-
-		// Write out to non-volatile memory
-		save_globals_to_flash();
-
-		lcc_context_set_simple_node_name_description(lcc_ctx,
-				servo16_global.node_name,
-				servo16_global.node_description);
-
-		lcc_memory_respond_write_reply_ok(ctx, alias, address_space, starting_address);
-	}
-}
-
 static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
 //	pca9685_board_handle_event(&servo16_state.boards[0], event_id);
 	for(int idx = 0; idx < 4; idx++){
@@ -604,6 +548,31 @@ static void initialize_button_board(){
 	uart_irq_rx_enable(button_uart);
 }
 
+static void memory_space_written(struct lcc_memory_map* map, uint8_t space, uint32_t offset, uint32_t len){
+	configuration_flusher_set_dirty(&config_flusher, space);
+
+	if(space == 253){
+		add_all_events_consumed(lcc_context_get_event_context(lcc_ctx));
+	}else if(space == 251){
+		lcc_context_set_simple_node_name_description(lcc_ctx,
+				servo16_name_desc.node_name,
+				servo16_name_desc.node_description);
+	}
+}
+
+static void write_dirty_segment(int space){
+	LOG_INF("Writing dirty segment %d", space);
+	if(space == 253){
+		partition_util_save(FIXED_PARTITION_ID(segment_253),
+				&servo16_state.pwm_boards_config,
+				sizeof(servo16_state.pwm_boards_config));
+	}else if(space == 251){
+		partition_util_save(FIXED_PARTITION_ID(segment_251),
+				&servo16_name_desc,
+				sizeof(servo16_name_desc));
+	}
+}
+
 int main(void)
 {
 	int ret;
@@ -650,14 +619,15 @@ int main(void)
 	lcc_datagram_context_new(ctx);
 	struct lcc_memory_context* mem_ctx = lcc_memory_new(ctx);
 	lcc_memory_set_cdi(mem_ctx, cdi, sizeof(cdi), 0);
-	lcc_memory_set_memory_functions(mem_ctx,
-	    mem_address_space_information_query,
-	    mem_address_space_read,
-	    mem_address_space_write);
 	lcc_memory_set_reboot_function(mem_ctx, reboot);
 	lcc_memory_set_factory_reset_function(mem_ctx, factory_reset);
+	struct lcc_memory_map* mem_map = lcc_memory_map_new(mem_ctx, memory_segments);
+	lcc_memory_map_set_written_callback(mem_map, memory_space_written);
 
 	firmware_upgrade_init(ctx);
+
+	configuration_flusher_init(&config_flusher, memory_segments, ARRAY_SIZE(memory_segments));
+	configuration_flusher_set_write_callback(&config_flusher, write_dirty_segment);
 
 	int stat = lcc_context_generate_alias( ctx );
 	if(stat < 0){
@@ -675,12 +645,11 @@ int main(void)
 
 	// Load all of our configs
 	if(load_config_from_flash() == 2){
-		// flash is empty, write out basic data
-		save_config_to_flash();
+		// flash is empty, do a factory reset
+		factory_reset(NULL);
 	}
 	if(load_global_config_from_flash() == 2){
-		memset(&servo16_global, 0, sizeof(servo16_global));
-		save_globals_to_flash();
+		memset(&servo16_name_desc, 0, sizeof(servo16_name_desc));
 	}
 
 	// inintialize all of our daughterboards now that we have loaded the config
@@ -694,8 +663,8 @@ int main(void)
 	output_enable();
 
 	lcc_context_set_simple_node_name_description(lcc_ctx,
-					servo16_global.node_name,
-					servo16_global.node_description);
+					servo16_name_desc.node_name,
+					servo16_name_desc.node_description);
 	add_all_events_consumed(evt_ctx);
 
 	dcc_decoder_init(&servo16_state.dcc_decoder_stm32);

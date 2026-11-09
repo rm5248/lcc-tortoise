@@ -15,6 +15,7 @@
 #include "dcc-decode-stm32.h"
 #include "power-handler.h"
 #include "adc_utils.h"
+#include "servo16-config.h"
 
 #define DT_SPEC_AND_COMMA(node_id, prop, idx) \
 	ADC_DT_SPEC_GET_BY_IDX(node_id, idx),
@@ -32,6 +33,8 @@ static void adc_irq_fn(void* arg)
 		LL_ADC_ClearFlag_AWD1(ADC1);
 
 		dcc_decoder_disable();
+
+		configuration_flusher_force_write_if_dirty(&config_flusher);
 	}
 }
 
