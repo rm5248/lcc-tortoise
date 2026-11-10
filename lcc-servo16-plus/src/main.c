@@ -203,6 +203,7 @@ static void update_power_readings(){
 }
 
 static void reboot(struct lcc_memory_context* ctx){
+	configuration_flusher_force_write_if_dirty(&config_flusher);
 	sys_reboot(SYS_REBOOT_COLD);
 }
 
