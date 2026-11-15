@@ -34,7 +34,7 @@ static void adc_irq_fn(void* arg)
 
 		dcc_decoder_disable();
 
-		configuration_flusher_force_write_if_dirty(&config_flusher);
+		configuration_flusher_force_write_if_dirty(&servo16_state.config_flusher);
 	}
 }
 

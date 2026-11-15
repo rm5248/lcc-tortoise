@@ -23,7 +23,7 @@
 	</segment>
 
 	<segment space='253'>
-		<name>Outputs</name>
+		<name>PCA9685 Board Configuration</name>
 		<group replication='4'>
 			<repname>PCA9685 Board </repname>
 			<int size='1'>
@@ -41,124 +41,205 @@
 						<property>1</property>
 						<value>LED Control</value>
 					</relation>
+					<relation>
+						<property>2</property>
+						<value>Signal LED Control</value>
+					</relation>
 				</map>
 			</int>
 			<!-- thirty bytes of buffer -->
 			<group offset='30'/>
+		</group>
+	</segment>
 
-		<group replication='16'>
-			<name>OUT</name>
-			<repname>Output </repname>
-			<string size='32'>
-				<name>Output Name</name>
-				<description>What this output is for(optional)</description>
-			</string>
+	<segment space='250'>
+		<name>Servo Configuration</name>
+		<group replication='4'>
+			<repname>PCA9685 Board </repname>
+			<group replication='16'>
+				<name>OUT</name>
+				<repname>Output </repname>
+				<string size='32'>
+					<name>Output Name</name>
+					<description>What this servo output is for(optional)</description>
+				</string>
 
-			<group>
-				<name>Servo Settings</name>
-				<int size='2'>
-					<name>Servo min pulse time(us)</name>
-					<description>The minimum servo pulse time.  By convention, this is 1ms(1000us).  Other servos may use a different value.</description>
-					<min>700</min>
-					<max>1500</max>
-				</int>
-				<int size='2'>
-					<name>Servo max pulse time(us)</name>
-					<description>The maximum servo pulse time.  By convention, this is 2ms(2000us).  Other servos may use a different value.</description>
-					<min>1500</min>
-					<max>2500</max>
-				</int>
 				<int size='1'>
-					<name>Servo Speed</name>
+					<name>Servo Speed.  1 = slowest, 5 = fastest</name>
+					<min>1</min>
+					<max>5</max>
 				</int>
-			</group>
 
-			<int size='1'>
-				<name>Default Setting</name>
-				<description>Select which of the 6 event inputs will be the 'default' state of this output</description>
-				<map>
-					<relation>
-						<property>0</property>
-						<value>Event Input 1</value>
-					</relation>
-					<relation>
-						<property>1</property>
-						<value>Event Input 2</value>
-					</relation>
-					<relation>
-						<property>2</property>
-						<value>Event Input 3</value>
-					</relation>
-					<relation>
-						<property>3</property>
-						<value>Event Input 4</value>
-					</relation>
-					<relation>
-						<property>4</property>
-						<value>Event Input 5</value>
-					</relation>
-					<relation>
-						<property>5</property>
-						<value>Event Input 6</value>
-					</relation>
-				</map>
-			</int>
-
-			<!-- 26 reserved bytes -->
-			<group offset='26'/>
-
-			<group replication='6'>
-				<name>Event Inputs(Consumers)</name>
-				<repname>Input </repname>
-				<eventid>
-					<name>EventID</name>
-					<description>Event ID that will be consumed to set output to the given value</description>
-				</eventid>
-				<int size='2'>
-					<name>Argument 1</name>
-					<description>When board is used as servo, sets percentage of movement that servo is set to.  When set to LED, first argument(see manual)</description>
-				</int>
-				<int size='2'>
-					<name>Argument 2</name>
-					<description>When board is used as servo this argument is ignored.  When set to LED, second argument(see manual)</description>
-				</int>
 				<int size='1'>
-					<name>LED state</name>
-					<description>Only relevant if board drives LEDs.  When this event is consumed, the LED will go to this given state</description>
+					<name>Default Setting</name>
+					<description>Select which of the 6 event inputs will be the 'default' state of this output</description>
 					<map>
 						<relation>
 							<property>0</property>
-							<value>Off</value>
+							<value>Event Input 1</value>
 						</relation>
 						<relation>
 							<property>1</property>
-							<value>Steady on</value>
+							<value>Event Input 2</value>
 						</relation>
 						<relation>
 							<property>2</property>
-							<value>Pulse Slow</value>
+							<value>Event Input 3</value>
 						</relation>
 						<relation>
 							<property>3</property>
-							<value>Pulse Medium</value>
+							<value>Event Input 4</value>
 						</relation>
 						<relation>
 							<property>4</property>
-							<value>Pulse Fast</value>
+							<value>Event Input 5</value>
 						</relation>
 						<relation>
-							<property>5</property>
-							<value>Fade Up</value>
-						</relation>
-						<relation>
-							<property>6</property>
-							<value>Fade Down</value>
+						<property>5</property>
+							<value>Event Input 6</value>
 						</relation>
 					</map>
 				</int>
-				<group offset='3'/>
+
+				<!-- 30 reserved bytes -->
+				<group offset='30'/>
+
+				<group replication='6'>
+					<name>Event Inputs(Consumers)</name>
+					<repname>Input </repname>
+					<eventid>
+						<name>EventID</name>
+						<description>Event ID that will be consumed to set output to the given value</description>
+					</eventid>
+					<int size='2'>
+						<name>Servo Position</name>
+						<description>When this event is consumed, the servo will move to the given position</description>
+						<min>1000</min>
+						<max>2000</max>
+					</int>
+					<!-- TODO servo actions?  move, wig-wag, etc? -->
+					<!-- 14 reserved bytes -->
+					<group offset='14'/>
+				</group>
 			</group>
 		</group>
+	</segment>
+
+	<segment space='249'>
+		<name>LED Configuration</name>
+		<group replication='4'>
+			<repname>PCA9685 Board </repname>
+			<group replication='16'>
+				<name>OUT</name>
+				<repname>Output </repname>
+				<string size='32'>
+					<name>Output Name</name>
+					<description>What this LED is for(optional)</description>
+				</string>
+
+				<int size='1'>
+					<name>Default Setting</name>
+					<description>Select which of the 6 event inputs will be the 'default' state of this output</description>
+					<map>
+						<relation>
+							<property>0</property>
+							<value>Event Input 1</value>
+						</relation>
+						<relation>
+							<property>1</property>
+							<value>Event Input 2</value>
+						</relation>
+						<relation>
+							<property>2</property>
+							<value>Event Input 3</value>
+						</relation>
+						<relation>
+							<property>3</property>
+							<value>Event Input 4</value>
+						</relation>
+						<relation>
+							<property>4</property>
+							<value>Event Input 5</value>
+						</relation>
+						<relation>
+						<property>5</property>
+							<value>Event Input 6</value>
+						</relation>
+					</map>
+				</int>
+
+				<!-- 31 reserved bytes -->
+				<group offset='31'/>
+
+				<group replication='6'>
+					<name>Event Inputs(Consumers)</name>
+					<repname>Input </repname>
+					<eventid>
+						<name>EventID</name>
+						<description>Event ID that will be consumed to set the LED to the given value</description>
+					</eventid>
+					<int size='2'>
+						<name>Argument 1</name>
+						<description>First LED argument(see manual)</description>
+					</int>
+					<int size='2'>
+						<name>Argument 2</name>
+						<description>Second LED argument(see manual)</description>
+					</int>
+					<int size='1'>
+						<name>LED state</name>
+						<description>When this event is consumed, the LED will go to this given state</description>
+						<map>
+							<relation>
+								<property>0</property>
+								<value>Off</value>
+							</relation>
+							<relation>
+								<property>1</property>
+								<value>Steady on</value>
+							</relation>
+							<relation>
+								<property>2</property>
+								<value>Pulse Slow</value>
+							</relation>
+							<relation>
+								<property>3</property>
+								<value>Pulse Medium</value>
+							</relation>
+							<relation>
+								<property>4</property>
+								<value>Pulse Fast</value>
+							</relation>
+							<relation>
+								<property>5</property>
+								<value>Fade Up</value>
+							</relation>
+							<relation>
+								<property>6</property>
+								<value>Fade Down</value>
+							</relation>
+						</map>
+					</int>
+					<!-- 11 reserved bytes -->
+					<group offset='11'/>
+				</group>
+
+			</group>
+		</group>
+	</segment>
+
+	<segment space='248'>
+		<name>Signal LED Configuration</name>
+		<group replication='4'>
+			<repname>PCA9685 Board </repname>
+			<group replication='4'>
+				<name>OUT</name>
+				<repname>Output </repname>
+				<string size='32'>
+					<name>Output Bank Name</name>
+					<description>What this bank is for(optional)</description>
+				</string>
+			</group>
 		</group>
 	</segment>
 
@@ -202,7 +283,7 @@
 	</segment>
 -->
 
-	<segment space='248'>
+	<segment space='247'>
 		<name>Power information</name>
 		<int size='4'>
 			<name>Output Voltage(mv)</name>

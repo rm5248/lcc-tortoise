@@ -49,21 +49,21 @@ int pca9685_board_handle_event(struct Board* board, uint64_t event_id){
 	uint64_t BE_event_id = __builtin_bswap64(event_id);
 	int handled = 0;
 
-	for(int output = 0; output < 16; output++){
-		for(int event_idx = 0; event_idx < 6; event_idx++){
-			if(board->config->board_type == BOARD_TYPE_SERVO &&
-					board->config->outputs[output].events[event_idx].BE_event_id == BE_event_id){
-				// okay, we can make this guy do things
-				handled = 1;
-//				pca9685_actuate_servo(&board->pwm_outputs[output], &board->config->outputs[output], &board->config->outputs[output].events[event_idx]);
-				pca9685_actuate_servo(&board->output_state[output], event_id);
-			}else if(board->config->board_type == BOARD_TYPE_LED &&
-					board->config->outputs[output].events[event_idx].BE_event_id == BE_event_id){
-				handled = 1;
-//				pca9685_led(&board->pwm_outputs[output], &board->config->outputs[output], &board->config->outputs[output].events[event_idx]);
-			}
-		}
-	}
+//	for(int output = 0; output < 16; output++){
+//		for(int event_idx = 0; event_idx < 6; event_idx++){
+//			if(board->config->board_type == BOARD_TYPE_SERVO &&
+//					board->config->outputs[output].events[event_idx].BE_event_id == BE_event_id){
+//				// okay, we can make this guy do things
+//				handled = 1;
+////				pca9685_actuate_servo(&board->pwm_outputs[output], &board->config->outputs[output], &board->config->outputs[output].events[event_idx]);
+//				pca9685_actuate_servo(&board->output_state[output], event_id);
+//			}else if(board->config->board_type == BOARD_TYPE_LED &&
+//					board->config->outputs[output].events[event_idx].BE_event_id == BE_event_id){
+//				handled = 1;
+////				pca9685_led(&board->pwm_outputs[output], &board->config->outputs[output], &board->config->outputs[output].events[event_idx]);
+//			}
+//		}
+//	}
 
 	return handled;
 }

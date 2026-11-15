@@ -6,6 +6,9 @@
  */
 
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/drivers/eeprom.h>
+
 
 #include "partition_utils.h"
 
@@ -39,6 +42,7 @@ int partition_util_save(int partition_id, const void* src, size_t size){
 
 	ret = flash_area_erase(storage_area, 0, size);
 	if(ret){
+		printf("can't erase: %d\n", ret);
 		goto out;
 	}
 
@@ -52,3 +56,25 @@ out:
 
 	return ret;
 }
+
+#if DT_NODE_EXISTS(DT_ALIAS(eeprom_0))
+int partition_util_load_eeprom(uint32_t offset, void* dest, size_t size){
+	const struct device* const dev = DEVICE_DT_GET(DT_ALIAS(eeprom_0));
+	if(!dev){
+		return -EEXIST;
+	}
+
+	// read memory
+	return eeprom_read(dev, offset, dest, size);
+}
+
+int partition_util_save_eeprom(uint32_t offset, const void* src, size_t size){
+	const struct device* const dev = DEVICE_DT_GET(DT_ALIAS(eeprom_0));
+	if(!dev){
+		return -EEXIST;
+	}
+
+	// read memory
+	return eeprom_write(dev, offset, src, size);
+}
+#endif

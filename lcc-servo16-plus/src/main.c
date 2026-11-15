@@ -76,7 +76,7 @@ const struct lcc_memory_segment memory_segments[] = {
 		.space = 251,
 		.space_flags = 0,
 		.high_address = sizeof(struct Servo16PlusNameDescription),
-		.memory = &servo16_name_desc,
+		.memory = &servo16_state.name_desc,
 	},
 	{ .space = 0 },
 };
@@ -203,7 +203,7 @@ static void update_power_readings(){
 }
 
 static void reboot(struct lcc_memory_context* ctx){
-	configuration_flusher_force_write_if_dirty(&config_flusher);
+	configuration_flusher_force_write_if_dirty(&servo16_state.config_flusher);
 	sys_reboot(SYS_REBOOT_COLD);
 }
 
@@ -477,7 +477,7 @@ static void incoming_event(struct lcc_context* ctx, uint64_t event_id){
 		}
 
 		for(int out = 0; out < 16; out++){
-			output_state_perform_action(&board->output_state[out], board_type, event_id);
+//			output_state_perform_action(&board->output_state[out], board_type, event_id);
 		}
 	}
 }
@@ -550,14 +550,14 @@ static void initialize_button_board(){
 }
 
 static void memory_space_written(struct lcc_memory_map* map, uint8_t space, uint32_t offset, uint32_t len){
-	configuration_flusher_set_dirty(&config_flusher, space);
+	configuration_flusher_set_dirty(&servo16_state.config_flusher, space);
 
 	if(space == 253){
 		add_all_events_consumed(lcc_context_get_event_context(lcc_ctx));
 	}else if(space == 251){
 		lcc_context_set_simple_node_name_description(lcc_ctx,
-				servo16_name_desc.node_name,
-				servo16_name_desc.node_description);
+				servo16_state.name_desc.node_name,
+				servo16_state.name_desc.node_description);
 	}
 }
 
@@ -569,9 +569,37 @@ static void write_dirty_segment(int space){
 				sizeof(servo16_state.pwm_boards_config));
 	}else if(space == 251){
 		partition_util_save(FIXED_PARTITION_ID(segment_251),
-				&servo16_name_desc,
-				sizeof(servo16_name_desc));
+				&servo16_state.name_desc,
+				sizeof(servo16_state.name_desc));
 	}
+}
+
+static void test_eeprom(){
+	static char foo_data[64];
+	const char* fake_data = "farts farts farts";
+
+	const struct device* const dev = DEVICE_DT_GET(DT_ALIAS(eeprom_0));
+	if(!dev){
+		printf("can't find eeprom??\n");
+		return;
+	}
+
+	// read memory
+	eeprom_read(dev, 0, &foo_data, sizeof(foo_data));
+	foo_data[63] = 0;
+	printf("eeprom memory: %s\n", foo_data);
+
+	// write out memory
+	memset(foo_data, 0, sizeof(foo_data));
+	strcpy(foo_data, fake_data);
+	eeprom_write(dev, 0, foo_data, strlen(foo_data));
+
+
+	// zero out our memory and then read it back
+	memset(foo_data, 0, sizeof(foo_data));
+	eeprom_read(dev, 0, &foo_data, sizeof(foo_data));
+
+	printf("foo data: %s\n", foo_data);
 }
 
 int main(void)
@@ -627,8 +655,8 @@ int main(void)
 
 	firmware_upgrade_init(ctx);
 
-	configuration_flusher_init(&config_flusher, memory_segments, ARRAY_SIZE(memory_segments));
-	configuration_flusher_set_write_callback(&config_flusher, write_dirty_segment);
+	configuration_flusher_init(&servo16_state.config_flusher, memory_segments, ARRAY_SIZE(memory_segments));
+	configuration_flusher_set_write_callback(&servo16_state.config_flusher, write_dirty_segment);
 
 	int stat = lcc_context_generate_alias( ctx );
 	if(stat < 0){
@@ -650,7 +678,7 @@ int main(void)
 		factory_reset(NULL);
 	}
 	if(load_global_config_from_flash() == 2){
-		memset(&servo16_name_desc, 0, sizeof(servo16_name_desc));
+		memset(&servo16_state.name_desc, 0, sizeof(servo16_state.name_desc));
 	}
 
 	// inintialize all of our daughterboards now that we have loaded the config
@@ -664,8 +692,8 @@ int main(void)
 	output_enable();
 
 	lcc_context_set_simple_node_name_description(lcc_ctx,
-					servo16_name_desc.node_name,
-					servo16_name_desc.node_description);
+			servo16_state.name_desc.node_name,
+			servo16_state.name_desc.node_description);
 	add_all_events_consumed(evt_ctx);
 
 	dcc_decoder_init(&servo16_state.dcc_decoder_stm32);
@@ -686,6 +714,8 @@ int main(void)
 	gpio_add_callback(servo16_state.blue_button.port, &blue_button_cb_data);
 
 	printf("board 0 type: %d\n", servo16_state.boards[0].config->board_type);
+
+//	test_eeprom();
 
 //	printf("servooutput: %d\n", sizeof(struct BoardOutput));
 //	printf("servoevent: %d\n", sizeof(struct BoardEvent));

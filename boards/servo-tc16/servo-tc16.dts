@@ -34,6 +34,7 @@
 		blueled = &blue_led;
 		goldled = &gold_led;
 		blueswitch = &blue_switch;
+		eeprom-0 = &eeprom0;
 	};
 
 	leds: leds {
@@ -236,6 +237,16 @@ zephyr_udc0: &usb {
 		reg = <0x43>;
 		#pwm-cells = <3>;
 		zephyr,deferred-init;
+	};
+
+	eeprom0: m25256@55 {
+		status = "okay";
+		compatible = "st,m24xxx", "atmel,at24";
+		reg = <0x55>;
+		size = <DT_SIZE_K(256)>;
+		pagesize = <64>;
+		address-width = <16>;
+		timeout = <5>;
 	};
 };
 

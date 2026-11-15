@@ -16,24 +16,24 @@ struct Servo16PlusState servo16_state = {
 		.boards = {
 				{
 						.config = NULL,
-						.output_state = {
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 0) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 1) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 2) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 3) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 4) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 5) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 6) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 7) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 8) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 9) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 10) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 11) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 12) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 13) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 14) },
-								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 15) }
-						}
+//						.output_state = {
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 0) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 1) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 2) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 3) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 4) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 5) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 6) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 7) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 8) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 9) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 10) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 11) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 12) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 13) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 14) },
+//								{ .pwm_output = PWM_DT_SPEC_GET_BY_IDX(DT_NODELABEL(builtin), 15) }
+//						}
 				}
 		},
 		.oe_pin = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), oe_gpios),
@@ -43,9 +43,6 @@ struct Servo16PlusState servo16_state = {
 		.blue_button = GPIO_DT_SPEC_GET(DT_NODELABEL(blue_switch), gpios),
 		.gold_button = GPIO_DT_SPEC_GET(DT_NODELABEL(gold_switch), gpios),
 };
-
-struct Servo16PlusNameDescription servo16_name_desc = {0};
-struct configuration_flusher config_flusher = {0};
 
 static int init_led(const struct gpio_dt_spec* led){
 	if (!gpio_is_ready_dt(led)) {
@@ -84,33 +81,32 @@ int init_state(uint64_t board_id){
 
 	// Initialize the default values for all the boards we can control.
 	// This will likely get overwritten by values from flash
-	for(int x = 0; x < 4; x++){
+	for(int x = 0; x < NUM_EXPANSION_BOARDS; x++){
 		struct BoardConfig* board_config = &servo16_state.pwm_boards_config[x];;
 		servo16_state.boards[x].config = board_config;
 
-		// Initialize default values for the board config
-		for(int y = 0; y < 16; y++){
-			board_config->outputs[y].BE_min_pulse = __builtin_bswap16(1000);
-			board_config->outputs[y].BE_max_pulse = __builtin_bswap16(2000);
-			for(int z = 0; z < 6; z++){
-				board_config->outputs[y].events[z].BE_event_id = __builtin_bswap64(start_event_id);
-				start_event_id++;
-			}
-		}
-
-		// Initialize the default values for the output state
-		for(int z = 0; z < 16; z++){
-			struct OutputState* output_state = &servo16_state.boards[x].output_state[z];
-			struct BoardOutput* output_config = &board_config->outputs[z];
-
-			output_state_init(output_state, output_config);
-		}
+//		// Initialize default values for the board config
+//		for(int y = 0; y < 16; y++){
+//			board_config->outputs[y].BE_min_pulse = __builtin_bswap16(1000);
+//			board_config->outputs[y].BE_max_pulse = __builtin_bswap16(2000);
+//			for(int z = 0; z < 6; z++){
+//				board_config->outputs[y].events[z].BE_event_id = __builtin_bswap64(start_event_id);
+//				start_event_id++;
+//			}
+//		}
+//
+//		// Initialize the default values for the output state
+//		for(int z = 0; z < 16; z++){
+//			struct OutputState* output_state = &servo16_state.boards[x].output_state[z];
+//			struct BoardOutput* output_config = &board_config->outputs[z];
+//
+//			output_state_init(output_state, output_config);
+//		}
 	}
 
-	servo16_state.pwm_boards_config[0].address = 0x40;
-	servo16_state.pwm_boards_config[1].address = 0x41;
-	servo16_state.pwm_boards_config[2].address = 0x42;
-	servo16_state.pwm_boards_config[3].address = 0x43;
+	for(uint8_t x = 0; x < NUM_EXPANSION_BOARDS; x++){
+		servo16_state.pwm_boards_config[x].address = 0x40 + x;
+	}
 
 	gpio_pin_configure_dt(&servo16_state.oe_pin, GPIO_OUTPUT_INACTIVE);
 
@@ -129,6 +125,29 @@ int init_state(uint64_t board_id){
 //	if(init_button(&servo16_state.gold_button) < 0){
 //		return -1;
 //	}
+
+	// Configure the offsets for our EEPROM
+	// Set it up so that each segment starts on a new page
+	const int PAGE_SIZE = 64;
+#define NUM_PAGES_REQUIRED(data) ((sizeof(data) / PAGE_SIZE) + (sizeof(data) % PAGE_SIZE == 0 ? 0 : 1))
+	int page = 0;
+	servo16_state.eeprom_offsets.lcc_offset = page * PAGE_SIZE;
+	page += NUM_PAGES_REQUIRED(uint64_t);
+	servo16_state.eeprom_offsets.segment_253_offset = page * PAGE_SIZE;
+	page += NUM_PAGES_REQUIRED(servo16_state.pwm_boards_config);
+	servo16_state.eeprom_offsets.segment_251_offset = page * PAGE_SIZE;
+	page += NUM_PAGES_REQUIRED(servo16_state.name_desc);
+	servo16_state.eeprom_offsets.segment_250_offset = page * PAGE_SIZE;
+	page += NUM_PAGES_REQUIRED(servo16_state.servo_config);
+	servo16_state.eeprom_offsets.segment_249_offset = page * PAGE_SIZE;
+	page += NUM_PAGES_REQUIRED(servo16_state.led_config);
+
+	printf("EEPROM start offsets:\n");
+	printf("  LCC: %d\n", servo16_state.eeprom_offsets.lcc_offset);
+	printf("  253: %d\n", servo16_state.eeprom_offsets.segment_253_offset);
+	printf("  251: %d\n", servo16_state.eeprom_offsets.segment_251_offset);
+	printf("  250: %d\n", servo16_state.eeprom_offsets.segment_250_offset);
+	printf("  249: %d\n", servo16_state.eeprom_offsets.segment_249_offset);
 
 	return 0;
 }
@@ -196,7 +215,7 @@ int load_global_config_from_flash(){
 		goto out;
 	}
 
-	if(flash_area_read(storage_area, 0, &servo16_name_desc, sizeof(servo16_name_desc)) < 0){
+	if(flash_area_read(storage_area, 0, &servo16_state.name_desc, sizeof(servo16_state.name_desc)) < 0){
 		goto out;
 	}
 
@@ -212,8 +231,8 @@ void add_all_events_consumed(struct lcc_event_context* evt_ctx){
 	for(int x = 0; x < 4; x++){
 		for(int y = 0; y < 16; y++){
 			for(int z = 0; z < 6; z++){
-				uint64_t event_id = __builtin_bswap64(servo16_state.pwm_boards_config[x].outputs[y].events[z].BE_event_id);
-				lcc_event_add_event_consumed(evt_ctx, event_id);
+//				uint64_t event_id = __builtin_bswap64(servo16_state.pwm_boards_config[x].outputs[y].events[z].BE_event_id);
+//				lcc_event_add_event_consumed(evt_ctx, event_id);
 			}
 		}
 	}
@@ -330,10 +349,10 @@ void init_all_daughterboards(){
 			}
 
 			for(int output = 0; output < 16; output++){
-				struct OutputState* out_state = &servo16_state.boards[board].output_state[output];
-				memcpy(&out_state->pwm_output,
-						&base[output],
-						sizeof(struct pwm_dt_spec));
+//				struct OutputState* out_state = &servo16_state.boards[board].output_state[output];
+//				memcpy(&out_state->pwm_output,
+//						&base[output],
+//						sizeof(struct pwm_dt_spec));
 			}
 		}
 	}
@@ -347,10 +366,10 @@ void init_start_state(){
 
 		uint8_t board_type = servo16_state.boards[board].config->board_type;
 		for(int output = 0; output < 16; output++){
-			struct OutputState* out_state = &servo16_state.boards[board].output_state[output];
-			uint8_t default_output = out_state->output_config->default_startup_event;
-
-			output_state_perform_initial(out_state, board_type, default_output);
+//			struct OutputState* out_state = &servo16_state.boards[board].output_state[output];
+//			uint8_t default_output = out_state->output_config->default_startup_event;
+//
+//			output_state_perform_initial(out_state, board_type, default_output);
 		}
 	}
 }
