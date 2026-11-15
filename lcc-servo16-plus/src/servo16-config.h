@@ -144,6 +144,8 @@ struct Servo16PlusNameDescription {
 #define NUM_EXPANSION_BOARDS 4
 
 struct Servo16PlusState{
+	uint64_t lcc_id;
+
 	// Segment 253
 	struct BoardConfig pwm_boards_config[NUM_EXPANSION_BOARDS];
 	// Segment 250
@@ -168,9 +170,9 @@ struct Servo16PlusState{
 	struct dcc_decoder_stm32 dcc_decoder_stm32;
 	uint32_t last_rx_dcc_message;
 
-
 	struct {
 		uint32_t lcc_offset;
+		uint32_t lcc_event_offset;
 		uint32_t segment_253_offset;
 		uint32_t segment_251_offset;
 		uint32_t segment_250_offset;
@@ -179,6 +181,10 @@ struct Servo16PlusState{
 };
 
 extern struct Servo16PlusState servo16_state;
+
+struct Servo16PlusGlobals {
+	uint64_t base_lcc_event_address;
+};
 
 int init_state(uint64_t board_id);
 void init_all_daughterboards();

@@ -75,7 +75,7 @@ static int init_button(const struct gpio_dt_spec* button){
 }
 
 int init_state(uint64_t board_id){
-	uint64_t start_event_id = board_id << 16;
+	servo16_state.lcc_id = board_id;
 
 	servo16_state.last_rx_dcc_message = 0;
 
@@ -133,6 +133,8 @@ int init_state(uint64_t board_id){
 	int page = 0;
 	servo16_state.eeprom_offsets.lcc_offset = page * PAGE_SIZE;
 	page += NUM_PAGES_REQUIRED(uint64_t);
+	servo16_state.eeprom_offsets.lcc_event_offset = page * PAGE_SIZE;
+	page += NUM_PAGES_REQUIRED(struct Servo16PlusGlobals);
 	servo16_state.eeprom_offsets.segment_253_offset = page * PAGE_SIZE;
 	page += NUM_PAGES_REQUIRED(servo16_state.pwm_boards_config);
 	servo16_state.eeprom_offsets.segment_251_offset = page * PAGE_SIZE;
@@ -143,7 +145,8 @@ int init_state(uint64_t board_id){
 	page += NUM_PAGES_REQUIRED(servo16_state.led_config);
 
 	printf("EEPROM start offsets:\n");
-	printf("  LCC: %d\n", servo16_state.eeprom_offsets.lcc_offset);
+	printf("  LCC ID: %d\n", servo16_state.eeprom_offsets.lcc_offset);
+	printf("  LCC base event ID: %d\n", servo16_state.eeprom_offsets.lcc_event_offset);
 	printf("  253: %d\n", servo16_state.eeprom_offsets.segment_253_offset);
 	printf("  251: %d\n", servo16_state.eeprom_offsets.segment_251_offset);
 	printf("  250: %d\n", servo16_state.eeprom_offsets.segment_250_offset);
@@ -315,7 +318,7 @@ void init_all_daughterboards(){
 	if(check_for_daughterboard(0x40) == 0){
 		printf("ERROR: Builtin board not found??\n");
 	}
-	for(int board = 0; board < 4; board++){
+	for(int board = 0; board < NUM_EXPANSION_BOARDS; board++){
 		int addr = servo16_state.pwm_boards_config[board].address;
 		int found = check_for_daughterboard(addr);
 		const struct pwm_dt_spec* base;
@@ -359,7 +362,7 @@ void init_all_daughterboards(){
 }
 
 void init_start_state(){
-	for(int board = 0; board < 4; board++){
+	for(int board = 0; board < NUM_EXPANSION_BOARDS; board++){
 		if(!servo16_state.boards[board].ok){
 			continue;
 		}

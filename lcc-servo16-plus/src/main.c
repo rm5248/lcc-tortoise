@@ -208,6 +208,51 @@ static void reboot(struct lcc_memory_context* ctx){
 }
 
 static void factory_reset(struct lcc_memory_context* ctx){
+	struct Servo16PlusGlobals global;
+
+	if(partition_util_load_eeprom(64, &global, sizeof(global)) < 0){
+		printf("ERR: unable to load from EEPROM!  Will not do a factory reset\n");
+		return;
+	}
+
+	if(global.base_lcc_event_address == 0 || global.base_lcc_event_address == 0xFFFFFFFFFFFFFFFFull){
+		global.base_lcc_event_address = servo16_state.lcc_id << 16;
+	}
+
+	memset(&servo16_state.pwm_boards_config, 0, sizeof(servo16_state.pwm_boards_config));
+	memset(&servo16_state.servo_config, 0, sizeof(servo16_state.servo_config));
+	memset(&servo16_state.led_config, 0, sizeof(servo16_state.led_config));
+	memset(&servo16_state.name_desc, 0, sizeof(servo16_state.name_desc));
+
+	for(int x = 0; x < NUM_EXPANSION_BOARDS; x++){
+		servo16_state.pwm_boards_config[x].address = 0x40 + x;
+		servo16_state.pwm_boards_config[x].board_type = BOARD_TYPE_SERVO;
+
+		for(int output = 0; output < 16; output++){
+			for(int event = 0; event < 6; event++){
+				servo16_state.servo_config[x][output].events[event].BE_event_id = __builtin_bswap64(global.base_lcc_event_address++);
+				servo16_state.servo_config[x][output].events[event].BE_servo_position = __builtin_bswap16(1000);
+
+				servo16_state.led_config[x][output].events[event].BE_event_id = __builtin_bswap64(global.base_lcc_event_address++);
+			}
+		}
+	}
+
+	if(partition_util_save_eeprom(servo16_state.eeprom_offsets.lcc_event_offset, &global, sizeof(global)) < 0){
+		LOG_ERR("Unable to save EEPROM");
+	}
+	if(partition_util_save_eeprom(servo16_state.eeprom_offsets.segment_253_offset, &servo16_state.pwm_boards_config, sizeof(servo16_state.pwm_boards_config)) < 0){
+		LOG_ERR("Unable to save EEPROM");
+	}
+	if(partition_util_save_eeprom(servo16_state.eeprom_offsets.segment_251_offset, &servo16_state.name_desc, sizeof(servo16_state.name_desc)) < 0){
+		LOG_ERR("Unable to save EEPROM");
+	}
+	if(partition_util_save_eeprom(servo16_state.eeprom_offsets.segment_250_offset, &servo16_state.servo_config, sizeof(servo16_state.servo_config)) < 0){
+		LOG_ERR("Unable to save EEPROM");
+	}
+	if(partition_util_save_eeprom(servo16_state.eeprom_offsets.segment_249_offset, &servo16_state.led_config, sizeof(servo16_state.led_config)) < 0){
+		LOG_ERR("Unable to save EEPROM");
+	}
 }
 
 static uint64_t load_lcc_id(){
